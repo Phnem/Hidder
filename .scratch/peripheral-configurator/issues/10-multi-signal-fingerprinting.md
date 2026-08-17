@@ -6,7 +6,7 @@ PENDING
 
 ## Objective
 
-Реализовать `pregistry` со схемой из `spec.md` Приложение B и многосигнальным matcher'ом (report-descriptor hash → TLC-набор → manufacturer/product strings → safe identify-опкод → fw-версия → VID:PID), с explicit confidence, семя данными — AULA Hero 84 HE (и ROYUAN-плата, когда доступна).
+Реализовать `pregistry` со схемой из `spec.md` Приложение B и многосигнальным matcher'ом (report-descriptor hash → TLC-набор → manufacturer/product strings → safe identify-опкод → fw-версия → VID:PID), с explicit confidence, семя данными — AULA Hero 84 HE и EPOMAKER (обновлено 2026-08-17: покупка ROYUAN-платы отменена; вторым устройством выступает имеющаяся EPOMAKER). Прямой вход в этот тикет — сравнительный отчёт двух устройств из TICKET-09: он показывает, какие сигналы фактически различают наше железо, а какие бесполезны.
 
 ## User or system value
 

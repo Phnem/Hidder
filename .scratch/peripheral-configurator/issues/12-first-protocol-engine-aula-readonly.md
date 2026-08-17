@@ -45,7 +45,7 @@ RECOMMENDED (repository/protocol-engine contract — TDD там, где прак
 
 ## Expected architecture impact
 
-Первый реальный потребитель `ProtocolEngine` trait — по architecture review (п.5), после этого тикета трейт можно считать validated для одного семейства, но не финальным (валидация вторым семейством — Phase 2/4 эпик после ROYUAN-трека).
+Первый реальный потребитель `ProtocolEngine` trait — по architecture review (п.5), после этого тикета трейт можно считать validated для одного семейства, но не финальным (валидация вторым семейством — эпик TICKET-17 «Second protocol family»; обновлено 2026-08-17: какое именно семейство станет вторым, решают данные фазы 2, а не план покупки ROYUAN-платы, который отменён).
 
 ## Risks
 
