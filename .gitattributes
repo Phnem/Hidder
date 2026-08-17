@@ -1,0 +1,9 @@
+# Normalise line endings in the repository. Without this, work on Windows commits
+# CRLF and the same files come back as a whole-file diff on Linux and macOS, which
+# is noise in every review and makes `git blame` useless on the files it touches.
+* text=auto eol=lf
+
+# Binary assets, never converted.
+*.png binary
+*.ico binary
+*.icns binary

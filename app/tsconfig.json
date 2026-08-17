@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true
+  },
+  // One config for both the app sources and the build config. A separate
+  // composite project for vite.config.ts is the usual template shape, but a
+  // composite project cannot disable emit, so it forces build artifacts to exist
+  // purely to satisfy a type check. This config uses no Node built-ins, so there
+  // is nothing to separate.
+  "include": ["src", "vite.config.ts"]
+}

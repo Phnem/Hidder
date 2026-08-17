@@ -1,0 +1,18 @@
+[package]
+name = "pprofile"
+description = "Profiles and presets, degraded gracefully against a partial capability set."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+authors.workspace = true
+
+# DAG position: feature layer. Depends downward on pproto/pcaps only.
+[dependencies]
+pproto.workspace = true
+pcaps.workspace = true
+serde.workspace = true
+
+[lints]
+workspace = true

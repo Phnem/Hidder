@@ -1,0 +1,19 @@
+[package]
+name = "pjournal"
+description = "Journal of everything written to a device, and where knowledge about a model came from."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+authors.workspace = true
+
+# DAG position: feature layer, beside pprofile/plearn. Depends on pcaps only.
+# It is deliberately NOT depended on by psafety (that would reverse the DAG);
+# see the note in crates/psafety/Cargo.toml.
+[dependencies]
+pcaps.workspace = true
+serde.workspace = true
+
+[lints]
+workspace = true

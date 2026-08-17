@@ -1,0 +1,201 @@
+# Peripheral (`peripheral-core`) — Master Plan
+
+## Workflow
+
+Current workflow state: IMPLEMENTING_TICKET
+Current ticket: TICKET-03 (Инвентаризация prior art)
+Last completed ticket: TICKET-04 (License ADR — completed during planning, see Deviations)
+Next eligible ticket: TICKET-01, затем TICKET-07 (гейт: Rust toolchain, см. Execution phases)
+Last updated: 2026-08-17
+
+Реализация начата 2026-08-17 (пользователь: «раздели план на фазы и начинай фазу 1»). Phase 1 по разбивке ниже — документационные тикеты (03/01) + инфраструктурный скелет (07).
+
+## Execution phases
+
+Разбивка 20 тикетов на исполнительные фазы. Фазы — про порядок работы в этой сессии/сессиях; нумерация НЕ совпадает с «Phase 0..6» исходного плана (там фазы продукта). Соответствие указано в колонке «План».
+
+| Фаза | Содержание | Тикеты | План | Входной гейт |
+|---|---|---|---|---|
+| **1. Знание + фундамент** | Prior-art карта, конспект ROYUAN-протокола, изучение методов sharkfin, cargo workspace + Tauri-скелет + CI + `git init` | 03, 01, 21, 07 | Phase 0 + начало Phase 1 | нет (07 — Rust toolchain на машине) |
+| **2. Реальность железа** | OEM-карта моделей, покупка ROYUAN-платы, HID-инвентарь AULA и ROYUAN на Windows | 05, 06, 08, 09 | Phase 0/1 | 01+03 (05), доставка платы (06/09), 07 (08) |
+| **3. Read-only вертикальный срез** | Fingerprinting, `psafety`-скелет, первый protocol engine (AULA read-only), Tauri UI, эмулятор+CI-тест | 10, 11, 12, 13, 14 | Phase 1 DoD (AC2) | 07, 08 |
+| **4. Запись и аналог** | Verified write + Analog Monitor, Learning Mode | 15, 16 | Phase 2/3 | фаза 3 целиком |
+| **5. Второе семейство + релиз** | ROYUAN-engine, профили, ingestion pipeline, tray-оболочка | 17, 18, 20 (shell-трек) | Phase 3/4 | 09, 15 |
+| **6. Мыши и wireless** | Мышиный слой, реальные battery-данные в трее | 19, 20 (data-трек) | Phase 6 | 17 |
+
+Правила перехода: фаза считается закрытой, когда все её тикеты имеют статус DONE/DONE_WITH_DEVIATIONS либо явно перенесены в следующую фазу с записью в `EXECUTION_LOG.md`. Тикет 02 (письмо автору sharkfin) — единственный, чьё завершение требует действия пользователя (отправка сообщения), поэтому в фазе 1 выполняется только черновик. Архитектурный чекпоинт — между фазой 3 и 4, и повторно перед 5 (нужен для нерешённого вопроса «tray-процесс vs process watcher», `spec.md` SAFE_DEFAULT).
+
+### Phase 1 status
+
+| Тикет | Статус | Примечание |
+|---|---|---|
+| TICKET-03 | DONE | `docs/prior-art/inventory.md` |
+| TICKET-01 | DONE_WITH_DEVIATIONS | `docs/prior-art/royuan.md`; исходники sharkfin не читались (только `PROTOCOL.md`) — обоснование в тикете |
+| TICKET-21 | DONE | `docs/prior-art/sharkfin-methods.md`; заменил черновик TICKET-02 по решению пользователя |
+| TICKET-02 | READY, отложен пользователем | Отправка сообщения третьему лицу требует явного разрешения; предмет обмена станет содержательнее после TICKET-08 |
+| TICKET-07 | IN_PROGRESS | Тулчейн установлен по разрешению пользователя 2026-08-17: rustup 1.29.0, rustc/cargo 1.97.1 (msvc), clippy 0.1.97, rustfmt 1.9.0. VS 2022 Build Tools (workload VCTools) ставится. WebView2 151.0.4129.86 уже присутствует. |
+
+## Goal
+
+Локальный кроссплатформенный конфигуратор для HE-периферии (клавиатуры в первую очередь), позиционируемый HE-first в маркетинге и universal в архитектуре (`peripheral-core`). Полная формулировка — `spec.md`.
+
+## Canonical specification
+
+`.scratch/peripheral-configurator/spec.md`
+
+## Architecture review
+
+`.scratch/peripheral-configurator/architecture/INITIAL_REVIEW.md`
+
+## Handoff
+
+`.scratch/peripheral-configurator/CURRENT_HANDOFF.md` (создан 2026-08-17 — до начала реализации отсутствовал)
+
+## Global constraints
+
+- **Лицензия:** proprietary app, permissive-only зависимости (MIT/Apache-2.0/BSD/ISC), GPL/AGPL/LGPL запрещены в шипящемся бинаре. GPL-проекты (sharkfin, OpenRGB, OpenRazer) — только источник фактов, не кода. См. `docs/decisions/0001-license.md`.
+- **Никакой прошивки (flash) устройства в v1** — ни при каких обстоятельствах, даже по запросу пользователя без явного расширения scope через отдельный ADR.
+- **`tools/ingest` физически изолирован** от релизной сборки с первого коммита workspace.
+- **Запись в устройство только через `SafeCommandId`** — сырые опкоды никогда не достигают транспорта в production-сборке.
+- **`confidence < Verified` → read-only**, без исключений и без «экспериментальных» контролов записи в обычном UI.
+- Референсное железо Phase 0/1: **AULA Hero 84 HE** (в наличии) + **ROYUAN-плата** (к покупке, TICKET-06).
+
+## Non-goals
+
+Полный список — `spec.md` § Out of scope. Кратко: RGB-канвас на весь ПК, свой ядерный/фильтр-драйвер Windows, клауд/аккаунты/обязательная телеметрия, firmware update/recovery (DEFERRED, не отменено навсегда).
+
+## Verification commands
+
+Repository is greenfield — команды появятся с TICKET-07 (workspace skeleton устанавливает `cargo build --workspace`, `cargo test --workspace`, `cargo-deny check licenses`, CI на трёх ОС). До этого момента верификация — ручная (документационные артефакты проверяются на полноту против шаблонов).
+
+### Fast checks
+
+TBD после TICKET-07.
+
+### Ticket checks
+
+TBD — per-ticket verification plans уже зафиксированы в каждом `issues/NN-*.md`.
+
+### Full checks
+
+TBD — hardware-in-the-loop чеклист появится содержательно с TICKET-08 (первое реальное железо в цикле).
+
+## Ticket overview
+
+| ID | Title | Status | Blocked by | Commit | Review |
+|---|---|---|---|---|---|
+| TICKET-01 | Изучить протокол sharkfin/ROYUAN | **DONE_WITH_DEVIATIONS** | — | — | самопроверка, блокеров нет |
+| TICKET-02 | Связаться с автором sharkfin | READY (черновик; отправка — за пользователем) | TICKET-01 (done) | — | — |
+| TICKET-03 | Инвентаризация prior art | **DONE** | — | — | самопроверка, блокеров нет |
+| TICKET-04 | Лицензия проекта (ADR-0001) | **DONE** | — | — | — |
+| TICKET-05 | OEM-карта топ-моделей | READY | TICKET-01 (done), TICKET-03 (done) | — | — |
+| TICKET-06 | Покупка ROYUAN-платы | PENDING | TICKET-05 | — | — |
+| TICKET-07 | Cargo workspace + Tauri skeleton + CI | READY | TICKET-04 (done) | — | — |
+| TICKET-08 | Windows HID inventory — AULA | PENDING | TICKET-07 | — | — |
+| TICKET-09 | Windows HID inventory — ROYUAN | BLOCKED | TICKET-06, TICKET-08 | — | — |
+| TICKET-10 | Multi-signal fingerprinting (`pregistry`) | PENDING | TICKET-07, TICKET-08 | — | — |
+| TICKET-11 | `psafety` ACL + `SafeCommandId` skeleton | PENDING | TICKET-07 | — | — |
+| TICKET-12 | Первый protocol engine (AULA, read-only) | PENDING | TICKET-08, TICKET-10, TICKET-11 | — | — |
+| TICKET-13 | Tauri UI skeleton (Devices/HE/Journal) | PENDING | TICKET-07, TICKET-12 | — | — |
+| TICKET-14 | Device emulator + CI fingerprint-тест | PENDING | TICKET-08, TICKET-10 | — | — |
+| TICKET-15 | EPIC: Verified write + Analog Monitor | PENDING | TICKET-07..14 | — | — |
+| TICKET-16 | EPIC: Learning Mode | PENDING | TICKET-15 | — | — |
+| TICKET-17 | EPIC: второе семейство + профили + релиз v0.1 | PENDING | TICKET-09, TICKET-15 | — | — |
+| TICKET-18 | EPIC: Ingestion pipeline | PENDING | TICKET-10, TICKET-04 (done) | — | — |
+| TICKET-19 | EPIC: Мыши | PENDING | TICKET-17 | — | — |
+| TICKET-20 | EPIC: System Tray + `dev.power.*`/`dev.connection` | PENDING | TICKET-13 (shell); TICKET-19 (реальные battery-данные) | — | — |
+| TICKET-21 | Изучить инженерные методы sharkfin по исходникам | **DONE** | — | — | самопроверка, блокеров нет |
+
+Примечание по «нескольким READY одновременно»: TICKET-01, TICKET-03 и TICKET-07 не блокируют друг друга и могут выполняться в любом порядке или параллельно (разные типы работы — чтение/конспект vs инфраструктура). Правило «один тикет в основном дереве одновременно» (skill's "One ticket at a time") относится к *коду в общем working tree*; TICKET-01/02/03/05/06 — исследовательские/закупочные, не код, поэтому не конкурируют за одно и то же дерево с TICKET-07. При старте Phase 8 реализация всё равно ведётся по одному code-тикету за раз.
+
+## Ticket details
+
+Полные тикеты — `.scratch/peripheral-configurator/issues/01-*.md` … `19-*.md`. Ниже — только сводка для тикетов, уже имеющих статус, отличный от «ничего не сделано».
+
+### TICKET-04 — Лицензия проекта (ADR-0001)
+
+Status: DONE
+Tracker reference: локальный (`issues/04-license-adr.md`)
+Dependencies: нет
+Acceptance criteria: все выполнены (см. issue-файл)
+Implementation summary: `LICENSE` (proprietary placeholder) + `docs/decisions/0001-license.md` (полный ADR: контекст/варианты/решение/последствия) созданы, решение зафиксировано по итогам пользовательского интервью 2026-08-17.
+Deviations: выполнено во время SPECIFICATION-фазы планирования, а не в рамках Phase 8 implementation loop — см. issue-файл, раздел Deviations, для полного обоснования. Не код продукта, riскnone.
+Architecture notes: разблокировал формулировку правил заимствования (facts/code/docs) для всех Phase 0 тикетов и для `spec.md`.
+Verification evidence: ручная — файлы существуют, содержание соответствует шаблону ADR (§19.2 плана) и решению пользователя.
+Commit: не создавался (нет git-репозитория до TICKET-07; будет закоммичен вместе с первым коммитом workspace).
+Follow-up tickets: TICKET-18 (ingestion pipeline) прямо ссылается на §7.3/§14-режим фактов/кода/доков, установленный этим решением.
+
+### TICKET-03 — Инвентаризация prior art
+
+Status: DONE (2026-08-17)
+Tracker reference: локальный (`issues/03-prior-art-inventory.md`)
+Dependencies: нет
+Acceptance criteria: все выполнены
+Implementation summary: `docs/prior-art/inventory.md` — 15 проектов, лицензия каждого проверена по странице репозитория 2026-08-17, режим использования (`code`/`facts`/`docs`) со ссылкой на ADR-0001, раздел о планируемой инкорпорации permissive-кода и его влиянии на дизайн.
+Deviations: таблица шире scope тикета (добавлены OpenRGB, OpenRazer, официальный GitLab SignalRGB) — additive, обоснование в тикете.
+Architecture notes: подтверждает решения по `quirk`-схеме и приоритету hardware-профиля (совпадение с моделью libratbag делает будущее портирование дешёвым, если модель не сломать).
+Verification evidence: ручная проверка полноты против §2 плана — выполнена.
+Commit: не создавался (git-репозитория нет до TICKET-07).
+Follow-up tickets: нужен артефакт third-party notices к моменту первой фактической инкорпорации MIT-кода (фаза 6 / TICKET-19) — отдельный тикет пока не создан осознанно.
+
+### TICKET-01 — Конспект протокола ROYUAN/sharkfin
+
+Status: DONE_WITH_DEVIATIONS (2026-08-17)
+Tracker reference: локальный (`issues/01-study-sharkfin-protocol.md`)
+Dependencies: нет
+Acceptance criteria: все три выполнены
+Implementation summary: `docs/prior-art/royuan.md` — транспорт (usage page `0xFFFF`/usage `2`/report ID `0`/64 байта), семейства (yc500, gen2, под-линии yc3121/yc3123/ry5088) и правило «семейство только из реестра, не из PID», две схемы контрольных сумм, полная опкод-таблица, перечень отвечающих/не отвечающих опкодов на плате X86, HE-слой, деструктивные опкоды, измеренные тайминги, форматы данных. Источник запинен коммитом `d657f19` (v0.3.5).
+Deviations: (1) исходники sharkfin построчно не читались — только `docs/PROTOCOL.md`, сознательно, чтобы не заимствовать выражение из GPL-кода; таблица 949 плат перенесена в scope TICKET-05. (2) Внесено additive-правило в `spec.md` § Domain rules. Полные записи — в тикете.
+Architecture notes: `pregistry` получает конкретные сигналы fingerprint (identify `0x8F`, revision `0x80`); `psafety` получает реальные значения rate limiter для ROYUAN; подтверждено, что `opcode_acl` обязан быть per-family (задокументированные коллизии `0x06`/`0x09`/`0x11` и factory reset `0x01`↔`0x02`); включение аналогового стрима — операция записи, т.е. Analog Monitor не исключение из FR2.
+Verification evidence: ручная — документ самодостаточен для старта Safe Probe в TICKET-09 (см. Review findings тикета).
+Commit: не создавался (git-репозитория нет до TICKET-07).
+Follow-up tickets: нет новых; уточнения учтены в TICKET-05/09/10/15.
+
+## Decisions
+
+Полный протокол интервью — `EXECUTION_LOG.md`. Сводка:
+
+1. **Лицензия:** proprietary/commercial; GPL — только prior art. (2026-08-17, пользователь)
+2. **Sharkfin:** независимая разработка + контакт с автором ради обмена находками, не кода/лицензии. (2026-08-17, пользователь)
+3. **Позиционирование:** HE-first в маркетинге, universal в архитектуре. (2026-08-17, пользователь, совпадает с дефолтом исходного плана)
+4. **Референсное железо:** AULA Hero 84 HE (в наличии, primary) + ROYUAN-плата (к покупке, secondary). Оба трека — с самого начала Phase 1, не последовательно. (2026-08-17, пользователь)
+5. **Архитектурные правки транспорта/IPC/крейтов** (2026-08-17, code review плана): `hidapi` как основная транспортная абстракция вместо трёх независимых платформенных реализаций (Windows escape hatch на прямой Win32 — только при нехватке `hidapi`); физический HID-handle владеется исключительно `DeviceSession` в выделенном worker-потоке, не «просто opaque handle»; IPC `pcore`↔UI — три отдельных механизма Tauri (commands/events/channels), Channels обязателен для `he.analog_stream`; крейты образуют явный однонаправленный DAG (`architecture/INITIAL_REVIEW.md` §9), не просто «не знают друг о друге». Применено к `spec.md` (FR7, FR10, FR11) и тикетам 07/08/09/11/13/14.
+6. **Визуальная палитра + System Tray** (2026-08-17, предложение пользователя): добавлена черновая палитра (White/Grey/Gold/Black, `spec.md` Приложение C, с флагом на нейминг токена «Real Madrid Gold» — не блокер, но требует ревью перед публичным брендингом). Добавлена фича System Tray с динамической battery-иконкой (`spec.md` FR12) и генерализована capability `mouse.battery` → `dev.power.battery`/`dev.power.charging` + новая `dev.connection` — заряд относится к любому wireless-устройству, не только к мыши. Новый эпик TICKET-20.
+7. **Доменное правило «отсутствие ответа — не доказательство отсутствия возможности»** (2026-08-17, итог TICKET-01; решения пользователя не требовало — additive, ничего не ослабляет). Основание: sharkfin с маркером `[HW]` фиксирует, что HE-опкоды не отвечают на Attack Shark X86, тогда как на X68 PRO HE (тот же VID `0x3151`) опкод `0x1B` рабочий и включает аналоговый стрим. Внесено в `spec.md` § Domain rules. Следствие: `Unsupported` требует того же уровня доказательства, что `Verified(hw)`; результат probe пишется как факт о плате+прошивке, не о семействе.
+8. **Третий permissive-источник кода** (2026-08-17, итог TICKET-03): помимо libratbag (MIT, мыши) permissive также `ratbag-emu` (MIT → `tools/emu`) и `he-analog-gamepad` (MIT → аналоговый стрим для Sonix `0x3151`/`0x5030`). Самую рискованную фичу v1 можно портировать легально, а не только конспектировать. Породило известный пробел: нужен артефакт third-party notices (требование MIT-атрибуции), тикета пока нет.
+
+## Global deviations
+
+- Skill `ticket-autopilot` ссылается на дочерние скиллы (`grill-with-docs`, `to-spec`, `to-tickets`, `implement`, `handoff`, `wayfinder`, `improve-codebase-architecture`, `setup-matt-pocock-skills`), не установленные в этой сессии. Интервью проведено напрямую через `AskUserQuestion` вместо `/grill-with-docs`; `spec.md`/тикеты написаны вручную по шаблонам скилла вместо вызова `/to-spec`/`/to-tickets`. Функциональная цель фаз соблюдена, инструмент — заменён. См. `EXECUTION_LOG.md` для полной записи.
+- TICKET-04 выполнен вне последовательности Phase 8 (см. его собственный Deviations) — обоснование там же.
+
+## Known risks
+
+Перенесены и приоритизированы из §15 плана применительно к текущему состоянию (ничего не реализовано):
+
+| Риск | Относится к | Статус на сейчас |
+|---|---|---|
+| Окирпичивание чужой платы записью | TICKET-15+ | Не актуален — записи ещё нет. Архитектурный gate (`SafeCommandId`) заложен в план TICKET-11. |
+| Коллидирующие опкоды между суб-семействами | TICKET-12, TICKET-17 | Учтено доменным правилом в `spec.md` — write только при `confidence >= Verified` для конкретной family. |
+| «Успешный» ответ на неподдержанную команду | TICKET-12+ | Учтено — `verify()` обязателен в `ProtocolEngine` (FR1), анти-фикция-фильтр обязателен в Learning Mode (FR5). |
+| Windows TLC-блокировка закрывает нужную коллекцию | TICKET-08/09 | Открытый эмпирический вопрос — это и есть цель этих тикетов, не предполагается заранее. |
+| Не хватает железа для верификации второго семейства | TICKET-06/09 | Активный — блокирует ROYUAN-трек до доставки платы; AULA-трек не блокируется. |
+| Выгорание на масштабе (тысячи моделей вручную) | TICKET-18 | Смягчается ingestion pipeline + community submissions с Phase 3, архитектурно заложено с самого начала (§7 плана). |
+| Юридическое письмо от вендора | TICKET-18 | Смягчается §14 плана — соблюдено в scope TICKET-18. |
+
+## Deferred work
+
+См. `spec.md` § Open questions → DEFERRED: итоговый нейминг продукта, firmware update/recovery, ViGEm-вывод, гарнитуры/DAC, мобильное/веб-хранилище профилей.
+
+## Final acceptance checklist
+
+Неприменимо на этом этапе — ни один тикет реализации не начат. Чеклист активируется при переходе в FINAL_REVIEW после завершения всех Phase 1–N тикетов.
+
+- [ ] Every required ticket completed — **не начато**
+- [ ] Full test suite or agreed equivalent run — **не начато**
+- [ ] Specification reviewed requirement by requirement — n/a (спецификация только что создана)
+- [ ] No unresolved blocking review findings — n/a
+- [ ] Migration and compatibility behavior verified — n/a (нет миграций, greenfield)
+- [ ] User-visible behavior verified — **не начато**
+- [ ] Deferred work explicitly recorded — **готово**, см. `spec.md`
+- [ ] Final architecture checkpoint completed — n/a на этом этапе

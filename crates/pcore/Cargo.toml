@@ -1,0 +1,23 @@
+[package]
+name = "pcore"
+description = "Orchestration: device state the UI reads, with no UI or presentation concerns."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+authors.workspace = true
+
+# DAG position: top of the library stack, below `app` only. Depends downward on
+# the feature layers; must never depend on app.
+[dependencies]
+pproto.workspace = true
+pprofile.workspace = true
+plearn.workspace = true
+pjournal.workspace = true
+pregistry.workspace = true
+pcaps.workspace = true
+serde.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,18 @@
+[package]
+name = "plearn"
+description = "Learning mode: inventory, guided capture, safe probe, verified write."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+authors.workspace = true
+
+# DAG position: feature layer. Depends downward on pproto/pcaps/psafety only.
+[dependencies]
+pproto.workspace = true
+pcaps.workspace = true
+psafety.workspace = true
+
+[lints]
+workspace = true

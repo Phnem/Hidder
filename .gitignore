@@ -1,0 +1,26 @@
+# Rust
+/target/
+**/target/
+
+# Node
+node_modules/
+dist/
+dist-web/
+
+# Prior-art checkouts kept locally for study, never part of this repository.
+# sharkfin is GPL-3.0 and this project is proprietary (see docs/decisions/0001-license.md):
+# it is read as a source of facts and methods, and must not be vendored here.
+/sharkfin/
+
+# Vendor artifacts for the ingestion pipeline. Never committed, never shipped
+# (spec.md FR9): unpack them outside the working tree.
+/tools/ingest/input/
+
+# Local orchestration state that is not part of the product
+CURRENT_HANDOFF.local.md
+
+# Editors / OS
+.DS_Store
+Thumbs.db
+.idea/
+*.swp

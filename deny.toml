@@ -1,0 +1,64 @@
+# Dependency licence policy, enforced in CI on all three platforms.
+#
+# The product is proprietary and sold as closed source (docs/decisions/0001-license.md).
+# Permissive dependencies may ship inside the binary; copyleft may not, in any
+# version. GPL projects are read as a source of facts and methods only, and any
+# such knowledge is reimplemented independently -- that is a documentation and
+# review rule, and this file is the mechanical half that catches the cases review
+# misses.
+#
+# Run locally: cargo deny check licenses
+
+[graph]
+all-features = true
+
+[licenses]
+# Anything not listed is a failure. There is no "warn and continue" tier here on
+# purpose: an unreviewed licence in a shipped binary is not a warning.
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "Unicode-3.0",
+    "CC0-1.0",
+    "MPL-2.0",
+    # Our own crates. Not a real SPDX identifier, which is exactly why it is
+    # spelled as a LicenseRef: nothing in this list should be mistakable for an
+    # open-source grant.
+    "LicenseRef-Proprietary",
+]
+
+# Copyleft is refused by omission from `allow`, but naming the ones we
+# specifically care about makes the intent legible to a reader of this file:
+# GPL-2.0, GPL-3.0, AGPL-3.0, LGPL-2.1, LGPL-3.0 and any -or-later variant.
+#
+# `MPL-2.0` is allowed: it is file-level copyleft and does not reach our own
+# sources, which is the distinction that matters for a closed-source binary. If
+# an MPL dependency is ever modified rather than merely used, that modification
+# has to be published, so flag it in review.
+
+confidence-threshold = 0.9
+
+# Note on hidapi, checked rather than assumed (2026-08-17, TICKET-07): the
+# resolved crate declares plain `MIT` (hidapi 2.6.6), so it needs no exception
+# here and passes on the ordinary allow list. The C library it wraps is
+# multi-licensed with a BSD-3-Clause option; that only becomes our problem if it
+# is ever vendored or built from source with different terms, and at that point
+# this file is not the place it gets noticed -- review is. Do not add an
+# exception for it pre-emptively: an exception replaces the allow list for that
+# crate, which is exactly the kind of quiet hole this file exists to prevent.
+
+[bans]
+multiple-versions = "warn"
+
+[advisories]
+yanked = "deny"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

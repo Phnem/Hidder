@@ -1,0 +1,20 @@
+[package]
+name = "pregistry"
+description = "Device registry and multi-signal fingerprinting with explicit confidence."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+authors.workspace = true
+
+# DAG position: middle layer. May depend on ptransport (device signals) and
+# pcaps (capability ids in device definitions). Must never depend on pproto,
+# pprofile, plearn, pjournal, pcore or app.
+[dependencies]
+ptransport.workspace = true
+pcaps.workspace = true
+serde.workspace = true
+
+[lints]
+workspace = true

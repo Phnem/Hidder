@@ -1,0 +1,18 @@
+[package]
+name = "pemu"
+description = "Device emulator: a fake HID device that lies the way real firmware lies."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+authors.workspace = true
+
+[[bin]]
+name = "pemu"
+path = "src/main.rs"
+
+[dependencies]
+
+[lints]
+workspace = true

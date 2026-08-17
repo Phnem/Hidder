@@ -1,0 +1,37 @@
+[package]
+name = "peripheral-app"
+description = "Peripheral: local configurator for Hall-effect keyboards and mice"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+authors.workspace = true
+
+[lib]
+# The `_lib` suffix keeps the library name distinct from the binary name, which
+# Cargo requires on Windows.
+name = "peripheral_app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+# DAG position: the top. Depends on pcore, plus pcaps for the types that cross
+# the IPC boundary. Nothing depends on this crate.
+[dependencies]
+pcore.workspace = true
+pcaps.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+log.workspace = true
+
+tauri = { version = "2", features = [] }
+tauri-plugin-log = "2"
+# Two copies of this application polling one device is enough traffic to stall
+# its config endpoint. A second launch must raise the first window instead
+# (spec.md § Failure and fallback behavior).
+tauri-plugin-single-instance = "2"
+
+[lints]
+workspace = true

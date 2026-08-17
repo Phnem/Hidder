@@ -1,0 +1,34 @@
+# SEPARATE WORKSPACE ON PURPOSE.
+#
+# This empty `[workspace]` table detaches this crate from the repository root
+# workspace, so `cargo build` / `cargo test` / `cargo clippy` at the root can
+# never reach it, and nothing it depends on can ever be linked into a shipped
+# binary.
+#
+# Why (spec.md FR9, ADR-0001, architecture/INITIAL_REVIEW.md §6):
+# this tool exists to read vendor artifacts -- unpacked installers, minified
+# vendor JavaScript, decompiled bundles -- and turn them into reviewable device
+# definitions. That is both a licensing and a reputational boundary. Nothing that
+# touches those artifacts may risk being pulled into what is sold.
+#
+# Inputs are never committed. Unpack them outside the working tree; `input/` is
+# git-ignored for the case where that advice is ignored.
+#
+# Enforced by CI (`ingest-is-isolated`), not just by this comment.
+[workspace]
+
+[package]
+name = "pingest"
+description = "Vendor-artifact ingestion. Never part of a release build."
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.85"
+license = "LicenseRef-Proprietary"
+publish = false
+authors = ["Peripheral project"]
+
+[[bin]]
+name = "pingest"
+path = "src/main.rs"
+
+[dependencies]

@@ -1,0 +1,121 @@
+/*
+ * Design tokens from spec.md Appendix C. Draft palette, not final branding.
+ *
+ * The accent token is named `--accent-gold` here, not after the football club
+ * the palette proposal referenced: the hex value is free to use, an internal
+ * token name referencing someone else's brand is not something to carry into a
+ * published style guide (see the flag in spec.md Appendix C).
+ *
+ * Semantic tokens (success/warning/danger) are not invented here. They are
+ * needed for the Journal and low-battery warnings, and inventing them before
+ * those screens exist would just be three more colours to change later.
+ */
+:root {
+  --white: #ffffff;
+  --grey: #f2f2f2;
+  --accent-gold: #febe10;
+  --night-black: #1a1a1a;
+
+  --bg: var(--white);
+  --bg-raised: var(--grey);
+  --fg: var(--night-black);
+  --fg-muted: #5a5a5a;
+  --accent: var(--accent-gold);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: var(--night-black);
+    --bg-raised: #242424;
+    --fg: var(--white);
+    --fg-muted: #a0a0a0;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.shell {
+  max-width: 60rem;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  letter-spacing: -0.01em;
+}
+
+.build {
+  margin: 0.25rem 0 1.5rem;
+  color: var(--fg-muted);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  min-height: 1.5em;
+}
+
+nav ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 0 1.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+nav button {
+  padding: 0.375rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: 0.375rem;
+  background: var(--bg-raised);
+  color: var(--fg);
+  font: inherit;
+  cursor: pointer;
+}
+
+/*
+ * A disabled control here means "not built yet", and it looks disabled on
+ * purpose. The same treatment carries the product rule for capabilities: a
+ * control with no confirmed command behind it is never shown as if it works.
+ */
+nav button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+nav button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+section {
+  padding: 1rem 1.25rem;
+  border-radius: 0.5rem;
+  background: var(--bg-raised);
+}
+
+section ul {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.muted {
+  margin: 0;
+  color: var(--fg-muted);
+}
+
+.error {
+  margin: 0;
+  color: var(--fg);
+  border-left: 3px solid var(--accent);
+  padding-left: 0.75rem;
+}

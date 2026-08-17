@@ -1,0 +1,22 @@
+[package]
+name = "psafety"
+description = "The only path from intent to a device write: opcode ACL, SafeCommandId, rate limiting, kill switch."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+authors.workspace = true
+
+# DAG position: middle layer. May depend on ptransport and pcaps only.
+#
+# Note (open, TICKET-11): every write must be journalled, but pjournal sits
+# ABOVE this crate in the DAG, so this crate cannot call it. Resolution is
+# expected to be an event this crate emits and an upper layer records -- do not
+# resolve it by adding a pjournal dependency here, that reverses the DAG.
+[dependencies]
+ptransport.workspace = true
+pcaps.workspace = true
+
+[lints]
+workspace = true

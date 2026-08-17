@@ -1,0 +1,17 @@
+[package]
+name = "pcaps"
+description = "Capability vocabulary: CapId, value shapes, and the origin marker."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+authors.workspace = true
+
+# DAG position: bottom, beside ptransport. Depends on no other `p*` crate --
+# every layer above depends on this one, so it must stay a leaf.
+[dependencies]
+serde.workspace = true
+
+[lints]
+workspace = true

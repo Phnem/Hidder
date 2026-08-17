@@ -1,0 +1,20 @@
+[package]
+name = "pproto"
+description = "Protocol engines: one trait for every family, opcodes resolved per family."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+authors.workspace = true
+
+# DAG position: above pcaps/pregistry/psafety/ptransport, below the feature
+# layers. Must never depend on pprofile, plearn, pjournal, pcore or app.
+[dependencies]
+ptransport.workspace = true
+pcaps.workspace = true
+pregistry.workspace = true
+psafety.workspace = true
+
+[lints]
+workspace = true

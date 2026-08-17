@@ -1,0 +1,81 @@
+
+# Workspace layout mirrors the crate dependency DAG in
+# .scratch/peripheral-configurator/architecture/INITIAL_REVIEW.md §9.
+# The direction of `path` dependencies is an enforced invariant, not a
+# preference: a dependency pointing from a lower layer to a higher one is a
+# blocking review finding. Each crate's own Cargo.toml states which layer it
+# sits in and what it may depend on.
+#
+# `tools/ingest` is deliberately absent from `members` and listed in `exclude`.
+# It touches decompiled vendor artifacts and must never be reachable from a
+# release build (spec.md FR9, ADR-0001). It carries its own workspace.
+
+[workspace]
+resolver = "3"
+members = [
+    # transport layer
+    "crates/ptransport",
+    # capability vocabulary, registry, safety gate
+    "crates/pcaps",
+    "crates/pregistry",
+    "crates/psafety",
+    # protocol engines
+    "crates/pproto",
+    # feature layers
+    "crates/pprofile",
+    "crates/plearn",
+    "crates/pjournal",
+    # orchestration
+    "crates/pcore",
+    # desktop application (Tauri)
+    "app/src-tauri",
+    # development tools that are allowed in the workspace build
+    "tools/emu",
+    "tools/protodoc",
+]
+exclude = [
+    # See the note above. Physically separate workspace.
+    "tools/ingest",
+    # Prior-art checkout kept locally for study; not ours, not built here.
+    "sharkfin",
+]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.85"
+license = "LicenseRef-Proprietary"
+publish = false
+authors = ["Peripheral project"]
+
+[workspace.dependencies]
+# Cross-platform HID transport (spec.md FR7). Native platform calls are an
+# escape hatch inside ptransport only.
+hidapi = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+log = "0.4"
+
+# Internal crates, declared once so member manifests cannot drift on versions.
+ptransport = { path = "crates/ptransport" }
+pcaps = { path = "crates/pcaps" }
+pregistry = { path = "crates/pregistry" }
+psafety = { path = "crates/psafety" }
+pproto = { path = "crates/pproto" }
+pprofile = { path = "crates/pprofile" }
+plearn = { path = "crates/plearn" }
+pjournal = { path = "crates/pjournal" }
+pcore = { path = "crates/pcore" }
+
+[workspace.lints.rust]
+# An unused stub is expected while the crates are empty; everything else that
+# rustc warns about is a defect we want to see in CI.
+dead_code = "allow"
+
+[workspace.lints.clippy]
+# The write path is safety critical (spec.md FR2/FR3). These three are how a
+# "cannot happen" turns into a panic on a user's machine mid-write.
+unwrap_used = "warn"
+expect_used = "warn"
+panic = "warn"

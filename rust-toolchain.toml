@@ -1,0 +1,7 @@
+# Pinned so a developer machine and CI cannot disagree about what "stable"
+# means. Components listed here because the checks that use them are not
+# optional: clippy runs with warnings as errors, and formatting is verified
+# rather than requested.
+[toolchain]
+channel = "stable"
+components = ["rustfmt", "clippy"]

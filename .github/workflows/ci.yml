@@ -1,0 +1,140 @@
+name: CI
+
+# Three operating systems from the first commit, not once the app works. The
+# transport layer is the part most likely to diverge per platform (spec.md FR7),
+# and a platform added to CI later starts out broken.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  licences:
+    name: Dependency licences
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      # The product is proprietary; a copyleft dependency reaching the shipped
+      # binary is a licensing failure, not a style issue (ADR-0001). Checked in
+      # its own job so it reports independently of whether the code compiles.
+      - name: Install cargo-deny
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny
+
+      - name: Licence policy
+        run: cargo deny --all-features check licenses bans sources
+
+  isolation:
+    name: tools/ingest stays out of the build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      # `tools/ingest` reads decompiled vendor artifacts and must never be
+      # reachable from a release build (spec.md FR9). Two independent checks,
+      # because the comment in its Cargo.toml is not enforcement:
+      #
+      #  1. the root workspace does not know it exists;
+      #  2. building the whole workspace does not produce its binary.
+      - name: Not a workspace member
+        run: |
+          if cargo metadata --format-version 1 --no-deps \
+             | grep -q '"name":"pingest"'; then
+            echo "pingest is reachable from the root workspace" >&2
+            exit 1
+          fi
+
+      - name: Not produced by a workspace build
+        run: |
+          cargo build --workspace --exclude peripheral-app
+          if find target -name 'pingest*' -type f | grep -q .; then
+            echo "a workspace build produced a pingest artifact" >&2
+            exit 1
+          fi
+
+      # It still has to compile: an excluded crate that quietly rots is not
+      # isolated, it is abandoned.
+      - name: Compiles on its own
+        working-directory: tools/ingest
+        run: cargo check
+
+  dag:
+    name: Crate dependencies point one way
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      # A path dependency from a lower layer to a higher one silently
+      # reintroduces the coupling the crate split exists to prevent
+      # (architecture/INITIAL_REVIEW.md §9). Cargo will happily let the
+      # workspace grow one, so it is checked rather than reviewed.
+      - name: Layer order
+        run: python3 scripts/check_crate_dag.py
+
+  checks:
+    name: Build & test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Tauri's Linux dependencies. hidapi additionally needs libudev.
+      - name: Tauri system dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev \
+            libayatana-appindicator3-dev libssl-dev libxdo-dev \
+            libsoup-3.0-dev libjavascriptcoregtk-4.1-dev libudev-dev
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Frontend install
+        working-directory: app
+        run: npm ci
+
+      - name: Frontend typecheck
+        working-directory: app
+        run: npm run typecheck
+
+      - name: Frontend build
+        working-directory: app
+        run: npx vite build
+
+      - name: Rust format
+        run: cargo fmt --all --check
+
+      - name: Clippy (warnings are errors)
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Build
+        run: cargo build --workspace
+
+      - name: Test
+        run: cargo test --workspace

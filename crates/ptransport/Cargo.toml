@@ -1,0 +1,19 @@
+[package]
+name = "ptransport"
+description = "HID transport. Owns every physical device handle; nothing above this layer sees one."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+authors.workspace = true
+
+# DAG position: bottom. This crate must never depend on any other `p*` crate.
+# See architecture/INITIAL_REVIEW.md §9.
+[dependencies]
+hidapi.workspace = true
+thiserror.workspace = true
+log.workspace = true
+
+[lints]
+workspace = true

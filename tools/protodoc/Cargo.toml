@@ -1,0 +1,18 @@
+[package]
+name = "pprotodoc"
+description = "Generates protocol and support documentation from the registry, so docs cannot drift from behaviour."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+authors.workspace = true
+
+[[bin]]
+name = "pprotodoc"
+path = "src/main.rs"
+
+[dependencies]
+
+[lints]
+workspace = true
