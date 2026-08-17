@@ -14,7 +14,7 @@ No — nothing to refactor. The risk is the opposite: over-building crate bounda
 
 - `pcaps` (`CapId` vocabulary + value types + `origin` marker) — every other layer depends on this. Changing a `CapId`'s type/unit after protocol engines are written against it is expensive. Get the AULA-relevant subset (`he.actuation`, `he.rt.*`, `he.deadzone.*`) right before writing engine code against it.
 - `psafety`'s `SafeCommandId` boundary — this is the safety-critical seam from the spec (FR2). Once `pcore`/UI code is written against "execute only accepts `SafeCommandId`", that invariant must never be weakened by a later convenience overload that accepts raw opcodes.
-- `ProtocolEngine` trait signature — expect it to be *nearly* stable after the AULA engine is written, but do not consider it final until a second, structurally different family (ROYUAN) has been implemented against it (Phase 1 second track / Phase 4). One family cannot validate a trait's generality.
+- `ProtocolEngine` trait signature — expect it to be *nearly* stable after the AULA engine is written, but do not consider it final until a second, structurally different family has been implemented against it (Phase 4 / TICKET-17). Which family that will be is decided by evidence, not named in advance (updated 2026-08-17 — the ROYUAN purchase was cancelled and the EPOMAKER moved to the remote-validation track). One family cannot validate a trait's generality.
 
 ## 4. Where should complexity be hidden?
 
@@ -26,7 +26,7 @@ No — nothing to refactor. The risk is the opposite: over-building crate bounda
 
 ## 5. Which public interfaces may need to change as evidence comes in?
 
-- `ProtocolEngine::verify` — the spec (FR1) mandates it, but the *strategy* per capability (readback vs indirect readback vs analog-stream vs user-confirm) will only become concrete once TICKET-08/09 show what's actually readable on real hardware. Expect the `Verification` return type to grow variants; do not hard-code a binary pass/fail now.
+- `ProtocolEngine::verify` — the spec (FR1) mandates it, but the *strategy* per capability (readback vs indirect readback vs analog-stream vs user-confirm) will only become concrete once real I/O happens (TICKET-12/15 on AULA; TICKET-09 contributes descriptor-level evidence remotely, not I/O). Expect the `Verification` return type to grow variants; do not hard-code a binary pass/fail now.
 - `CapValue` — needs to accommodate scalar, struct (DKS, SOCD), matrix (keymap), and stream (analog) shapes from day one (see Приложение A in `spec.md`); retrofitting stream support onto a scalar-only enum later would be a breaking change across every engine.
 
 ## 6. Architectural improvements required now (before/during Phase 0–1 tickets)
@@ -77,6 +77,6 @@ The exact shape may shift once TICKET-10–12 write real code against it, but th
 
 1. **Type or handle leakage across `ptransport`.** Any PR that imports a Win32/IOKit/hidraw/`hidapi::HidDevice` type outside `ptransport`, or that lets code outside a device's own worker touch its handle, is a regression, not a style nit — it defeats the reason the crate exists and reopens the mutex-around-one-handle failure mode §6 rules out.
 2. **Silent write-path bypass.** Any code path that calls into a protocol engine's write logic without going through `psafety`'s `SafeCommandId` gate is a `BLOCKING` review finding, not `IMPORTANT_FOLLOW_UP` — this is the one invariant the whole safety story (spec FR2/FR3, plan §10.6) depends on.
-3. **Premature trait finalization.** Locking `ProtocolEngine` or `CapValue` down as "stable" after only the AULA engine exists — there is exactly one data point; treat the trait as provisional until the ROYUAN track lands.
+3. **Premature trait finalization.** Locking `ProtocolEngine` or `CapValue` down as "stable" after only the AULA engine exists — there is exactly one data point; treat the trait as provisional until a second family lands. **This risk grew on 2026-08-17**, and must stay visible rather than be quietly treated as mitigated: there is no second board on the developer's desk at all (the ROYUAN purchase was cancelled; the EPOMAKER lives with a third party and is now a remote-validation device reached only through a shipped build). Until then the only second "device" available to tests is the emulator, which was built from AULA's own recordings and therefore cannot falsify AULA-shaped assumptions.
 4. **High-frequency data routed through Tauri events instead of Channels.** Any analog-stream or capture-stream code that subscribes via the general event listener API instead of a Channel is a `BLOCKING` finding once Analog Monitor exists (Phase-2 epic) — ordering is not incidental for a per-key analog waveform.
 5. **Reversed or cyclic crate dependency.** A `Cargo.toml` path dependency that points from a lower layer (§9 diagram) to a higher one is a `BLOCKING` finding, not a style preference — it silently reintroduces the coupling the crate split was meant to prevent.

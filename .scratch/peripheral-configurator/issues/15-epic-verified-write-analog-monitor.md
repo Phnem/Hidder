@@ -2,7 +2,7 @@
 
 ## Status
 
-PENDING (BLOCKED by TICKET-08..14)
+PENDING (BLOCKED by TICKET-10..14; TICKET-08 выполнен, TICKET-09 в remote-треке и гейтом не является)
 
 ## Objective
 
@@ -14,7 +14,7 @@ PENDING (BLOCKED by TICKET-08..14)
 
 ## Dependencies
 
-Все тикеты Phase 1 (TICKET-07..14) должны быть DONE или DONE_WITH_DEVIATIONS. Дополнительно требует решения архитектурного финдинга "SafeCommandId codegen owner" (architecture review п.6, REQUIRED_DURING_IMPLEMENTATION), который был сознательно отложен до этого эпика.
+Кодовые тикеты Phase 3 (TICKET-10..14) плюс уже выполненные TICKET-07/08 должны быть DONE или DONE_WITH_DEVIATIONS. **TICKET-09/06 гейтом не являются** (уточнено 2026-08-17: они в параллельном remote-validation треке). Дополнительно требует решения архитектурного финдинга "SafeCommandId codegen owner" (architecture review п.6, REQUIRED_DURING_IMPLEMENTATION), который был сознательно отложен до этого эпика.
 
 ## Scope (эпик-уровень, будет декомпозирован на вертикальные тикеты на архитектурном чекпоинте перед стартом)
 

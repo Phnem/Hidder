@@ -14,7 +14,9 @@ PENDING
 
 ## Dependencies
 
-TICKET-08 (TLC-инвентарь), TICKET-10 (fingerprinting/confidence), TICKET-11 (SafeCommandId — read-опкоды тоже должны идти через типобезопасный gate).
+TICKET-08 (TLC-инвентарь), TICKET-11 (SafeCommandId — read-опкоды тоже должны идти через типобезопасный gate; выполняется **первым**), TICKET-10 (fingerprinting/confidence).
+
+Уточнено 2026-08-17: engine обязан пользоваться `DeviceSession`, `pregistry`, capability-моделью и safety-границами — **не `hidapi` напрямую**. От TICKET-06/09 (remote EPOMAKER) этот тикет не зависит.
 
 ## Scope
 
@@ -49,6 +51,7 @@ RECOMMENDED (repository/protocol-engine contract — TDD там, где прак
 
 ## Risks
 
+- **Здесь впервые появляется настоящий I/O — значит здесь же принимается отложенное решение по классификации ошибок.** Находка TICKET-08: `hidapi` отдаёт текстовое, на Windows локализованное сообщение без кода, поэтому machine-readable определение stall/`AccessDenied` по подстроке не работает в принципе, и kill-switch (FR3) на локализованной системе молча не сработает. Win32 escape hatch **не** реализовывался заранее осознанно; этот тикет обязан либо ввести platform-native error classification, либо явно зафиксировать, почему без неё можно обойтись. См. также риск «`opened = true` ≠ пригодный read/write-канал»: доступ уровня перечисления не повышает confidence.
 - Guided Capture зависит от наличия официального AULA-софта и возможности его снифать/патчить (§8 плана, Уровень 1) — если официальный софт защищён от снифинга сильнее, чем ожидалось, тикет может застрять на этом шаге; в таком случае — эскалация в `WAITING_FOR_USER_DECISION` с описанием альтернатив (USBPcap/Wireshark сниффер, см. §8 плана).
 
 ## Implementation notes

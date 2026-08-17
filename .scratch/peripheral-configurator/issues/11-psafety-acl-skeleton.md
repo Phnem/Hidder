@@ -2,7 +2,9 @@
 
 ## Status
 
-PENDING
+READY — **следующий тикет основного code path** (TICKET-07 выполнен; блокеров нет, железа не требует)
+
+Порядок закреплён 2026-08-17: после TICKET-08 проект впервые приблизился к настоящему I/O, поэтому архитектурная гарантия `raw opcode ✗ → SafeCommandId ✓ → Safety Gate ✓ → Transport` фиксируется **до** появления первого protocol engine. Ни один engine не должен получить возможность случайно обойти safety boundary.
 
 ## Objective
 
