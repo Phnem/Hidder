@@ -1,6 +1,6 @@
 # Current handoff
 
-Обновлено: 2026-08-17, после закрытия TICKET-08 и перевода EPOMAKER в remote-validation трек.
+Обновлено: 2026-08-18, после закрытия TICKET-11.
 
 ## Original goal
 
@@ -35,6 +35,20 @@ READY_FOR_IMPLEMENTATION. Фазы 1 и 2 закрыты; идёт Phase 3 (read
 | TICKET-21 | DONE | `docs/prior-art/sharkfin-methods.md` |
 | TICKET-07 | DONE_WITH_DEVIATIONS | коммит `f770750` — весь скелет |
 | TICKET-08 | DONE_WITH_DEVIATIONS | `ptransport::inventory` + `docs/hardware/aula-hero-84-he.{json,md}` |
+| TICKET-11 | DONE_WITH_DEVIATIONS | `psafety` целиком + `data/protocols/*.toml` |
+
+### Что теперь невозможно обойти (TICKET-11)
+
+- Опкод, помеченный `destructive`/`unknown` или не помеченный никем, **не имеет представления в программе**: варианта в `SafeCommandId` нет, а построить его из байта нечем — публичного пути «байт → команда» не существует.
+- `SafeCommandId::opcode()` — `pub(crate)`. Байт читается ровно в одном месте: когда гейт выпускает `AuthorizedCommand` после всех проверок.
+- `AuthorizedCommand` невозможно сконструировать снаружи и невозможно переиграть (не `Clone`, потребляется при dispatch).
+- Гейт **владеет** sink'ом; у engine нет объекта, через который можно отправить что-то мимо. Batch-входа нет — одна команда за вызов.
+- ACL keyed by family; команда чужого семейства отклоняется (`Refusal::WrongFamily`).
+- Write-класс без записанного backup отклоняется.
+- Тайминги только измеренные, из ACL-файла семейства; глобальных констант нет. Неизмеренное семейство → подтверждение на **каждую** операцию, `UserConfirmation` принимается по значению.
+- Stall → карантин устройства, включая чтения; снимается только `device_reconnected()`. Ретраев нет нигде.
+
+Состояние реестра: **16 команд, все read/probe, write-команд ноль. У `aula-hero84-he` — ноль команд вообще.**
 
 ### Что известно про AULA после инвентаря
 
@@ -65,8 +79,8 @@ VID `0x372E`, PID `0x103E`, строки `BY Tech` / `HERO 84 HE` (бренд AU
 
 Основной code path (закреплён 2026-08-17): **11 → 10 → 12 → 13 → 14 → 15 → 16**.
 
-1. **TICKET-11** — `psafety` ACL + `SafeCommandId` skeleton. ← **следующий**. Железа не требует, блокеров нет. Идёт первым, потому что после TICKET-08 проект впервые подошёл к настоящему I/O, и safety-граница должна существовать раньше первого protocol engine.
-2. **TICKET-10** — `pregistry` + многосигнальный fingerprinting, семя — реальные данные AULA.
+1. ~~**TICKET-11** — `psafety` ACL + `SafeCommandId`~~ — **выполнен**.
+2. **TICKET-10** — `pregistry` + многосигнальный fingerprinting, семя — реальные данные AULA. ← **следующий**
 3. **TICKET-12** — первый AULA engine, строго read-only, через `DeviceSession`/`pregistry`/capability-модель/safety-границы, не через `hidapi` напрямую.
 4. **TICKET-13** → **TICKET-14** — UI и эмулятор.
 5. **TICKET-05** — OEM-карта; параллельный research track, ничего не блокирует.
@@ -107,7 +121,7 @@ VID `0x372E`, PID `0x103E`, строки `BY Tech` / `HERO 84 HE` (бренд AU
 - Git-репозиторий инициализирован, ветка `main`, remote отсутствует. Последние коммиты: `f770750` (скелет), `503070e` (TICKET-08), плюс planning-коммиты.
 - Рабочее дерево чистое, кроме обновлений артефактов планирования этой сессии (тикеты/лог/handoff/master plan).
 - `sharkfin/` — локальная копия чужого GPL-проекта, в `.gitignore`, коммититься не должна никогда.
-- Продуктового кода нет: все крейты — заглушки с документацией. Единственный тест — `build_id` в `app`.
+- Продуктового кода два крейта: `ptransport` (inventory, TICKET-08) и `psafety` (границa записи целиком, TICKET-11). Остальные — заглушки с документацией. Тестов в workspace 65.
 
 ## Relevant commits
 
@@ -125,25 +139,33 @@ VID `0x372E`, PID `0x103E`, строки `BY Tech` / `HERO 84 HE` (бренд AU
 
 Открытые пункты, не блокирующие работу:
 
+- **Последний участок пути к устройству держится на соглашении, а не на типах.** `ptransport` не имеет write-API; когда он появится (TICKET-12/15), он обязан принимать только то, что произвёл `SafetyGate`. Записано в doc-комментарии `psafety` и в риск-регистре, чтобы не выглядело закрытым.
+- **Confidence не выражен в гейте.** `identify_device` несёт семейство без confidence; правило «write только при `Verified`» ждёт `pregistry` (TICKET-10).
+
 - Создание remote-репозитория (для реального прогона CI) — требует решения пользователя, публикация кода проприетарного проекта.
 - **Второй платы у разработчика нет вообще.** Риск «архитектура валидирована на одном устройстве и одном protocol family» (риск №3 architecture review, «premature trait finalization») **усилился** и остаётся открытым. До первого remote-артефакта единственное «второе устройство» в тестах — эмулятор, собранный из записей самой AULA, а значит не способный опровергнуть AULA-специфичные предположения. Считать этот риск закрытым переносом EPOMAKER **нельзя**; он обязан быть виден на архитектурном ревью.
 
-## Files most relevant to the next ticket (TICKET-11)
+## Files most relevant to the next ticket (TICKET-10)
 
-- `issues/11-psafety-acl-skeleton.md` — scope, acceptance criteria, TDD REQUIRED;
-- `spec.md` FR2/FR3 — `SafeCommandId` как закрытый enum и содержание `psafety`; § Test seams — «ACL/SafeCommandId compile-time seam»;
-- `spec.md` Приложение B — схема реестра, `opcode_acl(protocol_family, opcode, class, note)`: та же схема, что у TICKET-10, их надо держать согласованными;
-- `architecture/INITIAL_REVIEW.md` §6 (REQUIRED_DURING_IMPLEMENTATION про codegen-владельца) и риск №2 (silent write-path bypass);
-- `docs/prior-art/royuan.md` — реальные значения rate limiter и классы опкодов как материал для формата ACL (факты, не код);
-- `docs/prior-art/sharkfin-methods.md` — эмпирика «класс записи задаёт интервал до и тишину после».
+- `issues/10-multi-signal-fingerprinting.md` — scope, acceptance criteria, TDD REQUIRED;
+- `docs/hardware/aula-hero-84-he.{json,md}` — единственные реальные данные устройства: descriptor topology, 7 TLC, VID/PID, строки, report IDs и размеры, release, два vendor-TLC;
+- `spec.md` Приложение B — схема реестра; FR4 — многосигнальный matcher с explicit confidence;
+- `spec.md` § Domain rules — «family не выводится из VID:PID», порядок силы сигналов;
+- `crates/psafety/src/gate.rs` — `identify_device(device, family)`: **точка, куда TICKET-10 обязан довезти confidence**. Сейчас binding несёт только семейство, и правило «write только при `confidence >= Verified`» в гейте не выражено. Сегодня разрешать нечего (write-команд ноль), но к TICKET-15 это дыра;
+- `data/protocols/*.toml` — как выглядит per-family источник, из которого генерируется код; `pregistry` использует ту же схему `opcode_acl` (`spec.md` Приложение B), их надо держать согласованными;
+- `docs/prior-art/royuan.md` — сигналы fingerprint (identify `0x8F`, revision `0x80`) уже классифицированы как `probe_ok` в ACL.
 
 ## Exact recommended next action
 
-**TICKET-11.** Реализовать `psafety`: классификацию опкодов (дефолт `unknown` = запрещено), build-time codegen `SafeCommandId` (закрытый enum, `destructive`/`unknown` физически в него не попадают), rate-limiter skeleton per-family/per-opcode-class, journal skeleton. Компилятор, а не рантайм-проверка, обязан запрещать вызов исполнителя с сырым `u8`/`Vec<u8>`.
+**TICKET-10.** Реализовать `pregistry`: схему из Приложения B, YAML → SQLite build-шаг, многосигнальный matcher (report-descriptor hash → TLC-набор → strings → identify-опкод → fw-версия → VID:PID) с explicit confidence, первая реальная запись устройства — AULA Hero 84 HE из данных TICKET-08.
 
-Почему первым: после TICKET-08 проект впервые приблизился к настоящему I/O. Гарантия `raw opcode ✗ → SafeCommandId ✓ → Safety Gate ✓ → Transport` должна существовать раньше, чем появится первый protocol engine, который сможет её случайно обойти.
+Что важно не потерять на стыке с TICKET-11:
 
-Предупреждения из TICKET-08, релевантные ближайшим тикетам:
+- confidence обязан доехать до `SafetyGate::identify_device` — иначе к первому write-тикету правило `confidence >= Verified` окажется незаписанным нигде в коде;
+- matcher обязан объяснять, какие сигналы совпали, а не возвращать bool;
+- второго физического устройства нет, поэтому «различает ли matcher два разных устройства» проверяется синтетикой (одинаковый VID:PID, разный descriptor hash) и эмулятором (TICKET-14), а не железом. Ограничение зафиксировать явно, а не обходить ожиданием.
+
+Предупреждения из TICKET-08, всё ещё релевантные:
 
 - `opened = true` означает только доступ уровня перечисления — не «с устройством можно обмениваться». Не повышать confidence на этом основании.
-- Классификация ошибок `hidapi` по тексту не работает (сообщение без кода, на Windows локализованное). Kill-switch FR3 нельзя строить на подстроке. Win32 escape hatch сейчас не вводится — решение принимается в TICKET-12/15, при первом настоящем I/O.
+- Классификация ошибок `hidapi` по тексту не работает. TICKET-11 зафиксировал границу (kill-switch только на типизированном `EndpointStalled`); решение о platform-native классификации — TICKET-12/15.

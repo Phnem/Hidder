@@ -7,6 +7,7 @@ rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
 authors.workspace = true
+build = "build.rs"
 
 # DAG position: middle layer. May depend on ptransport and pcaps only.
 #
@@ -14,9 +15,27 @@ authors.workspace = true
 # ABOVE this crate in the DAG, so this crate cannot call it. Resolution is
 # expected to be an event this crate emits and an upper layer records -- do not
 # resolve it by adding a pjournal dependency here, that reverses the DAG.
+#
+# Resolved that way in TICKET-11: this crate defines the event and hands it to a
+# `JournalSink` the caller supplies. Nothing here knows what a journal file is.
 [dependencies]
 ptransport.workspace = true
 pcaps.workspace = true
+
+# Reads data/protocols/*.toml and generates the SafeCommandId enum. A typo in a
+# field name has to fail the build rather than be ignored, so this is a
+# maintained parser with unknown fields rejected, not a hand-rolled one: a
+# misparsed ACL entry is a safety defect, not a formatting inconvenience.
+[build-dependencies]
+serde = { workspace = true }
+toml = "1"
+
+# The generator's own tests build synthetic registries -- including deliberately
+# unsafe ones -- and assert on what it refuses to emit. Same parser as the build
+# script, so the tests exercise the code that actually runs.
+[dev-dependencies]
+serde = { workspace = true }
+toml = "1"
 
 [lints]
 workspace = true

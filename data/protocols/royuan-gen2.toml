@@ -1,0 +1,174 @@
+# ROYUAN gen2.
+#
+# No engine speaks this family and no board of it exists in this project. The
+# entries below come from prior art (docs/prior-art/royuan.md, facts only, no
+# code -- ADR-0001) and are here for one reason: the ACL and its codegen have to
+# be exercised against real, evidence-marked data, including real destructive
+# opcodes that must never survive into a SafeCommandId.
+#
+# Every write in this family is `unknown`, and that is not an oversight. The
+# evidence behind the write opcodes is vendor JavaScript and a third party's
+# board, which by this project's own rule does not earn a write. They become
+# writable when a board of this family is verified here, not before.
+#
+# Opcode numbers collide with royuan-yc500 with *different meanings*: 0x06 is
+# Debounce here and Options there, 0x09 is Options here and Keymatrix there, and
+# factory reset is 0x01 here and 0x02 there. Sending one family's byte to the
+# other is sending an unknown command. This is why the ACL is keyed by family.
+
+schema       = "peripheral.opcode-acl/1"
+family       = "royuan-gen2"
+display_name = "ROYUAN gen2"
+note         = "Prior-art family, no engine and no hardware here. Sub-lines yc3121/yc3123/ry5088 differ in display framing; if that ever matters they become their own families rather than quirks."
+
+# Measured on Attack Shark X86 by prior art, marker [HW]
+# (docs/prior-art/royuan.md § Timings). Third-party measurement on a third-party
+# board: good enough to throttle a read, not good enough to earn a write.
+[timing.class.safe_read]
+min_gap_before_ms = 12
+settle_after_ms   = 0
+evidence          = "hardware_third_party"
+note              = "Minimum interval between reports ~12 ms; request-to-response latency ~10 ms."
+
+[timing.class.probe_ok]
+min_gap_before_ms = 12
+settle_after_ms   = 0
+evidence          = "hardware_third_party"
+note              = "Same channel and same interval as a read; an identify is a read that happens to be sent before the board is known."
+
+# Declared with no opcode to attach it to yet, on purpose. These are the
+# measured numbers for a per-key colour upload on this family, and they are the
+# concrete case behind the two-number model: a board wedged after 39 backlight
+# writes one second apart, none of which breached a threshold reasoned out "as
+# for a register". The quiet period belongs to the write that just happened.
+[timing.class.slow_flash]
+min_gap_before_ms = 100
+settle_after_ms   = 2000
+evidence          = "hardware_third_party"
+note              = "Per-key colour upload: pages 100 ms apart, 2 s to settle afterwards, at most 2 uploads per 10 s window."
+max_operations    = 2
+per_window_ms     = 10000
+
+[[opcode]]
+opcode   = 0x8F
+name     = "identify"
+class    = "probe_ok"
+evidence = "hardware_third_party"
+note     = "Answers with the opcode plus a u32 LE identifier. The safe identify opcode, fourth signal in the fingerprint chain."
+
+[[opcode]]
+opcode   = 0x80
+name     = "revision"
+class    = "probe_ok"
+evidence = "hardware_third_party"
+note     = "Firmware version assembled from two answer bytes. Fifth fingerprint signal."
+
+[[opcode]]
+opcode   = 0x87
+name     = "read_led_params"
+class    = "safe_read"
+evidence = "hardware_third_party"
+note     = "Answered on X86. Mode, speed, brightness, option, RGB and flags."
+
+[[opcode]]
+opcode   = 0x88
+name     = "read_side_led_params"
+class    = "safe_read"
+evidence = "hardware_third_party"
+note     = "Answered on X86. Side lighting has its own mode table."
+
+[[opcode]]
+opcode   = 0x8B
+name     = "read_macro"
+class    = "safe_read"
+evidence = "hardware_third_party"
+note     = "Answered on X86. Arguments [slot, page], pages 0-4, raw 64-byte answers with no opcode echo."
+
+[[opcode]]
+opcode   = 0x8C
+name     = "read_user_picture"
+class    = "safe_read"
+evidence = "hardware_third_party"
+note     = "Answered on X86. 384 bytes over seven pages."
+
+[[opcode]]
+opcode   = 0x90
+name     = "read_fn_layer"
+class    = "safe_read"
+evidence = "hardware_third_party"
+note     = "Answered on X86. Keymap slot operations."
+
+[[opcode]]
+opcode   = 0x97
+name     = "read_auto_os"
+class    = "safe_read"
+evidence = "hardware_third_party"
+note     = "Answered on X86. 0 Windows, 1 macOS, 2 Android, 3 iOS."
+
+# --- classified, and classified as refused -------------------------------
+#
+# Listed rather than omitted because an omission cannot be reviewed. Each of
+# these is refused for a stated reason.
+
+[[opcode]]
+opcode   = 0xAC
+name     = "erase_display_flash"
+class    = "destructive"
+evidence = "hardware_third_party"
+note     = "Erases the flash chip, ~55 s. On yc3123 also sets bit 0 at 0x20166. Never translatable into an executable command."
+
+[[opcode]]
+opcode   = 0x40
+name     = "enter_bootloader_a"
+class    = "destructive"
+evidence = "vendor_js"
+note     = "Bootloader entry. Did not answer on X86, which proves nothing about other boards -- silence is not evidence of absence."
+
+[[opcode]]
+opcode   = 0x41
+name     = "enter_bootloader_b"
+class    = "destructive"
+evidence = "vendor_js"
+note     = "Bootloader entry, second of the pair."
+
+[[opcode]]
+opcode   = 0x01
+name     = "factory_reset"
+class    = "destructive"
+evidence = "vendor_js"
+note     = "Resets user configuration. This byte is 0x02 on yc500 -- the two families swap the numbers, so a blind send is an unknown command."
+
+[[opcode]]
+opcode   = 0x06
+name     = "set_debounce"
+class    = "unknown"
+evidence = "vendor_js"
+note     = "Debounce here, Options on yc500. A write with vendor-JavaScript evidence only; refused until verified on a board of this family."
+
+[[opcode]]
+opcode   = 0x09
+name     = "set_options"
+class    = "unknown"
+evidence = "vendor_js"
+note     = "Options here, Keymatrix on yc500. The source states the bit meanings are not established, so the byte is refused for writing and its answer is not trusted."
+
+[[opcode]]
+opcode   = 0x0A
+name     = "set_keymatrix"
+class    = "unknown"
+evidence = "vendor_js"
+note     = "Bulk keymap pages. A write on vendor-JavaScript evidence; refused."
+
+[[opcode]]
+opcode   = 0x07
+name     = "set_led_params"
+class    = "unknown"
+evidence = "vendor_js"
+note     = "Survives a power cycle, so it is a flash write however it looks in a UI. Refused until verified here; the measured slow_flash timing above is waiting for it."
+
+[[opcode]]
+opcode   = 0x1B
+name     = "he_magnetic_switches"
+class    = "unknown"
+evidence = "firmware"
+note     = "Hall-effect block. Did not answer on X86, yet the same byte enables the analog stream on X68 PRO HE with the same VID. Silence proved only that this firmware on this board did not implement it."

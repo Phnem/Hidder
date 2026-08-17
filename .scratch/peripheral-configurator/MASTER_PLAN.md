@@ -4,9 +4,9 @@
 
 Current workflow state: READY_FOR_IMPLEMENTATION
 Current ticket: None
-Last completed ticket: TICKET-08 (HID-инвентарь AULA Hero 84 HE)
-Next eligible ticket: **TICKET-11** (`psafety` ACL + `SafeCommandId` skeleton) — начало основного code path. Параллельно доступен TICKET-05 (research track).
-Last updated: 2026-08-17
+Last completed ticket: TICKET-11 (`psafety` — ACL, `SafeCommandId`, rate limiter, journal)
+Next eligible ticket: **TICKET-10** (`pregistry` + многосигнальный fingerprinting). Параллельно доступен TICKET-05 (research track).
+Last updated: 2026-08-18
 
 Реализация начата 2026-08-17 (пользователь: «раздели план на фазы и начинай фазу 1»). Phase 1 по разбивке ниже — документационные тикеты (03/01) + инфраструктурный скелет (07).
 
@@ -248,8 +248,8 @@ Hardware-in-the-loop чеклист ведётся на AULA Hero 84 HE (еди�
 | TICKET-07 | Cargo workspace + Tauri skeleton + CI | **DONE_WITH_DEVIATIONS** | TICKET-04 (done) | `f770750` | самопроверка, блокеров нет |
 | TICKET-08 | Windows HID inventory — AULA | **DONE_WITH_DEVIATIONS** | TICKET-07 (done) | `503070e` | самопроверка, блокеров нет |
 | TICKET-09 | Remote EPOMAKER inventory validation | **DEFERRED_REMOTE_VALIDATION** | capability-гейт: сборка с безопасным Export (естественно — после 13/14 или ранний Level 0 из 16) | — | — |
-| TICKET-10 | Multi-signal fingerprinting (`pregistry`) | READY (идёт вторым в code path) | TICKET-08 (done), TICKET-07 (done) | — | — |
-| TICKET-11 | `psafety` ACL + `SafeCommandId` skeleton | **READY — следующий** | TICKET-07 (done) | — | — |
+| TICKET-10 | Multi-signal fingerprinting (`pregistry`) | **READY — следующий** | TICKET-08 (done), TICKET-07 (done), TICKET-11 (done) | — | — |
+| TICKET-11 | `psafety` ACL + `SafeCommandId` skeleton | **DONE_WITH_DEVIATIONS** | TICKET-07 (done) | `a4b1c2d` | самопроверка, блокеров нет |
 | TICKET-12 | Первый protocol engine (AULA, read-only) | PENDING | TICKET-08 (done), TICKET-11, TICKET-10 | — | — |
 | TICKET-13 | Tauri UI skeleton (Devices/HE/Journal) | PENDING | TICKET-07 (done), TICKET-12 | — | — |
 | TICKET-14 | Device emulator + CI fingerprint-тест | PENDING | TICKET-08 (done), TICKET-10 | — | — |
@@ -319,6 +319,19 @@ Verification evidence: fmt/clippy/build/test/deny/DAG — зелёные; про
 Commit: `503070e`
 Follow-up tickets: нет новых. Уточнения адресованы в TICKET-05/10 (гипотеза `0xFF60:0x0061`), TICKET-10 (продуктовый парсер дескрипторов с фаззингом), TICKET-12 (первый I/O → проверка находок 2 и 3).
 
+### TICKET-11 — `psafety`: ACL, `SafeCommandId`, rate limiter, journal
+
+Status: DONE_WITH_DEVIATIONS (2026-08-18)
+Tracker reference: локальный (`issues/11-psafety-acl-skeleton.md`)
+Dependencies: TICKET-07 (done)
+Acceptance criteria: все четыре выполнены
+Implementation summary: `data/protocols/*.toml` (ACL по семейству, схема `peripheral.opcode-acl/1`) → `build.rs` → закрытый `SafeCommandId`. Крейт: `class`, `command`, `rate`, `journal`, `gate`, плюс генератор `codegen.rs`, включаемый и в build script, и в тесты. Сгенерировано 16 команд, **все read/probe**; write-команд ноль; у `aula-hero84-he` — ноль команд вообще.
+Deviations: пять, см. тикет. Существенных две: `trybuild` не использован (снапшоты stderr протухают на канале `stable`, а CI ещё ни разу не прогонялся — риск ложных падений в наборе, который должен вызывать доверие); ACL в TOML, а не YAML (парсер — часть границы безопасности, нужен поддерживаемый парсер с `deny_unknown_fields`).
+Architecture notes: гейт **владеет** sink'ом, а не одалживает его, поэтому у engine нет объекта для обхода; `AuthorizedCommand` невозможно ни сконструировать снаружи, ни переиграть; `SafeCommandId::opcode()` — `pub(crate)`, байт читается ровно в одном месте. Гейт оперирует `DeviceId`, а не `SessionHandle`: сессиями владеет sink, второго места владения устройством не появилось (FR10). Kill-switch реагирует только на типизированный `EndpointStalled` — текст ошибки backend'а не разбирается (находка TICKET-08).
+Verification evidence: fmt/clippy `-D warnings`/build/test/deny/DAG — зелёные, 65 тестов в workspace (64 из них — `psafety`). Отдельно: сборка **падает** при попытке внести деструктивный байт как `safe_write`; мутационная проверка тестов гейта (снятие family-check роняет 1 тест, снятие карантина — 3).
+Commit: `a4b1c2d`
+Follow-up tickets: нет новых. Открытые концы адресованы в TICKET-10 (confidence в binding'е гейта), TICKET-12/15 (write-API транспорта обязан принимать только продукт гейта; `Verification::Pending` → `Confirmed`).
+
 ## Decisions
 
 Полный протокол интервью — `EXECUTION_LOG.md`. Сводка:
@@ -346,12 +359,12 @@ Follow-up tickets: нет новых. Уточнения адресованы в
 
 | Риск | Относится к | Статус на сейчас |
 |---|---|---|
-| Окирпичивание чужой платы записью | TICKET-15+ | Не актуален — записи ещё нет. Архитектурный gate (`SafeCommandId`) заложен в план TICKET-11. |
-| Коллидирующие опкоды между суб-семействами | TICKET-12, TICKET-17 | Учтено доменным правилом в `spec.md` — write только при `confidence >= Verified` для конкретной family. |
+| Окирпичивание чужой платы записью | TICKET-15+ | **Существенно снижен 2026-08-18 (TICKET-11).** Гейт существует и работает: деструктивные и неклассифицированные опкоды не имеют представления в программе, write-команд в реестре ноль, у нашей платы команд нет вообще. Остаточная часть: `ptransport` пока не имеет write-API, и когда он появится (TICKET-12/15), он обязан принимать только продукт гейта — до тех пор последний участок пути держится на соглашении, а не на типах. |
+| Коллидирующие опкоды между суб-семействами | TICKET-12, TICKET-17 | **Механизирован 2026-08-18 (TICKET-11).** ACL keyed by family, и гейт отклоняет команду, чьё семейство не совпадает с семейством устройства (`Refusal::WrongFamily`). Пара `royuan-gen2`/`royuan-yc500` внесена в реестр именно как живой пример коллизии: `0x06`, `0x09`, `0x11` и factory reset означают там разное. Остаётся правило `confidence >= Verified` — его носитель `pregistry` (TICKET-10), в гейте пока есть только семейство без confidence. |
 | «Успешный» ответ на неподдержанную команду | TICKET-12+ | Учтено — `verify()` обязателен в `ProtocolEngine` (FR1), анти-фикция-фильтр обязателен в Learning Mode (FR5). |
 | Windows TLC-блокировка закрывает нужную коллекцию | TICKET-08/09 | **Снят для AULA** (2026-08-17): все 7 коллекций, включая оба vendor-TLC, открылись без прав администратора. Остаётся открытым для EPOMAKER — и теперь проверяется удалённо, на чужом ПК, где повысить права сложнее (TICKET-09). |
 | «Открылось» ≠ «можно обмениваться» | TICKET-12 | Новый, 2026-08-17. На Windows backend при отказе в read/write открывает устройство с нулевыми правами; различить можно только отправив репорт. Если TICKET-12 прочитает инвентарь как «доступ есть», он будет отлаживать не ту проблему. |
-| Классификация ошибок backend'а по тексту не работает | TICKET-11/12 | Новый, 2026-08-17. `hidapi` отдаёт сообщение без кода, на Windows — локализованное ОС. Определение stall подстрокой (как у prior art) на локализованной системе молча не срабатывает, то есть kill-switch FR3 не сработает. `EndpointStalled`/`AccessDenied` обязаны определяться кодом платформы — первый конкретный кандидат на Win32 escape hatch. |
+| Классификация ошибок backend'а по тексту не работает | TICKET-12/15 | Изменён 2026-08-18. `hidapi` отдаёт сообщение без кода, на Windows — локализованное ОС; определение stall подстрокой на локализованной системе молча не срабатывает. TICKET-11 **не** стал это чинить, а зафиксировал границу: kill-switch реагирует только на типизированный `EndpointStalled`, текст `Backend(String)` не разбирается нигде, и это покрыто тестом с русскоязычным сообщением. Следствие: ответственность переехала в транспорт — если он не сумеет типизировать stall, kill-switch не сработает. Решение о platform-native классификации принимается при первом настоящем I/O (TICKET-12/15). |
 | **Архитектура валидирована на одном устройстве и одном protocol family** | TICKET-10/12/17, architecture review риск №3 | **Усилен 2026-08-17** (вторая мутация дня). Второй платы на столе разработчика нет вообще: ROYUAN не покупается, EPOMAKER у стороннего владельца и доступна только удалённо и только поздно (capability-гейт). До первого remote-артефакта единственное «второе устройство» в тестах — эмулятор, собранный из записей самой AULA, а значит не способный опровергнуть AULA-специфичные предположения. `ProtocolEngine`/`CapValue` рискуют дойти до фазы 4 провалидированными на одном семействе. Митигация — частичная: синтетические fingerprint-тесты (TICKET-10), эмулятор (TICKET-14), запрет считать трейт финальным до второго семейства. **Риск остаётся открытым; молча считать его закрытым переносом EPOMAKER нельзя.** |
 | Remote-валидация может не состояться или дать неполные данные | TICKET-09/06 | Новый, 2026-08-17. Данные зависят от постороннего человека, его готовности запустить сборку и от того, окажется ли UX достаточно понятным. Митигация: путь ограничен четырьмя шагами (`скачать → запустить → подключить → Export`), гейт входа — «сборка, которую не стыдно дать другому человеку». Неудача сценария — сама по себе валидный результат о продукте, а не о железе. |
 | Выгорание на масштабе (тысячи моделей вручную) | TICKET-18 | Смягчается ingestion pipeline + community submissions с Phase 3, архитектурно заложено с самого начала (§7 плана). |

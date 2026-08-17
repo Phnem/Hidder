@@ -1,0 +1,150 @@
+# ROYUAN yc500.
+#
+# The sibling of royuan-gen2, and the reason the ACL is keyed by family rather
+# than by opcode. Read the two files side by side: 0x06 is Options here and
+# Debounce there, 0x09 is Keymatrix here and Options there, 0x11 is Debounce
+# here and sleep timers there, and factory reset is 0x02 here and 0x01 there.
+# One byte, four different subsystems, depending only on which family is on the
+# other end of the cable.
+#
+# Same standing as gen2: prior art only (docs/prior-art/royuan.md, facts, no
+# code), no engine, no board here, every write refused.
+
+schema       = "peripheral.opcode-acl/1"
+family       = "royuan-yc500"
+display_name = "ROYUAN yc500"
+note         = "Prior-art family, no engine and no hardware here. Kept beside royuan-gen2 because the pair is the documented case of colliding opcodes with different semantics."
+
+[timing.class.safe_read]
+min_gap_before_ms = 12
+settle_after_ms   = 0
+evidence          = "hardware_third_party"
+note              = "Measured on Attack Shark X86 by prior art; ~12 ms between reports, ~10 ms request to response."
+
+[timing.class.probe_ok]
+min_gap_before_ms = 12
+settle_after_ms   = 0
+evidence          = "hardware_third_party"
+note              = "Same channel and interval as a read."
+
+[timing.class.slow_flash]
+min_gap_before_ms = 100
+settle_after_ms   = 2000
+evidence          = "hardware_third_party"
+note              = "User-picture upload: pages 40-100 ms apart, 2 s settle, at most 2 uploads per 10 s. No opcode has earned this class yet."
+max_operations    = 2
+per_window_ms     = 10000
+
+[[opcode]]
+opcode   = 0x8F
+name     = "identify"
+class    = "probe_ok"
+evidence = "hardware_third_party"
+note     = "Shared with gen2, and one of the few bytes that means the same thing in both."
+
+[[opcode]]
+opcode   = 0x80
+name     = "revision"
+class    = "probe_ok"
+evidence = "hardware_third_party"
+note     = "Shared with gen2. Firmware version from two answer bytes."
+
+[[opcode]]
+opcode   = 0x87
+name     = "read_led_params"
+class    = "safe_read"
+evidence = "hardware_third_party"
+note     = "Answered on X86."
+
+[[opcode]]
+opcode   = 0x88
+name     = "read_side_led_params"
+class    = "safe_read"
+evidence = "hardware_third_party"
+note     = "Answered on X86."
+
+[[opcode]]
+opcode   = 0x8B
+name     = "read_macro"
+class    = "safe_read"
+evidence = "hardware_third_party"
+note     = "Answered on X86. Pages 0-4, raw answers with no opcode echo."
+
+[[opcode]]
+opcode   = 0x8C
+name     = "read_user_picture"
+class    = "safe_read"
+evidence = "hardware_third_party"
+note     = "Answered on X86."
+
+[[opcode]]
+opcode   = 0x90
+name     = "read_fn_layer"
+class    = "safe_read"
+evidence = "hardware_third_party"
+note     = "Answered on X86."
+
+[[opcode]]
+opcode   = 0x97
+name     = "read_auto_os"
+class    = "safe_read"
+evidence = "hardware_third_party"
+note     = "Answered on X86."
+
+# --- classified, and classified as refused -------------------------------
+
+[[opcode]]
+opcode   = 0xAC
+name     = "erase_display_flash"
+class    = "destructive"
+evidence = "hardware_third_party"
+note     = "Erases the flash chip. Same byte, same meaning as gen2 -- one of the few destructive opcodes that does not move between the two."
+
+[[opcode]]
+opcode   = 0x30
+name     = "boot_logo_a"
+class    = "destructive"
+evidence = "vendor_js"
+note     = "Enters the bootloader. Named 'boot logo' by the vendor, which is exactly the kind of harmless-looking name this classification exists to catch."
+
+[[opcode]]
+opcode   = 0x31
+name     = "boot_logo_b"
+class    = "destructive"
+evidence = "vendor_js"
+note     = "Bootloader entry, second of the pair."
+
+[[opcode]]
+opcode   = 0x02
+name     = "factory_reset"
+class    = "destructive"
+evidence = "vendor_js"
+note     = "Resets user configuration. This byte is 0x01 on gen2. Sending either family's number to the other is sending an unknown command."
+
+[[opcode]]
+opcode   = 0x06
+name     = "set_options"
+class    = "unknown"
+evidence = "vendor_js"
+note     = "Options here, Debounce on gen2. Byte 2 carries a full-keyboard lock bit, so a misdirected write can lock a stranger's keyboard. Refused."
+
+[[opcode]]
+opcode   = 0x09
+name     = "set_keymatrix"
+class    = "unknown"
+evidence = "vendor_js"
+note     = "Keymatrix here, Options on gen2. Refused."
+
+[[opcode]]
+opcode   = 0x11
+name     = "set_debounce"
+class    = "unknown"
+evidence = "vendor_js"
+note     = "Debounce here, sleep timers on gen2. Refused."
+
+[[opcode]]
+opcode   = 0x07
+name     = "set_led_params"
+class    = "unknown"
+evidence = "vendor_js"
+note     = "Survives a power cycle, so it is a flash write. Refused until verified here."

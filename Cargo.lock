@@ -2677,6 +2677,8 @@ version = "0.0.0"
 dependencies = [
  "pcaps",
  "ptransport",
+ "serde",
+ "toml 1.1.4+spec-1.1.0",
 ]
 
 [[package]]

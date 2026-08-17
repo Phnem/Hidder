@@ -1,0 +1,20 @@
+# AULA Hero 84 HE -- the board this project actually owns.
+#
+# It has no opcodes here, and that is the honest state of knowledge after
+# TICKET-08: the inventory found two vendor collections (0xFF00:0x0001, feature
+# reports only, and 0xFF60:0x0061, in/out) but no exchange has ever taken place
+# with either. Which collection is the config channel, and what any byte in it
+# means, is unknown.
+#
+# The consequence is mechanical rather than a matter of discipline: because this
+# family declares no opcode, no SafeCommandId exists for it, and no code in the
+# workspace can send this board anything. TICKET-11 could not write to this
+# keyboard if it wanted to.
+#
+# Entries arrive when TICKET-12 verifies a read on the hardware, one opcode at a
+# time, each with its own evidence.
+
+schema       = "peripheral.opcode-acl/1"
+family       = "aula-hero84-he"
+display_name = "AULA Hero 84 HE"
+note         = "Reference board. VID 0x372E PID 0x103E, strings 'BY Tech'/'HERO 84 HE', release 0x0216. Not ROYUAN: the VID is absent from that family's list and the vendor channel has a different shape (docs/hardware/aula-hero-84-he.md). No opcode is known."
