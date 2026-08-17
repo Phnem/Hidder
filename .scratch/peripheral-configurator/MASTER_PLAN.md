@@ -149,7 +149,7 @@ Hardware-in-the-loop чеклист появится содержательно 
 | TICKET-05 | Карта платформ + карточки наших устройств | READY | TICKET-01 (done), TICKET-03 (done) | — | — |
 | TICKET-06 | Идентификация референсной платы EPOMAKER | READY | — (устройство в наличии) | — | — |
 | TICKET-07 | Cargo workspace + Tauri skeleton + CI | **DONE_WITH_DEVIATIONS** | TICKET-04 (done) | `f770750` | самопроверка, блокеров нет |
-| TICKET-08 | Windows HID inventory — AULA | **DONE_WITH_DEVIATIONS** | TICKET-07 (done) | `TBD` | самопроверка, блокеров нет |
+| TICKET-08 | Windows HID inventory — AULA | **DONE_WITH_DEVIATIONS** | TICKET-07 (done) | `503070e` | самопроверка, блокеров нет |
 | TICKET-09 | Windows HID inventory — EPOMAKER + сравнение двух устройств | PENDING | TICKET-06, TICKET-08 | — | — |
 | TICKET-10 | Multi-signal fingerprinting (`pregistry`) | PENDING | TICKET-08 (07 done) | — | — |
 | TICKET-11 | `psafety` ACL + `SafeCommandId` skeleton | READY | TICKET-07 (done) | — | — |
@@ -219,7 +219,7 @@ Implementation summary: `ptransport::inventory` + dev-инструмент `exam
 Deviations: четыре, см. тикет. Существенная одна — содержимое vendor-каналов не определялось, поскольку это требует обмена с устройством.
 Architecture notes: FR10 требует уточнения формулировки — одно устройство даёт набор handle'ов, а не один (отнесено в чекпоинт перед фазой 3). FR7 держится: `hidapi` покрыл все нужные данные, escape hatch не понадобился.
 Verification evidence: fmt/clippy/build/test/deny/DAG — зелёные; прогон на железе; полнота сверена через `Get-PnpDevice` (3 интерфейса → 7 коллекций); отсутствие серийника в артефактах проверено.
-Commit: TBD
+Commit: `503070e`
 Follow-up tickets: нет новых. Уточнения адресованы в TICKET-05/10 (гипотеза `0xFF60:0x0061`), TICKET-10 (продуктовый парсер дескрипторов с фаззингом), TICKET-12 (первый I/O → проверка находок 2 и 3).
 
 ## Decisions
