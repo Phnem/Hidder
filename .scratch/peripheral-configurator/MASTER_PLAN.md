@@ -249,7 +249,7 @@ Hardware-in-the-loop чеклист ведётся на AULA Hero 84 HE (еди�
 | TICKET-08 | Windows HID inventory — AULA | **DONE_WITH_DEVIATIONS** | TICKET-07 (done) | `503070e` | самопроверка, блокеров нет |
 | TICKET-09 | Remote EPOMAKER inventory validation | **DEFERRED_REMOTE_VALIDATION** | capability-гейт: сборка с безопасным Export (естественно — после 13/14 или ранний Level 0 из 16) | — | — |
 | TICKET-10 | Multi-signal fingerprinting (`pregistry`) | **READY — следующий** | TICKET-08 (done), TICKET-07 (done), TICKET-11 (done) | — | — |
-| TICKET-11 | `psafety` ACL + `SafeCommandId` skeleton | **DONE_WITH_DEVIATIONS** | TICKET-07 (done) | `a4b1c2d` | самопроверка, блокеров нет |
+| TICKET-11 | `psafety` ACL + `SafeCommandId` skeleton | **DONE_WITH_DEVIATIONS** | TICKET-07 (done) | `34e786c` | самопроверка, блокеров нет |
 | TICKET-12 | Первый protocol engine (AULA, read-only) | PENDING | TICKET-08 (done), TICKET-11, TICKET-10 | — | — |
 | TICKET-13 | Tauri UI skeleton (Devices/HE/Journal) | PENDING | TICKET-07 (done), TICKET-12 | — | — |
 | TICKET-14 | Device emulator + CI fingerprint-тест | PENDING | TICKET-08 (done), TICKET-10 | — | — |
@@ -329,7 +329,7 @@ Implementation summary: `data/protocols/*.toml` (ACL по семейству, с
 Deviations: пять, см. тикет. Существенных две: `trybuild` не использован (снапшоты stderr протухают на канале `stable`, а CI ещё ни разу не прогонялся — риск ложных падений в наборе, который должен вызывать доверие); ACL в TOML, а не YAML (парсер — часть границы безопасности, нужен поддерживаемый парсер с `deny_unknown_fields`).
 Architecture notes: гейт **владеет** sink'ом, а не одалживает его, поэтому у engine нет объекта для обхода; `AuthorizedCommand` невозможно ни сконструировать снаружи, ни переиграть; `SafeCommandId::opcode()` — `pub(crate)`, байт читается ровно в одном месте. Гейт оперирует `DeviceId`, а не `SessionHandle`: сессиями владеет sink, второго места владения устройством не появилось (FR10). Kill-switch реагирует только на типизированный `EndpointStalled` — текст ошибки backend'а не разбирается (находка TICKET-08).
 Verification evidence: fmt/clippy `-D warnings`/build/test/deny/DAG — зелёные, 65 тестов в workspace (64 из них — `psafety`). Отдельно: сборка **падает** при попытке внести деструктивный байт как `safe_write`; мутационная проверка тестов гейта (снятие family-check роняет 1 тест, снятие карантина — 3).
-Commit: `a4b1c2d`
+Commit: `34e786c`
 Follow-up tickets: нет новых. Открытые концы адресованы в TICKET-10 (confidence в binding'е гейта), TICKET-12/15 (write-API транспорта обязан принимать только продукт гейта; `Verification::Pending` → `Confirmed`).
 
 ## Decisions
