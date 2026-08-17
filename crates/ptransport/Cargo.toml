@@ -15,5 +15,12 @@ hidapi.workspace = true
 thiserror.workspace = true
 log.workspace = true
 
+# Only the `inventory` example needs to serialise a report. Kept as a dev
+# dependency so nothing serde-shaped enters the crate's own public API by
+# accident: the hardware-inventory artifact is a development output, not a
+# product data format.
+[dev-dependencies]
+serde_json.workspace = true
+
 [lints]
 workspace = true

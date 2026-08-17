@@ -25,7 +25,10 @@
 //! shape working right up until a continuous analog stream exists, at which
 //! point the reader holds the lock (see docs/prior-art/sharkfin-methods.md).
 
+pub mod inventory;
 pub mod platform;
+
+pub use inventory::{CollectionAccess, Hid, HidCollection};
 
 /// Stable identity of a device for the lifetime of a session.
 ///
@@ -66,9 +69,20 @@ impl SessionHandle {
 /// that happened during a write": the firmware's control endpoint is wedged,
 /// reopening the device does not clear it, and further traffic keeps it pinned,
 /// so the whole device must go quiet until it is physically reconnected
-/// (spec.md § Failure and fallback behavior). Prior art detects this by
-/// substring-matching another library's error text; we classify it here, from a
-/// platform error code where one exists, so no caller has to guess.
+/// (spec.md § Failure and fallback behavior).
+///
+/// # Why no `#[from] hidapi::HidError`
+///
+/// It was there in the skeleton and is gone as of TICKET-08. An error type is
+/// not a device handle, so it leaked nothing dangerous, but it did put a backend
+/// type in this crate's public API, and every caller that matched on it would
+/// have been matching on `hidapi`'s shape.
+///
+/// `Backend` carries the backend's message as a string on purpose, and callers
+/// must treat it as opaque text for a log or a bug report. Do not match on its
+/// contents: see the finding recorded in TICKET-08 -- on Windows this text is
+/// the operating system's localised error message, so any substring test passes
+/// or fails depending on the user's display language.
 #[derive(Debug, thiserror::Error)]
 pub enum TransportError {
     #[error("device {0:?} is not connected")]
@@ -77,8 +91,8 @@ pub enum TransportError {
     EndpointStalled,
     #[error("the device node could not be opened (on Linux this is usually a missing udev rule)")]
     AccessDenied,
-    #[error("hid error: {0}")]
-    Hid(#[from] hidapi::HidError),
+    #[error("hid backend: {0}")]
+    Backend(String),
 }
 
 impl TransportError {

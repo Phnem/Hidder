@@ -1,0 +1,205 @@
+{
+  "captured_unix": 1786993303,
+  "collections": [
+    {
+      "interface_number": 0,
+      "manufacturer": "BY Tech",
+      "open_error": null,
+      "opened": true,
+      "path": "\\\\?\\HID#VID_372E&PID_103E&MI_00#8&32f95c66&0&0000#{4d1e55b2-f16f-11cf-88cb-001111000030}\\KBD",
+      "product": "HERO 84 HE",
+      "release_number": "0x0216",
+      "report_descriptor_error": null,
+      "report_descriptor_fnv1a64": "109a9237d49eacf8",
+      "report_descriptor_hex": "05010906a101050719e029e715002501750195088102750895018103190029ff150026ff0075089506810005081901290515002501750195059102750395019103c0",
+      "report_descriptor_len": 66,
+      "reports": [
+        {
+          "feature_bits": 0,
+          "input_bits": 64,
+          "numbered": false,
+          "output_bits": 8,
+          "report_id": 0
+        }
+      ],
+      "serial_number": null,
+      "serial_number_present": true,
+      "usage": "0x0006",
+      "usage_page": "0x0001",
+      "vendor_defined": false
+    },
+    {
+      "interface_number": 1,
+      "manufacturer": "BY Tech",
+      "open_error": null,
+      "opened": true,
+      "path": "\\\\?\\HID#VID_372E&PID_103E&MI_01&Col04#8&1fc94028&0&0003#{4d1e55b2-f16f-11cf-88cb-001111000030}",
+      "product": "HERO 84 HE",
+      "release_number": "0x0216",
+      "report_descriptor_error": null,
+      "report_descriptor_fnv1a64": "cbf687674d395883",
+      "report_descriptor_hex": "05010902a1010901a10085020509190129051500250175019505810275039501810305010930093109381581257f750895038106c005ff093c09011500250175019502b12275069501b103c0",
+      "report_descriptor_len": 76,
+      "reports": [
+        {
+          "feature_bits": 8,
+          "input_bits": 32,
+          "numbered": true,
+          "output_bits": 0,
+          "report_id": 2
+        }
+      ],
+      "serial_number": null,
+      "serial_number_present": true,
+      "usage": "0x0002",
+      "usage_page": "0x0001",
+      "vendor_defined": false
+    },
+    {
+      "interface_number": 1,
+      "manufacturer": "BY Tech",
+      "open_error": null,
+      "opened": true,
+      "path": "\\\\?\\HID#VID_372E&PID_103E&MI_01&Col03#8&1fc94028&0&0002#{4d1e55b2-f16f-11cf-88cb-001111000030}\\KBD",
+      "product": "HERO 84 HE",
+      "release_number": "0x0216",
+      "report_descriptor_error": null,
+      "report_descriptor_fnv1a64": "e14b38659ede0f9e",
+      "report_descriptor_hex": "05010906a1018507050719e029e71500250175019508810219002967150025017501956881020985098709880989098a098b0991099215002501750195088102c0",
+      "report_descriptor_len": 65,
+      "reports": [
+        {
+          "feature_bits": 0,
+          "input_bits": 120,
+          "numbered": true,
+          "output_bits": 0,
+          "report_id": 7
+        }
+      ],
+      "serial_number": null,
+      "serial_number_present": true,
+      "usage": "0x0006",
+      "usage_page": "0x0001",
+      "vendor_defined": false
+    },
+    {
+      "interface_number": 1,
+      "manufacturer": "BY Tech",
+      "open_error": null,
+      "opened": true,
+      "path": "\\\\?\\HID#VID_372E&PID_103E&MI_01&Col02#8&1fc94028&0&0001#{4d1e55b2-f16f-11cf-88cb-001111000030}",
+      "product": "HERO 84 HE",
+      "release_number": "0x0216",
+      "report_descriptor_error": null,
+      "report_descriptor_fnv1a64": "a05419723d11acc6",
+      "report_descriptor_hex": "05010980a10185051981298315002501750195038102750595018103c0",
+      "report_descriptor_len": 29,
+      "reports": [
+        {
+          "feature_bits": 0,
+          "input_bits": 8,
+          "numbered": true,
+          "output_bits": 0,
+          "report_id": 5
+        }
+      ],
+      "serial_number": null,
+      "serial_number_present": true,
+      "usage": "0x0080",
+      "usage_page": "0x0001",
+      "vendor_defined": false
+    },
+    {
+      "interface_number": 1,
+      "manufacturer": "BY Tech",
+      "open_error": null,
+      "opened": true,
+      "path": "\\\\?\\HID#VID_372E&PID_103E&MI_01&Col01#8&1fc94028&0&0000#{4d1e55b2-f16f-11cf-88cb-001111000030}",
+      "product": "HERO 84 HE",
+      "release_number": "0x0216",
+      "report_descriptor_error": null,
+      "report_descriptor_fnv1a64": "6a7267dc6466e44b",
+      "report_descriptor_hex": "050c0901a101850419002aff1f150026ff1f751095018100c0",
+      "report_descriptor_len": 25,
+      "reports": [
+        {
+          "feature_bits": 0,
+          "input_bits": 16,
+          "numbered": true,
+          "output_bits": 0,
+          "report_id": 4
+        }
+      ],
+      "serial_number": null,
+      "serial_number_present": true,
+      "usage": "0x0001",
+      "usage_page": "0x000C",
+      "vendor_defined": false
+    },
+    {
+      "interface_number": 2,
+      "manufacturer": "BY Tech",
+      "open_error": null,
+      "opened": true,
+      "path": "\\\\?\\HID#VID_372E&PID_103E&MI_02&Col02#8&c9923ea&0&0001#{4d1e55b2-f16f-11cf-88cb-001111000030}",
+      "product": "HERO 84 HE",
+      "release_number": "0x0216",
+      "report_descriptor_error": null,
+      "report_descriptor_fnv1a64": "c0e89e9e96f42145",
+      "report_descriptor_hex": "0600ff0901a101850319012902150026ff007508953fb102c0",
+      "report_descriptor_len": 25,
+      "reports": [
+        {
+          "feature_bits": 504,
+          "input_bits": 0,
+          "numbered": true,
+          "output_bits": 0,
+          "report_id": 3
+        }
+      ],
+      "serial_number": null,
+      "serial_number_present": true,
+      "usage": "0x0001",
+      "usage_page": "0xFF00",
+      "vendor_defined": true
+    },
+    {
+      "interface_number": 2,
+      "manufacturer": "BY Tech",
+      "open_error": null,
+      "opened": true,
+      "path": "\\\\?\\HID#VID_372E&PID_103E&MI_02&Col01#8&c9923ea&0&0000#{4d1e55b2-f16f-11cf-88cb-001111000030}",
+      "product": "HERO 84 HE",
+      "release_number": "0x0216",
+      "report_descriptor_error": null,
+      "report_descriptor_fnv1a64": "57273a389450efe7",
+      "report_descriptor_hex": "0660ff0961a10185090962150026ff007508953f81020963150026ff007508953f9102c0",
+      "report_descriptor_len": 36,
+      "reports": [
+        {
+          "feature_bits": 0,
+          "input_bits": 504,
+          "numbered": true,
+          "output_bits": 504,
+          "report_id": 9
+        }
+      ],
+      "serial_number": null,
+      "serial_number_present": true,
+      "usage": "0x0061",
+      "usage_page": "0xFF60",
+      "vendor_defined": true
+    }
+  ],
+  "host_os": "windows",
+  "label": "AULA Hero 84 HE",
+  "method": {
+    "feature_reports_sent": "none",
+    "input_reports_read": "none",
+    "read_only": true,
+    "writes": "none"
+  },
+  "product_id": "0x103E",
+  "schema": "peripheral.hid-inventory/1",
+  "vendor_id": "0x372E"
+}

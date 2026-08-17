@@ -34,6 +34,13 @@ READY_FOR_IMPLEMENTATION. Фаза 1 закрыта.
 | TICKET-01 | DONE_WITH_DEVIATIONS | `docs/prior-art/royuan.md` |
 | TICKET-21 | DONE | `docs/prior-art/sharkfin-methods.md` |
 | TICKET-07 | DONE_WITH_DEVIATIONS | коммит `f770750` — весь скелет |
+| TICKET-08 | DONE_WITH_DEVIATIONS | `ptransport::inventory` + `docs/hardware/aula-hero-84-he.{json,md}` |
+
+### Что известно про AULA после инвентаря
+
+VID `0x372E`, PID `0x103E`, строки `BY Tech` / `HERO 84 HE` (бренд AULA в строках устройства не фигурирует вообще). 7 top-level collections на 3 USB-интерфейсах, все открылись без прав администратора. **Два** vendor-TLC: `0xFF00:0x0001` (только feature-репорты, 64 байта) и `0xFF60:0x0061` (in/out по 64 байта). Какой из них конфигурационный и есть ли в них аналоговый поток — неизвестно, требует I/O.
+
+Плата **не ROYUAN**: VID отсутствует в списке семейства, форма vendor-канала другая. Теперь это факт, а не предположение.
 
 ## Active ticket
 
@@ -43,8 +50,8 @@ READY_FOR_IMPLEMENTATION. Фаза 1 закрыта.
 
 Порядок работ фазы 2 (перестроена 2026-08-17):
 
-1. **TICKET-08** — HID inventory AULA Hero 84 HE. Главный тикет фазы, плата в наличии, блокеров нет.
-2. **TICKET-06** — точная идентификация EPOMAKER (модель, HE или механика, тип подключения, конфигуратор, признаки OEM).
+1. ~~**TICKET-08** — HID inventory AULA Hero 84 HE~~ — **выполнен**.
+2. **TICKET-06** — точная идентификация EPOMAKER (модель, HE или механика, тип подключения, конфигуратор, признаки OEM). ← следующий
 3. **TICKET-09** — HID inventory EPOMAKER **тем же `ptransport`** + сравнительный отчёт двух устройств.
 4. **TICKET-05** — карта платформ; идёт параллельно.
 5. **TICKET-11** — `psafety` skeleton; железа не требует, идёт параллельно.
@@ -97,16 +104,18 @@ READY_FOR_IMPLEMENTATION. Фаза 1 закрыта.
 
 Один остаточный риск, который перестройкой фазы 2 **не закрыт**: EPOMAKER может оказаться механической, родственной AULA или без доступного config-интерфейса, и тогда второго HE-семейства не появится. `ProtocolEngine` рискует дойти до фазы 4 провалидированным на одном семействе (риск №3 architecture review). Признан осознанно; решение о втором engine принимается по данным фазы 2.
 
-## Files most relevant to the next ticket (TICKET-08)
+## Files most relevant to the next ticket (TICKET-06)
 
-- `issues/08-windows-hid-inventory-aula.md` — scope и acceptance criteria;
-- `crates/ptransport/src/lib.rs` — контракт, против которого надо писать с первой строки: `DeviceId`/`SessionHandle`/`TransportError`, и правило, что handle не покидает крейт;
-- `crates/ptransport/src/platform/windows.rs` — пустой escape hatch; TICKET-08 решает, нужен ли он вообще;
-- `docs/prior-art/royuan.md` — конкретные вопросы к эмпирической проверке (одна ли vendor-коллекция у конфигурационного канала и аналогового стрима);
-- `spec.md` AC3 и открытый вопрос Q2 — то, что этот тикет обязан закрыть данными.
+- `issues/06-identify-epomaker-board.md` — scope, форма карточки, запрет выводов по бренду;
+- `docs/hardware/README.md` — формат инвентаря и обязательная проверка полноты через `Get-PnpDevice`; TICKET-09 обязан снять данные тем же способом;
+- `docs/hardware/aula-hero-84-he.{json,md}` — эталон, с которым будет сравниваться EPOMAKER;
+- `crates/ptransport/examples/inventory.rs` — инструмент; для EPOMAKER меняется только `--device`, `--label` и `--out`;
+- `spec.md` Q3 — если EPOMAKER окажется беспроводной, wireless/battery-трек перестаёт быть заблокированным до фазы 6.
 
 ## Exact recommended next action
 
-TICKET-08: подключить AULA Hero 84 HE и снять полный HID-инвентарь на Windows через `hidapi` — какие top-level коллекции перечисляются, какие открываются, какие дают access denied, есть ли vendor-defined коллекция с аналоговым стримом. Писать код сразу против `DeviceSession`/`SessionHandle`, а не против `hidapi::HidDevice`: разведочный код, написанный напрямую поверх `hidapi`, протащит предположения о владении handle во всё, что его вызовет.
+TICKET-06: определить, что за EPOMAKER в руках — точная модель и ревизия, HE или обычная механика, USB/2.4/BT, официальный конфигуратор и на чём он сделан, заявленные функции, признаки известного OEM. Ничего не выводить из бренда. Результат — карточка в `docs/prior-art/epomaker.md`.
 
-Одно замечание из ревью TICKET-07 к этому тикету: `hidapi::HidError` сейчас протекает в `TransportError` как источник `#[from]`. Это тип ошибки, а не handle, но при добавлении реального I/O проверить, что вместе с ним не начали протекать и другие типы `hidapi`.
+Полезная подсказка из TICKET-08: обзорный режим инструмента (`cargo run -p ptransport --example inventory` без аргументов) сразу покажет VID:PID и строки производителя подключённого устройства, и уже это часто опровергает предположение по бренду — у AULA строки оказались `BY Tech`, слова AULA в устройстве нет вовсе.
+
+Предупреждение для TICKET-09: `opened = true` в инвентаре означает только доступ уровня перечисления. Не читать это как «с устройством можно обмениваться».

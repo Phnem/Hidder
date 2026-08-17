@@ -2,10 +2,10 @@
 
 ## Workflow
 
-Current workflow state: READY_FOR_IMPLEMENTATION (фаза 1 закрыта)
+Current workflow state: READY_FOR_IMPLEMENTATION
 Current ticket: None
-Last completed ticket: TICKET-07 (workspace skeleton + CI + первый коммит `f770750`)
-Next eligible ticket: TICKET-08 (Windows HID inventory — AULA Hero 84 HE; плата в наличии, блокеров нет). Параллельно доступны TICKET-05 (OEM-карта) и TICKET-02 (письмо, требует действия пользователя).
+Last completed ticket: TICKET-08 (HID-инвентарь AULA Hero 84 HE)
+Next eligible ticket: TICKET-06 (идентификация EPOMAKER) — по порядку фазы 2. Параллельно доступны TICKET-05 и TICKET-11.
 Last updated: 2026-08-17
 
 Реализация начата 2026-08-17 (пользователь: «раздели план на фазы и начинай фазу 1»). Phase 1 по разбивке ниже — документационные тикеты (03/01) + инфраструктурный скелет (07).
@@ -149,7 +149,7 @@ Hardware-in-the-loop чеклист появится содержательно 
 | TICKET-05 | Карта платформ + карточки наших устройств | READY | TICKET-01 (done), TICKET-03 (done) | — | — |
 | TICKET-06 | Идентификация референсной платы EPOMAKER | READY | — (устройство в наличии) | — | — |
 | TICKET-07 | Cargo workspace + Tauri skeleton + CI | **DONE_WITH_DEVIATIONS** | TICKET-04 (done) | `f770750` | самопроверка, блокеров нет |
-| TICKET-08 | Windows HID inventory — AULA | READY | TICKET-07 (done) | — | — |
+| TICKET-08 | Windows HID inventory — AULA | **DONE_WITH_DEVIATIONS** | TICKET-07 (done) | `TBD` | самопроверка, блокеров нет |
 | TICKET-09 | Windows HID inventory — EPOMAKER + сравнение двух устройств | PENDING | TICKET-06, TICKET-08 | — | — |
 | TICKET-10 | Multi-signal fingerprinting (`pregistry`) | PENDING | TICKET-08 (07 done) | — | — |
 | TICKET-11 | `psafety` ACL + `SafeCommandId` skeleton | READY | TICKET-07 (done) | — | — |
@@ -209,6 +209,19 @@ Verification evidence: ручная — документ самодостато�
 Commit: не создавался (git-репозитория нет до TICKET-07).
 Follow-up tickets: нет новых; уточнения учтены в TICKET-05/09/10/15.
 
+### TICKET-08 — HID-инвентарь AULA Hero 84 HE
+
+Status: DONE_WITH_DEVIATIONS (2026-08-17)
+Tracker reference: локальный (`issues/08-windows-hid-inventory-aula.md`)
+Dependencies: TICKET-07 (done)
+Acceptance criteria: все выполнены; вопрос об аналоговом TLC закрыт ответом «не удалось определить без I/O», что тикетом предусмотрено
+Implementation summary: `ptransport::inventory` + dev-инструмент `examples/inventory.rs`; артефакты `docs/hardware/aula-hero-84-he.{json,md}` схемы `peripheral.hid-inventory/1`, формат описан в `docs/hardware/README.md`. Снято: VID `0x372E`, PID `0x103E`, `BY Tech` / `HERO 84 HE`; 7 коллекций на 3 интерфейсах, все открылись без admin; **два** vendor-TLC — `0xFF00:0x0001` (feature 64 B) и `0xFF60:0x0061` (in/out 64 B).
+Deviations: четыре, см. тикет. Существенная одна — содержимое vendor-каналов не определялось, поскольку это требует обмена с устройством.
+Architecture notes: FR10 требует уточнения формулировки — одно устройство даёт набор handle'ов, а не один (отнесено в чекпоинт перед фазой 3). FR7 держится: `hidapi` покрыл все нужные данные, escape hatch не понадобился.
+Verification evidence: fmt/clippy/build/test/deny/DAG — зелёные; прогон на железе; полнота сверена через `Get-PnpDevice` (3 интерфейса → 7 коллекций); отсутствие серийника в артефактах проверено.
+Commit: TBD
+Follow-up tickets: нет новых. Уточнения адресованы в TICKET-05/10 (гипотеза `0xFF60:0x0061`), TICKET-10 (продуктовый парсер дескрипторов с фаззингом), TICKET-12 (первый I/O → проверка находок 2 и 3).
+
 ## Decisions
 
 Полный протокол интервью — `EXECUTION_LOG.md`. Сводка:
@@ -238,7 +251,9 @@ Follow-up tickets: нет новых; уточнения учтены в TICKET-
 | Окирпичивание чужой платы записью | TICKET-15+ | Не актуален — записи ещё нет. Архитектурный gate (`SafeCommandId`) заложен в план TICKET-11. |
 | Коллидирующие опкоды между суб-семействами | TICKET-12, TICKET-17 | Учтено доменным правилом в `spec.md` — write только при `confidence >= Verified` для конкретной family. |
 | «Успешный» ответ на неподдержанную команду | TICKET-12+ | Учтено — `verify()` обязателен в `ProtocolEngine` (FR1), анти-фикция-фильтр обязателен в Learning Mode (FR5). |
-| Windows TLC-блокировка закрывает нужную коллекцию | TICKET-08/09 | Открытый эмпирический вопрос — это и есть цель этих тикетов, не предполагается заранее. |
+| Windows TLC-блокировка закрывает нужную коллекцию | TICKET-08/09 | **Снят для AULA** (2026-08-17): все 7 коллекций, включая оба vendor-TLC, открылись без прав администратора. Остаётся открытым для EPOMAKER (TICKET-09). |
+| «Открылось» ≠ «можно обмениваться» | TICKET-12 | Новый, 2026-08-17. На Windows backend при отказе в read/write открывает устройство с нулевыми правами; различить можно только отправив репорт. Если TICKET-12 прочитает инвентарь как «доступ есть», он будет отлаживать не ту проблему. |
+| Классификация ошибок backend'а по тексту не работает | TICKET-11/12 | Новый, 2026-08-17. `hidapi` отдаёт сообщение без кода, на Windows — локализованное ОС. Определение stall подстрокой (как у prior art) на локализованной системе молча не срабатывает, то есть kill-switch FR3 не сработает. `EndpointStalled`/`AccessDenied` обязаны определяться кодом платформы — первый конкретный кандидат на Win32 escape hatch. |
 | Второе устройство может не дать второго protocol family | TICKET-06/09 | Изменён 2026-08-17. Прежняя формулировка («не хватает железа, ждём доставки ROYUAN») больше не актуальна: покупки нет, оба устройства в наличии. Новый риск — EPOMAKER может оказаться механической, родственной AULA или без доступного config-интерфейса, и тогда второго HE-семейства в фазе 2 не появится. Митигация: все четыре исхода заранее признаны полезными (см. Phase 2), решение о втором engine принимается по данным в фазе 5, а не планируется заранее. Остаточный риск реален: `ProtocolEngine` может дойти до фазы 4 провалидированным на одном семействе — это ровно риск №3 architecture review («premature trait finalization»), и он остаётся открытым. |
 | Выгорание на масштабе (тысячи моделей вручную) | TICKET-18 | Смягчается ingestion pipeline + community submissions с Phase 3, архитектурно заложено с самого начала (§7 плана). |
 | Юридическое письмо от вендора | TICKET-18 | Смягчается §14 плана — соблюдено в scope TICKET-18. |
