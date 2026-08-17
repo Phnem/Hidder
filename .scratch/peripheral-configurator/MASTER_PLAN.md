@@ -2,10 +2,10 @@
 
 ## Workflow
 
-Current workflow state: IMPLEMENTING_TICKET
-Current ticket: TICKET-03 (Инвентаризация prior art)
-Last completed ticket: TICKET-04 (License ADR — completed during planning, see Deviations)
-Next eligible ticket: TICKET-01, затем TICKET-07 (гейт: Rust toolchain, см. Execution phases)
+Current workflow state: READY_FOR_IMPLEMENTATION (фаза 1 закрыта)
+Current ticket: None
+Last completed ticket: TICKET-07 (workspace skeleton + CI + первый коммит `f770750`)
+Next eligible ticket: TICKET-08 (Windows HID inventory — AULA Hero 84 HE; плата в наличии, блокеров нет). Параллельно доступны TICKET-05 (OEM-карта) и TICKET-02 (письмо, требует действия пользователя).
 Last updated: 2026-08-17
 
 Реализация начата 2026-08-17 (пользователь: «раздели план на фазы и начинай фазу 1»). Phase 1 по разбивке ниже — документационные тикеты (03/01) + инфраструктурный скелет (07).
@@ -33,7 +33,15 @@ Last updated: 2026-08-17
 | TICKET-01 | DONE_WITH_DEVIATIONS | `docs/prior-art/royuan.md`; исходники sharkfin не читались (только `PROTOCOL.md`) — обоснование в тикете |
 | TICKET-21 | DONE | `docs/prior-art/sharkfin-methods.md`; заменил черновик TICKET-02 по решению пользователя |
 | TICKET-02 | READY, отложен пользователем | Отправка сообщения третьему лицу требует явного разрешения; предмет обмена станет содержательнее после TICKET-08 |
-| TICKET-07 | IN_PROGRESS | Тулчейн установлен по разрешению пользователя 2026-08-17: rustup 1.29.0, rustc/cargo 1.97.1 (msvc), clippy 0.1.97, rustfmt 1.9.0. VS 2022 Build Tools (workload VCTools) ставится. WebView2 151.0.4129.86 уже присутствует. |
+| TICKET-07 | DONE_WITH_DEVIATIONS | Коммит `f770750`. Единственное отклонение: CI написан, но не исполнялся — нет remote-репозитория. |
+
+**Фаза 1 закрыта** (2026-08-17). Не выполнен только TICKET-02, отложенный самим пользователем; он не блокирует ничего в фазе 2.
+
+### Среда разработки (установлено 2026-08-17 с разрешения пользователя)
+
+rustup 1.29.0, rustc/cargo 1.97.1 (`stable-x86_64-pc-windows-msvc`), clippy 0.1.97, rustfmt 1.9.0, cargo-deny 0.20.2, VS 2022 Build Tools 17.14.37 (workload VCTools), Node 24.15.0, npm 11.12.1, git 2.55.0, Python 3.14.5, WebView2 151.0.4129.86.
+
+Замечание на будущее: при установке VS Build Tools через winget параллельно с другой winget-установкой инсталлятор падает с exit 5008. Ставить по одному.
 
 ## Goal
 
@@ -66,19 +74,35 @@ Last updated: 2026-08-17
 
 ## Verification commands
 
-Repository is greenfield — команды появятся с TICKET-07 (workspace skeleton устанавливает `cargo build --workspace`, `cargo test --workspace`, `cargo-deny check licenses`, CI на трёх ОС). До этого момента верификация — ручная (документационные артефакты проверяются на полноту против шаблонов).
+Установлены TICKET-07. Все перечисленные команды прогонялись локально на Windows; в CI те же команды разложены по джобам (`.github/workflows/ci.yml`), но сам CI ещё ни разу не исполнялся — remote-репозитория нет.
 
 ### Fast checks
 
-TBD после TICKET-07.
+```
+cargo fmt --all --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+python scripts/check_crate_dag.py
+```
+
+Фронтенд (из `app/`): `npm run typecheck`.
 
 ### Ticket checks
 
-TBD — per-ticket verification plans уже зафиксированы в каждом `issues/NN-*.md`.
+```
+cargo build --workspace
+cargo deny --all-features check licenses bans sources
+```
+
+Изоляция `tools/ingest` (три независимых проверки, см. джобу `isolation` в CI): `cargo metadata` не содержит `pingest`; сборка workspace не производит артефакт `pingest*`; `cargo check` в `tools/ingest` проходит отдельно.
+
+Per-ticket verification plans — в каждом `issues/NN-*.md`.
 
 ### Full checks
 
-TBD — hardware-in-the-loop чеклист появится содержательно с TICKET-08 (первое реальное железо в цикле).
+Из `app/`: `npx vite build`, затем `npx tauri dev` — приложение должно подняться с окном «Peripheral»; повторный запуск бинаря не должен создавать второй процесс.
+
+Hardware-in-the-loop чеклист появится содержательно с TICKET-08 (первое реальное железо в цикле).
 
 ## Ticket overview
 
@@ -90,11 +114,11 @@ TBD — hardware-in-the-loop чеклист появится содержате�
 | TICKET-04 | Лицензия проекта (ADR-0001) | **DONE** | — | — | — |
 | TICKET-05 | OEM-карта топ-моделей | READY | TICKET-01 (done), TICKET-03 (done) | — | — |
 | TICKET-06 | Покупка ROYUAN-платы | PENDING | TICKET-05 | — | — |
-| TICKET-07 | Cargo workspace + Tauri skeleton + CI | READY | TICKET-04 (done) | — | — |
-| TICKET-08 | Windows HID inventory — AULA | PENDING | TICKET-07 | — | — |
+| TICKET-07 | Cargo workspace + Tauri skeleton + CI | **DONE_WITH_DEVIATIONS** | TICKET-04 (done) | `f770750` | самопроверка, блокеров нет |
+| TICKET-08 | Windows HID inventory — AULA | READY | TICKET-07 (done) | — | — |
 | TICKET-09 | Windows HID inventory — ROYUAN | BLOCKED | TICKET-06, TICKET-08 | — | — |
-| TICKET-10 | Multi-signal fingerprinting (`pregistry`) | PENDING | TICKET-07, TICKET-08 | — | — |
-| TICKET-11 | `psafety` ACL + `SafeCommandId` skeleton | PENDING | TICKET-07 | — | — |
+| TICKET-10 | Multi-signal fingerprinting (`pregistry`) | PENDING | TICKET-08 (07 done) | — | — |
+| TICKET-11 | `psafety` ACL + `SafeCommandId` skeleton | READY | TICKET-07 (done) | — | — |
 | TICKET-12 | Первый protocol engine (AULA, read-only) | PENDING | TICKET-08, TICKET-10, TICKET-11 | — | — |
 | TICKET-13 | Tauri UI skeleton (Devices/HE/Journal) | PENDING | TICKET-07, TICKET-12 | — | — |
 | TICKET-14 | Device emulator + CI fingerprint-тест | PENDING | TICKET-08, TICKET-10 | — | — |
