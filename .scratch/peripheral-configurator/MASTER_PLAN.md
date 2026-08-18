@@ -4,8 +4,8 @@
 
 Current workflow state: READY_FOR_IMPLEMENTATION
 Current ticket: None
-Last completed ticket: TICKET-11 (`psafety` — ACL, `SafeCommandId`, rate limiter, journal)
-Next eligible ticket: **TICKET-22** (HID-инвентарь VXE Dragonfly R1 SE+ во всех режимах) — вставлен перед TICKET-10 решением пользователя 2026-08-18. Параллельно доступен TICKET-05 (research track).
+Last completed ticket: TICKET-22 (HID-инвентарь VXE Dragonfly R1 SE+; 2.4 ГГц и кабель сняты, BT inconclusive)
+Next eligible ticket: **TICKET-10** (`pregistry` + многосигнальный fingerprinting) — теперь с данными по трём topology. Параллельно доступен TICKET-05 (research track).
 Last updated: 2026-08-18
 
 Реализация начата 2026-08-17 (пользователь: «раздели план на фазы и начинай фазу 1»). Phase 1 по разбивке ниже — документационные тикеты (03/01) + инфраструктурный скелет (07).
@@ -17,8 +17,8 @@ Last updated: 2026-08-18
 | Фаза | Содержание | Тикеты | План | Входной гейт |
 |---|---|---|---|---|
 | **1. Знание + фундамент** | Prior-art карта, конспект ROYUAN-протокола, изучение методов sharkfin, cargo workspace + Tauri-скелет + CI + `git init` | 03, 01, 21, 07 | Phase 0 + начало Phase 1 | нет (07 — Rust toolchain на машине) |
-| **2. Hardware Reality** | Реальные HID-инвентари локального железа: клавиатура и беспроводная мышь с ресивером | **08 (DONE)**, **22** | Phase 0/1 | 07 (выполнен) |
-| **3. Read-only вертикальный срез** | `psafety`-скелет, fingerprinting, первый protocol engine (AULA read-only), Tauri UI, эмулятор+CI-тест | **11 (DONE) → 10 → 12 → 13 → 14** | Phase 1 DoD (AC2) | 07, 08, 22 |
+| **2. Hardware Reality** | Реальные HID-инвентари локального железа: клавиатура и беспроводная мышь с ресивером | **08 (DONE)**, **22 (DONE)** | Phase 0/1 | 07 (выполнен) |
+| **3. Read-only вертикальный срез** | `psafety`-скелет, fingerprinting, первый protocol engine (AULA read-only), Tauri UI, эмулятор+CI-тест | **11 (DONE) → 10 → 12 → 13 → 14** | Phase 1 DoD (AC2) | 07, 08, 22 (все выполнены) |
 | **4. Запись и аналог** | Verified write + Analog Monitor, Learning Mode | 15, 16 | Phase 2/3 | фаза 3 целиком |
 | **5. Второе семейство + релиз** | Second protocol family (какое именно — решают данные, не план), профили, ingestion pipeline, tray-оболочка | 17, 18, 20 (shell-трек) | Phase 3/4 | 15 |
 | **6. Мыши и wireless** | Мышиный слой, реальные battery-данные в трее | 19, 20 (data-трек) | Phase 6 | 17 |
@@ -38,7 +38,7 @@ Last updated: 2026-08-18
 ```text
 Phase 2 — Hardware Reality
 ├── TICKET-08  DONE — HID inventory AULA Hero 84 HE (проводная клавиатура)
-└── TICKET-22  READY — HID inventory VXE Dragonfly R1 SE+   ← следующий
+└── TICKET-22  DONE — HID inventory VXE Dragonfly R1 SE+
                        2.4 ГГц через ресивер + проводной USB
                        + Bluetooth, если этот экземпляр его поддерживает
 
@@ -51,7 +51,7 @@ Remote external validation track (параллельно, capability-гейт)
 
 **TICKET-05 вынесен в параллельный research track и не является входным гейтом Phase 3.** Держать реализацию в ожидании большой OEM-таблицы запрещено.
 
-**Phase 2 закрывается после TICKET-22.** TICKET-08 — DONE_WITH_DEVIATIONS; 05 в research track, 06 и 09 в remote-validation track, все с записью в `EXECUTION_LOG.md`.
+**Phase 2 закрыта** (2026-08-18, TICKET-22 выполнен). TICKET-08 — DONE_WITH_DEVIATIONS; 05 в research track, 06 и 09 в remote-validation track, все с записью в `EXECUTION_LOG.md`.
 
 ### EPOMAKER — remote external validation device
 
@@ -270,7 +270,7 @@ Hardware-in-the-loop чеклист ведётся на AULA Hero 84 HE (еди�
 | TICKET-07 | Cargo workspace + Tauri skeleton + CI | **DONE_WITH_DEVIATIONS** | TICKET-04 (done) | `f770750` | самопроверка, блокеров нет |
 | TICKET-08 | Windows HID inventory — AULA | **DONE_WITH_DEVIATIONS** | TICKET-07 (done) | `503070e` | самопроверка, блокеров нет |
 | TICKET-09 | Remote EPOMAKER inventory validation | **DEFERRED_REMOTE_VALIDATION** | capability-гейт: сборка с безопасным Export (естественно — после 13/14 или ранний Level 0 из 16) | — | — |
-| TICKET-10 | Multi-signal fingerprinting (`pregistry`) | READY (идёт после TICKET-22) | TICKET-08 (done), TICKET-07 (done), TICKET-11 (done), TICKET-22 (данные мыши/ресивера) | — | — |
+| TICKET-10 | Multi-signal fingerprinting (`pregistry`) | **READY — следующий** | TICKET-07/08/11/22 — все выполнены | — | — |
 | TICKET-11 | `psafety` ACL + `SafeCommandId` skeleton | **DONE_WITH_DEVIATIONS** | TICKET-07 (done) | `34e786c` | самопроверка, блокеров нет |
 | TICKET-12 | Первый protocol engine (AULA, read-only) | PENDING | TICKET-08 (done), TICKET-11, TICKET-10 | — | — |
 | TICKET-13 | Tauri UI skeleton (Devices/HE/Journal) | PENDING | TICKET-07 (done), TICKET-12 | — | — |
@@ -282,7 +282,7 @@ Hardware-in-the-loop чеклист ведётся на AULA Hero 84 HE (еди�
 | TICKET-19 | EPIC: Мыши | PENDING | TICKET-17 | — | — |
 | TICKET-20 | EPIC: System Tray + `dev.power.*`/`dev.connection` | PENDING | TICKET-13 (shell); TICKET-19 (реальные battery-данные) | — | — |
 | TICKET-21 | Изучить инженерные методы sharkfin по исходникам | **DONE** | — | — | самопроверка, блокеров нет |
-| TICKET-22 | HID-инвентарь VXE Dragonfly R1 SE+ (2.4/wired/BT) | **READY — следующий** | TICKET-07 (done), TICKET-08 (done); железо в наличии | — | — |
+| TICKET-22 | HID-инвентарь VXE Dragonfly R1 SE+ (2.4/wired/BT) | **DONE_WITH_DEVIATIONS** | TICKET-07 (done), TICKET-08 (done) | `pending` | самопроверка, блокеров нет |
 
 Примечание по «нескольким READY одновременно»: TICKET-01, TICKET-03 и TICKET-07 не блокируют друг друга и могут выполняться в любом порядке или параллельно (разные типы работы — чтение/конспект vs инфраструктура). Правило «один тикет в основном дереве одновременно» (skill's "One ticket at a time") относится к *коду в общем working tree*; TICKET-01/02/03/05/06 — исследовательские/закупочные, не код, поэтому не конкурируют за одно и то же дерево с TICKET-07. При старте Phase 8 реализация всё равно ведётся по одному code-тикету за раз.
 
@@ -355,6 +355,19 @@ Verification evidence: fmt/clippy `-D warnings`/build/test/deny/DAG — зелё
 Commit: `34e786c`
 Follow-up tickets: нет новых. Открытые концы адресованы в TICKET-10 (confidence в binding'е гейта), TICKET-12/15 (write-API транспорта обязан принимать только продукт гейта; `Verification::Pending` → `Confirmed`).
 
+### TICKET-22 — HID-инвентарь VXE Dragonfly R1 SE+
+
+Status: DONE_WITH_DEVIATIONS (2026-08-18)
+Tracker reference: локальный (`issues/22-vxe-dragonfly-inventory.md`)
+Dependencies: TICKET-07, TICKET-08 (оба done)
+Acceptance criteria: девять из десяти выполнены; десятый (Bluetooth) закрыт третьим исходом, которого критерий не предусматривал, — см. Deviations
+Implementation summary: сняты два режима — `docs/hardware/vxe-dragonfly-r1-se-plus-24ghz.{json,md}` (ресивер, `3554:F58E`, `Compx`/`VXE Mouse 1K Dongle`, release `0x0110`) и `...-wired.{json,md}` (мышь на кабеле, `3554:F58F`, `Compx`/`VXE R1SE+`, release `0x0315`). У обоих 8 коллекций на 3 интерфейсах, **четыре** vendor-TLC. Сравнительный артефакт — `docs/hardware/comparison-aula-vs-vxe.md`.
+Deviations: три. Существенная одна — Bluetooth не получен: BT-позиция переключателя есть, спарить не удалось, при этом BT-стек хоста рабочий (с ним спарены другие устройства), поэтому отсутствие BT HID **не** объясняется отсутствием радио. Записано как inconclusive; утверждение «этот экземпляр BT не поддерживает» сознательно **не** сделано.
+Architecture notes: **порядок силы fingerprint-сигналов из спецификации на этом железе перевёрнут.** Хеш дескриптора и набор TLC — два сильнейших сигнала — не различают ресивер и мышь вообще: все восемь дескрипторов побайтово идентичны. Различают ровно три слабейших: product string, release, VID:PID. Ранжирование не неверно, оно неполно: сильные сигналы отвечают «что это за устройство по форме», слабые — «с каким физическим предметом я разговариваю». TICKET-10 обязан развести эти два вопроса, а не наследовать одно ранжирование. Отдельно: ресивер — самостоятельное HID-устройство, его поверхность идентична при работающей, лежащей на кабеле и полностью выключенной мыши; отдельного логического устройства за ним не появляется, и «ресивер с мышью» неотличим от «ресивер один» без probe.
+Verification evidence: полнота обоих захватов сверена через `Get-PnpDevice` (MI_00 + MI_01 COL01–COL06 + MI_02 = 8); серийники отсутствуют в артефактах, дополнительно проверено поиском значения с USB-узла; отдельной ветки кода под устройство не потребовалось; ни одной write-операции, feature-чтения или input-репорта.
+Commit: `pending`
+Follow-up tickets: новых не создано. Кандидат — read-only тикет на battery state, если он вообще понадобится: стандартного HID usage нет ни в одной коллекции и ни в одном дескрипторе, а вендорский путь требует probe.
+
 ## Decisions
 
 Полный протокол интервью — `EXECUTION_LOG.md`. Сводка:
@@ -391,6 +404,7 @@ Follow-up tickets: нет новых. Открытые концы адресов
 | Классификация ошибок backend'а по тексту не работает | TICKET-12/15 | Изменён 2026-08-18. `hidapi` отдаёт сообщение без кода, на Windows — локализованное ОС; определение stall подстрокой на локализованной системе молча не срабатывает. TICKET-11 **не** стал это чинить, а зафиксировал границу: kill-switch реагирует только на типизированный `EndpointStalled`, текст `Backend(String)` не разбирается нигде, и это покрыто тестом с русскоязычным сообщением. Следствие: ответственность переехала в транспорт — если он не сумеет типизировать stall, kill-switch не сработает. Решение о platform-native классификации принимается при первом настоящем I/O (TICKET-12/15). |
 | **Архитектура валидирована на одном устройстве и одном protocol family** | TICKET-10/12/17, architecture review риск №3 | **Частично смягчён 2026-08-18:** появилось второе локальное устройство другой категории (VXE Dragonfly R1 SE+, беспроводная мышь с ресивером), и TICKET-22 снимает его инвентарь до проектирования реестра. Это закрывает риск для `pregistry`/`ptransport` — они увидят минимум три topology вместо одной, — но **не** для `ProtocolEngine`: второго protocol family по-прежнему нет, и мышь его не даёт, потому что тикет строго read-only и без протокольного слоя. Ниже — исходная формулировка риска, остающаяся в силе для engine-уровня. **Исходная формулировка (2026-08-17), в силе для engine-уровня:** второй *клавиатуры* у разработчика нет — ROYUAN не покупается, EPOMAKER у стороннего владельца и доступна только удалённо и только поздно (capability-гейт). Мышь второго семейства не даёт: TICKET-22 read-only и протокольного слоя не создаёт. Значит на engine-уровне единственное «второе устройство» в тестах по-прежнему эмулятор, собранный из записей самой AULA, а значит не способный опровергнуть AULA-специфичные предположения. `ProtocolEngine`/`CapValue` рискуют дойти до фазы 4 провалидированными на одном семействе. Митигация — частичная: синтетические fingerprint-тесты (TICKET-10), эмулятор (TICKET-14), запрет считать трейт финальным до второго семейства. **Риск остаётся открытым; молча считать его закрытым переносом EPOMAKER нельзя.** |
 | Remote-валидация может не состояться или дать неполные данные | TICKET-09/06 | Новый, 2026-08-17. Данные зависят от постороннего человека, его готовности запустить сборку и от того, окажется ли UX достаточно понятным. Митигация: путь ограничен четырьмя шагами (`скачать → запустить → подключить → Export`), гейт входа — «сборка, которую не стыдно дать другому человеку». Неудача сценария — сама по себе валидный результат о продукте, а не о железе. |
+| **Порядок силы fingerprint-сигналов из спецификации неполон** | TICKET-10 | Новый, 2026-08-18 (TICKET-22). На VXE хеш дескриптора и набор TLC — сильнейшие сигналы по `spec.md` — идентичны у ресивера и у самой мыши, а различают их только три слабейших: product string, release, VID:PID. Реестр, взвешивающий сигналы по одному общему ранжированию, будет уверенно отвечать на вопрос «что это за устройство» и молча ошибаться на вопросе «с каким физическим предметом я разговариваю». Митигация — обязанность TICKET-10 развести два вопроса явно; риск закрывается его acceptance criteria, а не сам собой. |
 | Выгорание на масштабе (тысячи моделей вручную) | TICKET-18 | Смягчается ingestion pipeline + community submissions с Phase 3, архитектурно заложено с самого начала (§7 плана). |
 | Юридическое письмо от вендора | TICKET-18 | Смягчается §14 плана — соблюдено в scope TICKET-18. |
 

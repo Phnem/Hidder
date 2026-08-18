@@ -11,10 +11,15 @@ against something rather than remembered.
 |---|---|
 | `<device>.json` | machine-readable capture, schema `peripheral.hid-inventory/1` |
 | `<device>.md` | the same capture rendered for reading, including the raw descriptors |
+| `comparison-*.md` | hand-written analysis across captures (added TICKET-22) |
 
-Both are **generated**. Do not hand-edit them; rerun the tool. Analysis and
-conclusions belong in the ticket and `EXECUTION_LOG.md`, not in a generated file
-that the next run will overwrite.
+The first two are **generated**. Do not hand-edit them; rerun the tool.
+
+A `comparison-*.md` is the exception and says so at the top: it is written by
+hand, it quotes numbers from the captures rather than recomputing them, and it
+exists because a conclusion that spans several devices has nowhere else to live
+that a later reader will find. Per-capture conclusions still belong in the
+ticket and `EXECUTION_LOG.md`, not in a file the next run overwrites.
 
 ## How to capture
 
