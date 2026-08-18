@@ -2,7 +2,7 @@
 
 ## Status
 
-DONE_WITH_DEVIATIONS (2026-08-18)
+DONE_WITH_DEVIATIONS (2026-08-18); **architecture correction внесена 2026-08-18** после ревью — см. раздел Correction
 
 ## Objective
 
@@ -102,6 +102,47 @@ REQUIRED (детерминированная логика подсчёта ве�
 ## Risks
 
 - Веса сигналов (§6.2 плана) — эвристика. После TICKET-22 она проверяется на **двух физических устройствах разных категорий** и нескольких topology, что заметно лучше одной клавиатуры, но всё ещё далеко от рынка. Третье устройство (EPOMAKER) придёт удалённо и позже (TICKET-09). Явно зафиксировать как «первая итерация, пересмотреть после первого remote-артефакта и после Phase 4/5» в implementation notes при закрытии тикета.
+
+## Correction (2026-08-18, по итогам ревью)
+
+Три правки модели. Матчер намеренно не переписывался: изменились инварианты и типы, а не алгоритм.
+
+### 1. Family больше не логически недостижима без product
+
+Было: family искалась **только** через product, и неизвестный SKU означал `NoProductMatch` — тупик. Это неверно: вендор регулярно отгружает ту же прошивку под новым product id, и незнакомый SKU не то же самое, что незнакомый протокол.
+
+Стало — два независимых маршрута:
+
+```text
+через product        registry claim, capped by product confidence
+                     (claim — это факт, записанный О ПРОДУКТЕ)
+
+независимо           ProtocolEvidence { family, confidence, source }
+                     НЕ capped: обмен, установивший семейство, установил его
+                     о том, что на проводе, а не о названии в таблице
+```
+
+`ProtocolEvidenceSource`: `VerifiedExchange` (обмен с устройством, ответ проверен, доступно с TICKET-12) либо `VendorArtifact` (конфигуратор/прошивка/захват трафика, привязанные к endpoint). Evidence **передаётся вызывающим** — крейт сам с устройствами не разговаривает; он решает, чего это evidence стоит.
+
+При наличии обоих маршрутов выигрывает более уверенный; при равенстве — protocol evidence, потому что оно о протоколе.
+
+`FamilyReason::NoProductMatch` переименован в `NoEvidence`: причина теперь «ни продукта, ни protocol evidence», а не «нет продукта».
+
+**Structural match по-прежнему не подтверждает family ничем.** Это отдельный тест, и он остался.
+
+### 2. Verified теперь axis-scoped на уровне типа
+
+`Confidence::permits_write()` **удалён**. Универсального «можно ли писать» больше не существует: голое значение confidence не помнит, о чём оно, и это ровно та ошибка, которую стоило сделать невозможной.
+
+Появился `pcaps::FamilyConfidence` — единственный тип с `permits_write()`. `SafetyGate::identify_device` и `Refusal::UnverifiedFamily` принимают только его. Сконструировать его из чужой оси всё ещё технически можно, но пишется это как `FamilyConfidence::established(product.confidence)` — заметно в ревью и находится грепом, а не выглядит обычной сантехникой.
+
+### 3. Обязательный regression
+
+`an_unknown_product_can_still_have_a_known_family`: неизвестный SKU + независимо подтверждённое protocol evidence → **family identified, product остаётся Unknown**, запись разрешена. Плюс `protocol_evidence_is_not_capped_by_the_product`, `weak_protocol_evidence_does_not_beat_a_solid_registry_claim`, `structure_alone_still_confirms_no_family_whatsoever`.
+
+### Открытый checkpoint: хранилище реестра
+
+Сгенерированная Rust-таблица принята как **временная** реализация. До TICKET-18 / первых community submissions обязателен выбор: либо сгенерированный SQLite согласно исходной архитектуре (`spec.md` Приложение B), либо отдельный ADR с обоснованным изменением решения. Внесено в повестку архитектурного чекпоинта; тикет не считается закрывающим этот вопрос.
 
 ## Implementation notes
 

@@ -63,10 +63,11 @@ mod generated {
 }
 
 pub use identity::{
-    Axis, Confidence, DeviceEntry, DeviceKind, FamilyClaim, ProductIdentity, Signal, SignalOutcome,
-    SignalState, StructuralCollection, StructuralId,
+    Axis, Confidence, DeviceEntry, DeviceKind, FamilyClaim, FamilyConfidence, ProductIdentity,
+    Signal, SignalOutcome, SignalState, StructuralCollection, StructuralId,
 };
 pub use matcher::{
-    FamilyOutcome, FamilyReason, Identification, ProductOutcome, Registry, StructuralOutcome,
+    FamilyOutcome, FamilyReason, Identification, ProductOutcome, ProtocolEvidence,
+    ProtocolEvidenceSource, Registry, StructuralOutcome,
 };
 pub use observation::{CollectionObservation, DeviceObservation};

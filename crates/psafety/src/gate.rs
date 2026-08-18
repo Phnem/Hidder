@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use pcaps::Confidence;
+use pcaps::FamilyConfidence;
 use ptransport::{DeviceId, TransportError};
 
 use crate::class::OpcodeClass;
@@ -93,8 +93,9 @@ pub enum BackupState {
 struct DeviceState {
     family: &'static str,
     /// How well established it is that this device speaks that family. Supplied
-    /// by whatever identified the device; this crate never derives it.
-    family_confidence: Confidence,
+    /// by whatever identified the device; this crate never derives it, and its
+    /// type makes a confidence from another axis unusable here.
+    family_confidence: FamilyConfidence,
     backup: BackupState,
     quarantined: bool,
 }
@@ -144,7 +145,7 @@ impl<S: CommandSink, J: JournalSink, C: Clock> SafetyGate<S, J, C> {
         &mut self,
         device: DeviceId,
         family: &'static str,
-        family_confidence: Confidence,
+        family_confidence: FamilyConfidence,
     ) {
         self.devices.insert(
             device,
@@ -158,7 +159,7 @@ impl<S: CommandSink, J: JournalSink, C: Clock> SafetyGate<S, J, C> {
     }
 
     /// The protocol-family confidence recorded for a device, if any.
-    pub fn family_confidence(&self, device: DeviceId) -> Confidence {
+    pub fn family_confidence(&self, device: DeviceId) -> FamilyConfidence {
         self.devices
             .get(&device)
             .map(|state| state.family_confidence)
@@ -341,7 +342,7 @@ mod tests {
     use std::cell::Cell;
     use std::rc::Rc;
 
-    use pcaps::Confidence;
+    use pcaps::{Confidence, FamilyConfidence};
 
     use super::*;
 
@@ -453,8 +454,11 @@ mod tests {
         // A gate that only checked "is this command approved" would send one
         // family's approved byte to the other family's board.
         let mut h = harness(None);
-        h.gate
-            .identify_device(h.device, "royuan-yc500", Confidence::Verified);
+        h.gate.identify_device(
+            h.device,
+            "royuan-yc500",
+            FamilyConfidence::established(Confidence::Verified),
+        );
         let gen2 = SafeCommandId::find("royuan-gen2", "read_led_params").expect("ships");
 
         let error = h
@@ -483,12 +487,18 @@ mod tests {
         // first write ticket rather than after it.
         for confidence in [Confidence::Unknown, Confidence::Candidate, Confidence::High] {
             let mut h = harness(None);
-            h.gate.identify_device(h.device, "royuan-gen2", confidence);
+            h.gate.identify_device(
+                h.device,
+                "royuan-gen2",
+                FamilyConfidence::established(confidence),
+            );
             h.gate.record_backup(h.device);
             assert_eq!(
                 h.gate
                     .authorize(h.device, "royuan-gen2", OpcodeClass::SlowFlash, 1_000, None),
-                Err(Refusal::UnverifiedFamily { confidence }),
+                Err(Refusal::UnverifiedFamily {
+                    confidence: FamilyConfidence::established(confidence)
+                }),
                 "a write went through at {confidence:?}"
             );
         }
@@ -498,8 +508,11 @@ mod tests {
     fn a_read_is_allowed_below_verified() {
         // An unidentified-enough device opens read-only rather than not at all.
         let mut h = harness(None);
-        h.gate
-            .identify_device(h.device, "royuan-gen2", Confidence::Candidate);
+        h.gate.identify_device(
+            h.device,
+            "royuan-gen2",
+            FamilyConfidence::established(Confidence::Candidate),
+        );
         assert_eq!(
             h.gate
                 .authorize(h.device, "royuan-gen2", OpcodeClass::SafeRead, 1_000, None),
@@ -516,15 +529,21 @@ mod tests {
         // The gate is told one thing and one thing only: how well established
         // the *family* is. There is no argument it can make from anything else.
         let mut h = harness(None);
-        h.gate
-            .identify_device(h.device, "royuan-gen2", Confidence::Unknown);
+        h.gate.identify_device(
+            h.device,
+            "royuan-gen2",
+            FamilyConfidence::established(Confidence::Unknown),
+        );
         h.gate.record_backup(h.device);
         assert!(matches!(
             h.gate
                 .authorize(h.device, "royuan-gen2", OpcodeClass::SafeWrite, 1_000, None),
             Err(Refusal::UnverifiedFamily { .. })
         ));
-        assert_eq!(h.gate.family_confidence(h.device), Confidence::Unknown);
+        assert_eq!(
+            h.gate.family_confidence(h.device),
+            FamilyConfidence::established(Confidence::Unknown)
+        );
     }
 
     #[test]
@@ -532,8 +551,11 @@ mod tests {
         // Ordering matters for the message the user sees: "we do not know this
         // protocol" is the real reason, and "no backup" would be a distraction.
         let mut h = harness(None);
-        h.gate
-            .identify_device(h.device, "royuan-gen2", Confidence::High);
+        h.gate.identify_device(
+            h.device,
+            "royuan-gen2",
+            FamilyConfidence::established(Confidence::High),
+        );
         assert!(matches!(
             h.gate
                 .authorize(h.device, "royuan-gen2", OpcodeClass::SlowFlash, 1_000, None),
@@ -547,8 +569,11 @@ mod tests {
         // directly. It is the rule that has to exist before the first write
         // ticket, not after it.
         let mut h = harness(None);
-        h.gate
-            .identify_device(h.device, "royuan-gen2", Confidence::Verified);
+        h.gate.identify_device(
+            h.device,
+            "royuan-gen2",
+            FamilyConfidence::established(Confidence::Verified),
+        );
         assert_eq!(
             h.gate
                 .authorize(h.device, "royuan-gen2", OpcodeClass::SlowFlash, 1_000, None),
@@ -567,8 +592,11 @@ mod tests {
     #[test]
     fn a_read_needs_no_backup() {
         let mut h = harness(None);
-        h.gate
-            .identify_device(h.device, "royuan-gen2", Confidence::Verified);
+        h.gate.identify_device(
+            h.device,
+            "royuan-gen2",
+            FamilyConfidence::established(Confidence::Verified),
+        );
         assert_eq!(
             h.gate
                 .authorize(h.device, "royuan-gen2", OpcodeClass::SafeRead, 1_000, None),
@@ -581,8 +609,11 @@ mod tests {
     #[test]
     fn an_approved_command_reaches_the_transport_with_its_own_opcode() {
         let mut h = harness(None);
-        h.gate
-            .identify_device(h.device, "royuan-gen2", Confidence::Verified);
+        h.gate.identify_device(
+            h.device,
+            "royuan-gen2",
+            FamilyConfidence::established(Confidence::Verified),
+        );
         let answer = h
             .gate
             .execute(h.device, identify_command(), vec![0xAC, 0xAC], None)
@@ -601,8 +632,11 @@ mod tests {
     #[test]
     fn a_stall_quarantines_the_device_and_nothing_is_retried() {
         let mut h = harness(Some(TransportError::EndpointStalled));
-        h.gate
-            .identify_device(h.device, "royuan-gen2", Confidence::Verified);
+        h.gate.identify_device(
+            h.device,
+            "royuan-gen2",
+            FamilyConfidence::established(Confidence::Verified),
+        );
 
         let error = h
             .gate
@@ -622,8 +656,11 @@ mod tests {
         // it pinned, so "stop writing but keep polling" is not a safe halfway
         // position: everything stops.
         let mut h = harness(Some(TransportError::EndpointStalled));
-        h.gate
-            .identify_device(h.device, "royuan-gen2", Confidence::Verified);
+        h.gate.identify_device(
+            h.device,
+            "royuan-gen2",
+            FamilyConfidence::established(Confidence::Verified),
+        );
         let _ = h
             .gate
             .execute(h.device, identify_command(), Vec::new(), None);
@@ -640,8 +677,11 @@ mod tests {
     #[test]
     fn only_reconnecting_clears_a_quarantine() {
         let mut h = harness(Some(TransportError::EndpointStalled));
-        h.gate
-            .identify_device(h.device, "royuan-gen2", Confidence::Verified);
+        h.gate.identify_device(
+            h.device,
+            "royuan-gen2",
+            FamilyConfidence::established(Confidence::Verified),
+        );
         let _ = h
             .gate
             .execute(h.device, identify_command(), Vec::new(), None);
@@ -662,8 +702,11 @@ mod tests {
         // wedged endpoint, and treating every error as one would make the
         // product unusable while proving nothing.
         let mut h = harness(Some(TransportError::NotConnected(DeviceId::new(1))));
-        h.gate
-            .identify_device(h.device, "royuan-gen2", Confidence::Verified);
+        h.gate.identify_device(
+            h.device,
+            "royuan-gen2",
+            FamilyConfidence::established(Confidence::Verified),
+        );
         let _ = h
             .gate
             .execute(h.device, identify_command(), Vec::new(), None);
@@ -675,8 +718,11 @@ mod tests {
     #[test]
     fn a_rate_limited_command_never_reaches_the_transport() {
         let mut h = harness(None);
-        h.gate
-            .identify_device(h.device, "royuan-gen2", Confidence::Verified);
+        h.gate.identify_device(
+            h.device,
+            "royuan-gen2",
+            FamilyConfidence::established(Confidence::Verified),
+        );
         h.gate
             .execute(h.device, identify_command(), Vec::new(), None)
             .expect("first");
@@ -698,8 +744,11 @@ mod tests {
     #[test]
     fn every_attempt_is_journalled_including_reads_and_refusals() {
         let mut h = harness(None);
-        h.gate
-            .identify_device(h.device, "royuan-gen2", Confidence::Verified);
+        h.gate.identify_device(
+            h.device,
+            "royuan-gen2",
+            FamilyConfidence::established(Confidence::Verified),
+        );
         h.gate
             .execute(h.device, identify_command(), Vec::new(), None)
             .expect("first");
@@ -723,8 +772,11 @@ mod tests {
     #[test]
     fn the_journal_records_the_payload_length_and_nothing_of_its_contents() {
         let mut h = harness(None);
-        h.gate
-            .identify_device(h.device, "royuan-gen2", Confidence::Verified);
+        h.gate.identify_device(
+            h.device,
+            "royuan-gen2",
+            FamilyConfidence::established(Confidence::Verified),
+        );
         let secret = vec![0x53, 0x45, 0x43, 0x52, 0x45, 0x54];
         h.gate
             .execute(h.device, identify_command(), secret, None)
@@ -742,8 +794,11 @@ mod tests {
     #[test]
     fn a_failed_attempt_is_journalled_by_failure_kind() {
         let mut h = harness(Some(TransportError::Backend("Ошибка протокола".to_owned())));
-        h.gate
-            .identify_device(h.device, "royuan-gen2", Confidence::Verified);
+        h.gate.identify_device(
+            h.device,
+            "royuan-gen2",
+            FamilyConfidence::established(Confidence::Verified),
+        );
         let _ = h
             .gate
             .execute(h.device, identify_command(), Vec::new(), None);
@@ -760,8 +815,11 @@ mod tests {
     #[test]
     fn a_read_is_journalled_as_needing_no_verification() {
         let mut h = harness(None);
-        h.gate
-            .identify_device(h.device, "royuan-gen2", Confidence::Verified);
+        h.gate.identify_device(
+            h.device,
+            "royuan-gen2",
+            FamilyConfidence::established(Confidence::Verified),
+        );
         h.gate
             .execute(h.device, identify_command(), Vec::new(), None)
             .expect("dispatched");

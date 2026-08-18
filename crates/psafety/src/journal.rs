@@ -17,7 +17,7 @@
 //! one: this crate is on the command path and never sees an input report at all.
 //! The capture-side privacy filter is a separate seam (spec.md FR8).
 
-use pcaps::Confidence;
+use pcaps::FamilyConfidence;
 use ptransport::{DeviceId, TransportError};
 
 use crate::class::OpcodeClass;
@@ -92,7 +92,7 @@ pub enum Refusal {
     /// in earns nothing here -- two products can be indistinguishable in
     /// structure and identical in every capability except the one that matters,
     /// and it is the opcode vocabulary that bricks boards.
-    UnverifiedFamily { confidence: Confidence },
+    UnverifiedFamily { confidence: FamilyConfidence },
     /// The family's measured cadence says not yet.
     RateLimited { wait_ms: u64 },
     /// An unmeasured family needs a person to approve this one operation.

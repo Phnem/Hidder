@@ -1,6 +1,6 @@
 //! The axes, and the vocabulary for explaining an answer on each of them.
 
-pub use pcaps::Confidence;
+pub use pcaps::{Confidence, FamilyConfidence};
 
 /// Which question a signal answers.
 ///
@@ -50,6 +50,10 @@ pub enum Signal {
     /// Deliberately not "the device answered an identify opcode": that is a
     /// probe, and no probe happens in this crate.
     RegistryClaim,
+    /// Evidence about the family established without going through the product
+    /// -- an exchange with the device, or a vendor artifact tied to it. Supplied
+    /// by a layer allowed to obtain it; never produced here.
+    ProtocolEvidence,
 }
 
 impl Signal {
@@ -64,7 +68,7 @@ impl Signal {
             | Signal::ManufacturerString
             | Signal::ProductString
             | Signal::Release => Axis::Product,
-            Signal::RegistryClaim => Axis::ProtocolFamily,
+            Signal::RegistryClaim | Signal::ProtocolEvidence => Axis::ProtocolFamily,
         }
     }
 
@@ -80,6 +84,7 @@ impl Signal {
             Signal::ProductString => "product_string",
             Signal::Release => "release",
             Signal::RegistryClaim => "registry_claim",
+            Signal::ProtocolEvidence => "protocol_evidence",
         }
     }
 }
@@ -267,6 +272,7 @@ mod tests {
         assert_eq!(Signal::ProductId.axis(), Axis::Product);
         assert_eq!(Signal::ManufacturerString.axis(), Axis::Product);
         assert_eq!(Signal::RegistryClaim.axis(), Axis::ProtocolFamily);
+        assert_eq!(Signal::ProtocolEvidence.axis(), Axis::ProtocolFamily);
     }
 
     #[test]

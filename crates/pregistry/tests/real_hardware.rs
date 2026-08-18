@@ -176,7 +176,7 @@ fn no_device_we_own_has_a_known_protocol_family() {
     ] {
         let identified = identify(capture);
         assert_eq!(identified.family.family, None, "{name} claimed a family");
-        assert_eq!(identified.family.confidence, Confidence::Unknown);
+        assert_eq!(identified.family.confidence.value(), Confidence::Unknown);
         assert_eq!(identified.family.reason, FamilyReason::NotRecorded);
         assert!(
             !identified.permits_write(),

@@ -1,8 +1,8 @@
 //! Three answers, computed separately, never averaged.
 
 use crate::identity::{
-    Axis, Confidence, DeviceEntry, FamilyClaim, Signal, SignalOutcome, StructuralId,
-    structural_digest,
+    Axis, Confidence, DeviceEntry, FamilyClaim, FamilyConfidence, Signal, SignalOutcome,
+    StructuralId, structural_digest,
 };
 use crate::observation::DeviceObservation;
 
@@ -26,22 +26,59 @@ pub struct ProductOutcome {
     pub signals: Vec<SignalOutcome>,
 }
 
+/// Evidence about a family that does not depend on knowing the product.
+///
+/// The reason this exists: an unrecognised SKU is not the same thing as an
+/// unrecognised protocol. Vendors ship the same firmware under a new product id
+/// routinely, and when a later ticket establishes a family by talking to the
+/// device -- or from a vendor artifact tied to that exchange -- the conclusion
+/// stands on its own. It is not weakened by the registry never having heard of
+/// the SKU, and a family must not be unreachable just because a catalogue is
+/// incomplete.
+///
+/// What still cannot produce one of these: a structural match. Two products with
+/// byte-identical descriptors may speak different opcodes, and this project owns
+/// a byte-identical pair already (TICKET-22).
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct ProtocolEvidence {
+    pub family: &'static str,
+    pub confidence: Confidence,
+    pub source: ProtocolEvidenceSource,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum ProtocolEvidenceSource {
+    /// An exchange with this device established it, and the answer was verified
+    /// rather than merely received. Available from TICKET-12 onwards.
+    VerifiedExchange,
+    /// A vendor artifact -- configurator, firmware, captured traffic -- tied to
+    /// this endpoint rather than to a product name.
+    VendorArtifact,
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum FamilyReason {
-    /// No product matched, so there is nothing to look a family up against. A
-    /// structural match does not substitute: knowing the shape of an endpoint
-    /// says nothing about which opcode vocabulary the firmware behind it uses.
-    NoProductMatch,
-    /// The product is known and no family has been established for it. The
-    /// ordinary state for every device in this registry today.
+    /// Neither a product match nor independent protocol evidence. A structural
+    /// match does not substitute: knowing the shape of an endpoint says nothing
+    /// about which opcode vocabulary the firmware behind it uses.
+    NoEvidence,
+    /// The product is known, no family has been established for it, and no
+    /// protocol evidence was offered. The ordinary state for every device in
+    /// this registry today.
     NotRecorded,
+    /// Looked up through the product, and capped by how sure that product is.
     FromRegistry,
+    /// Established independently of which product this is.
+    FromProtocolEvidence,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct FamilyOutcome {
     pub family: Option<&'static str>,
-    pub confidence: Confidence,
+    /// Deliberately its own type. A write is authorised from this value and
+    /// from nothing else, and a bare `Confidence` off another axis cannot be
+    /// substituted for it.
+    pub confidence: FamilyConfidence,
     pub reason: FamilyReason,
     pub signals: Vec<SignalOutcome>,
 }
@@ -62,6 +99,11 @@ impl Identification {
     /// is plugged in is not permission to send it opcodes.
     pub fn permits_write(&self) -> bool {
         self.family.confidence.permits_write()
+    }
+
+    /// The only confidence a write may be authorised from.
+    pub fn family_confidence(&self) -> FamilyConfidence {
+        self.family.confidence
     }
 
     /// Every signal that was looked at, on every axis, with what it did.
@@ -105,10 +147,25 @@ impl Registry {
         self.entries.iter().find(|entry| entry.id == id)
     }
 
+    /// Identifies a device from enumeration alone.
     pub fn identify(&self, observation: &DeviceObservation) -> Identification {
+        self.identify_with(observation, None)
+    }
+
+    /// Identifies a device, taking into account protocol evidence obtained
+    /// elsewhere.
+    ///
+    /// The caller supplies the evidence because obtaining it means talking to
+    /// the device, and this crate does not talk to devices. What this crate
+    /// decides is what such evidence is worth once it exists.
+    pub fn identify_with(
+        &self,
+        observation: &DeviceObservation,
+        protocol: Option<ProtocolEvidence>,
+    ) -> Identification {
         let structural = self.match_structure(observation);
         let product = self.match_product(observation);
-        let family = self.match_family(&product);
+        let family = self.match_family(&product, protocol);
         Identification {
             structural,
             product,
@@ -268,40 +325,80 @@ impl Registry {
         }
     }
 
-    /// The family is looked up through the product and through nothing else.
+    /// Resolves the family from the product, from independent protocol
+    /// evidence, or from both -- and never from the structure.
     ///
-    /// This is the rule that keeps a structural match from becoming permission
-    /// to write. Two products can share a structure exactly -- ours do -- and
-    /// there is no argument from "the shape is familiar" to "the opcodes are
-    /// the ones I think they are".
-    fn match_family(&self, product: &ProductOutcome) -> FamilyOutcome {
-        let Some(entry_id) = product.entry else {
-            return FamilyOutcome {
-                family: None,
-                confidence: Confidence::Unknown,
-                reason: FamilyReason::NoProductMatch,
-                signals: vec![SignalOutcome::absent(Signal::RegistryClaim)],
-            };
+    /// Two routes, deliberately not one:
+    ///
+    /// - *through the product*, capped by how sure the product is, because a
+    ///   registry claim is a fact recorded about a product;
+    /// - *independently*, from protocol evidence, which is not capped, because
+    ///   an exchange that established a family established it about the thing on
+    ///   the wire rather than about a name in a table.
+    ///
+    /// The second route is what keeps an unknown SKU from being a dead end: a
+    /// device nobody has catalogued can still be known to speak a family, and
+    /// the product axis stays honestly unknown while that happens.
+    fn match_family(
+        &self,
+        product: &ProductOutcome,
+        protocol: Option<ProtocolEvidence>,
+    ) -> FamilyOutcome {
+        let via_product: Option<(&'static str, Confidence)> = product
+            .entry
+            .and_then(|id| self.entry(id))
+            .and_then(|entry| entry.family)
+            .map(|claim: FamilyClaim| {
+                // Never more sure of the family than of which product this is:
+                // a registry claim is a fact about a product, so an uncertain
+                // product makes the claim uncertain however good it is.
+                (claim.family, claim.evidence.min(product.confidence))
+            });
+        let via_protocol = protocol.map(|evidence| (evidence.family, evidence.confidence));
+
+        let (family, confidence, reason, signal) = match (via_product, via_protocol) {
+            (Some((_, from_product)), Some((family, from_protocol)))
+                if from_protocol >= from_product =>
+            {
+                (
+                    Some(family),
+                    from_protocol,
+                    FamilyReason::FromProtocolEvidence,
+                    SignalOutcome::matched(Signal::ProtocolEvidence),
+                )
+            }
+            (None, Some((family, from_protocol))) => (
+                Some(family),
+                from_protocol,
+                FamilyReason::FromProtocolEvidence,
+                SignalOutcome::matched(Signal::ProtocolEvidence),
+            ),
+            (Some((family, from_product)), _) => (
+                Some(family),
+                from_product,
+                FamilyReason::FromRegistry,
+                SignalOutcome::matched(Signal::RegistryClaim),
+            ),
+            (None, None) => {
+                let reason = if product.entry.is_some() {
+                    FamilyReason::NotRecorded
+                } else {
+                    FamilyReason::NoEvidence
+                };
+                (
+                    None,
+                    Confidence::Unknown,
+                    reason,
+                    SignalOutcome::absent(Signal::RegistryClaim),
+                )
+            }
         };
 
-        let claim: Option<FamilyClaim> = self.entry(entry_id).and_then(|entry| entry.family);
-
-        match claim {
-            Some(claim) => FamilyOutcome {
-                family: Some(claim.family),
-                // Never more sure of the family than of which product this is:
-                // a family is a fact about a product, and an uncertain product
-                // makes the family uncertain no matter how good the claim is.
-                confidence: claim.evidence.min(product.confidence),
-                reason: FamilyReason::FromRegistry,
-                signals: vec![SignalOutcome::matched(Signal::RegistryClaim)],
-            },
-            None => FamilyOutcome {
-                family: None,
-                confidence: Confidence::Unknown,
-                reason: FamilyReason::NotRecorded,
-                signals: vec![SignalOutcome::absent(Signal::RegistryClaim)],
-            },
+        FamilyOutcome {
+            family,
+            confidence: FamilyConfidence::established(confidence),
+            reason,
+            signals: vec![signal],
         }
     }
 }
@@ -597,7 +694,7 @@ mod tests {
         let identified = registry.identify(&stranger);
         assert_eq!(identified.structural.confidence, Confidence::Verified);
         assert_eq!(identified.family.family, None);
-        assert_eq!(identified.family.reason, FamilyReason::NoProductMatch);
+        assert_eq!(identified.family.reason, FamilyReason::NoEvidence);
         assert!(!identified.permits_write());
     }
 
@@ -634,7 +731,7 @@ mod tests {
         let identified = registry.identify(&uncertain);
         assert_eq!(identified.product.confidence, Confidence::Candidate);
         assert_eq!(
-            identified.family.confidence,
+            identified.family.confidence.value(),
             Confidence::Candidate,
             "a certain family claim about an uncertain product is not certainty"
         );
@@ -648,11 +745,123 @@ mod tests {
         assert_eq!(identified.product.confidence, Confidence::Verified);
         assert_eq!(identified.family.family, None);
         assert_eq!(identified.family.reason, FamilyReason::NotRecorded);
-        assert_eq!(identified.family.confidence, Confidence::Unknown);
+        assert_eq!(identified.family.confidence.value(), Confidence::Unknown);
         assert!(
             !identified.permits_write(),
             "knowing the product is not permission to write"
         );
+    }
+
+    // --- an unknown SKU is not a dead end ---------------------------------
+
+    #[test]
+    fn an_unknown_product_can_still_have_a_known_family() {
+        // The correction this section exists for. A vendor ships known firmware
+        // under a product id nobody has catalogued; the protocol was established
+        // by talking to the thing on the wire, and that conclusion does not
+        // depend on the catalogue having caught up.
+        let registry = Registry::from_entries(TWINS);
+        let unknown_sku = observe(
+            0xBEEF,
+            0xBEEF,
+            "Nobody",
+            "Not in any table",
+            0x0001,
+            OTHER_STRUCTURE,
+        );
+        let identified = registry.identify_with(
+            &unknown_sku,
+            Some(ProtocolEvidence {
+                family: "some-family",
+                confidence: Confidence::Verified,
+                source: ProtocolEvidenceSource::VerifiedExchange,
+            }),
+        );
+
+        assert_eq!(identified.family.family, Some("some-family"));
+        assert_eq!(identified.family.confidence.value(), Confidence::Verified);
+        assert_eq!(identified.family.reason, FamilyReason::FromProtocolEvidence);
+        assert!(
+            identified.permits_write(),
+            "protocol evidence that was verified is what a write is for"
+        );
+
+        // And the product axis stays honest about knowing nothing.
+        assert_eq!(identified.product.entry, None);
+        assert_eq!(identified.product.confidence, Confidence::Unknown);
+        assert_eq!(identified.structural.confidence, Confidence::Unknown);
+    }
+
+    #[test]
+    fn protocol_evidence_is_not_capped_by_the_product() {
+        // Unlike a registry claim, which is a fact recorded *about a product*
+        // and therefore only as good as the product match.
+        let registry = Registry::from_entries(TWINS);
+        let uncertain_product = observe(
+            0x3554,
+            0xF58F,
+            "Compx",
+            "A string that disagrees",
+            0x0315,
+            SHARED_STRUCTURE,
+        );
+        let identified = registry.identify_with(
+            &uncertain_product,
+            Some(ProtocolEvidence {
+                family: "some-family",
+                confidence: Confidence::Verified,
+                source: ProtocolEvidenceSource::VerifiedExchange,
+            }),
+        );
+        assert_eq!(identified.product.confidence, Confidence::Candidate);
+        assert_eq!(identified.family.confidence.value(), Confidence::Verified);
+    }
+
+    #[test]
+    fn weak_protocol_evidence_does_not_beat_a_solid_registry_claim() {
+        const WITH_FAMILY: &[DeviceEntry] = &[DeviceEntry {
+            id: "known-family",
+            name: "Known family",
+            kind: DeviceKind::Mouse,
+            interfaces: 3,
+            product: ProductIdentity {
+                vendor_id: 0x3554,
+                product_id: 0xF58F,
+                manufacturer: "Compx",
+                product: "VXE R1SE+",
+                release: 0x0315,
+            },
+            structure: SHARED_STRUCTURE,
+            family: Some(FamilyClaim {
+                family: "registry-family",
+                evidence: Confidence::Verified,
+            }),
+        }];
+
+        let registry = Registry::from_entries(WITH_FAMILY);
+        let identified = registry.identify_with(
+            &wired(),
+            Some(ProtocolEvidence {
+                family: "guessed-family",
+                confidence: Confidence::Candidate,
+                source: ProtocolEvidenceSource::VendorArtifact,
+            }),
+        );
+        assert_eq!(identified.family.family, Some("registry-family"));
+        assert_eq!(identified.family.reason, FamilyReason::FromRegistry);
+    }
+
+    #[test]
+    fn structure_alone_still_confirms_no_family_whatsoever() {
+        // Unchanged by the new route, and the reason the new route takes
+        // evidence from a caller rather than inferring anything.
+        let registry = Registry::from_entries(TWINS);
+        let stranger = observe(0x0000, 0x0000, "Nobody", "Unheard of", 1, SHARED_STRUCTURE);
+        let identified = registry.identify(&stranger);
+        assert_eq!(identified.structural.confidence, Confidence::Verified);
+        assert_eq!(identified.family.family, None);
+        assert_eq!(identified.family.reason, FamilyReason::NoEvidence);
+        assert!(!identified.permits_write());
     }
 
     // --- explanation, not a boolean ---------------------------------------
@@ -680,7 +889,7 @@ mod tests {
         let identified = registry.identify(&alien);
         assert_eq!(identified.structural.confidence, Confidence::Unknown);
         assert_eq!(identified.product.confidence, Confidence::Unknown);
-        assert_eq!(identified.family.confidence, Confidence::Unknown);
+        assert_eq!(identified.family.confidence.value(), Confidence::Unknown);
         assert!(!identified.permits_write());
     }
 }

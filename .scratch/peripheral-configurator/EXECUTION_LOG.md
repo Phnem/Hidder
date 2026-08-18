@@ -709,3 +709,36 @@ write permitted: no — для всех трёх
 ### Next eligible ticket
 
 TICKET-12 (первый protocol engine, AULA, read-only) — и именно он впервые заполнит ось protocol-family реальными данными.
+
+## 2026-08-18 — architecture correction к TICKET-10 (перед TICKET-12)
+
+### Причина
+
+Ревью пользователя: **protocol-family identity не должна быть логически недостижима без известного product identity.** Product может давать evidence для family, но неизвестный SKU обязан иметь возможность быть подтверждён как уже известное protocol family через независимое protocol evidence. Structural match сам по себе family не подтверждает.
+
+Первая редакция матчера искала family исключительно через product, то есть незнакомый SKU был тупиком. Это неверная модель: вендоры отгружают ту же прошивку под новым product id регулярно, и «каталог не догнал» не является утверждением о протоколе.
+
+### Что изменено
+
+1. **Два маршрута к family вместо одного.** Через product — registry claim, capped by product confidence, потому что claim это факт о продукте. Независимо — `ProtocolEvidence { family, confidence, source }`, **не capped**, потому что обмен установил семейство о том, что на проводе, а не о названии в таблице. Источники: `VerifiedExchange` (с TICKET-12) и `VendorArtifact`. Evidence передаётся вызывающим: крейт с устройствами не разговаривает.
+2. **`FamilyReason::NoProductMatch` → `NoEvidence`** — причина теперь «ни продукта, ни protocol evidence».
+3. **`Confidence::permits_write()` удалён.** Универсального «можно ли писать» больше не существует. Появился `pcaps::FamilyConfidence` — единственный тип с `permits_write()`; `SafetyGate::identify_device` и `Refusal::UnverifiedFamily` принимают только его.
+
+Матчер намеренно не переписывался сильнее необходимого: изменились инварианты и типы, алгоритм осей остался прежним.
+
+### Новые тесты
+
+`an_unknown_product_can_still_have_a_known_family` — неизвестный SKU + verified protocol evidence → family identified, product остаётся Unknown, запись разрешена. Плюс: protocol evidence не ограничивается продуктом; слабое protocol evidence не побеждает solid registry claim; structural match по-прежнему не подтверждает family вообще.
+
+### Открытый checkpoint
+
+Сгенерированная Rust-таблица реестра принята как **временная** реализация. До TICKET-18 / первых community submissions обязателен выбор: сгенерированный SQLite по исходной архитектуре либо отдельный ADR с обоснованием смены решения. Внесено в повестку архитектурного чекпоинта.
+
+### Verification
+
+`fmt`, `clippy --workspace --all-targets -D warnings`, `test --workspace` (113 passed), `cargo deny`, DAG — все зелёные. Демонстрация `cargo run -p pregistry --example identify` даёт прежний результат: у всех трёх устройств family `unknown`, запись запрещена.
+
+### Next
+
+TICKET-12, строго read-only.
+

@@ -95,9 +95,10 @@ fn report(label: &str, observation: &DeviceObservation, identified: &Identificat
         family.family.unwrap_or("unknown"),
         family.confidence.as_str(),
         match family.reason {
-            FamilyReason::NoProductMatch => "no product matched, so nothing to look one up against",
+            FamilyReason::NoEvidence => "no product match and no protocol evidence offered",
             FamilyReason::NotRecorded => "product known, family never established",
-            FamilyReason::FromRegistry => "claimed by the registry",
+            FamilyReason::FromRegistry => "claimed by the registry, via the product",
+            FamilyReason::FromProtocolEvidence => "established independently of the product",
         }
     );
     println!(

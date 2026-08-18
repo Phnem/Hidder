@@ -62,15 +62,6 @@ pub enum Confidence {
 }
 
 impl Confidence {
-    /// Whether a write may be attempted on the strength of this.
-    ///
-    /// Only ever asked of a *protocol-family* confidence. Being certain which
-    /// product is plugged in says nothing about which opcodes it understands,
-    /// and it is opcodes that brick boards (spec.md § Domain rules).
-    pub fn permits_write(self) -> bool {
-        self == Confidence::Verified
-    }
-
     pub fn as_str(self) -> &'static str {
         match self {
             Confidence::Unknown => "unknown",
@@ -81,6 +72,53 @@ impl Confidence {
     }
 }
 
+/// A confidence that is specifically about a protocol family.
+///
+/// This type exists so that "may I write" is a question only the family axis
+/// can be asked. [`Confidence`] on its own deliberately has no `permits_write`:
+/// a bare confidence value carries no record of what it is a confidence *in*,
+/// and the one mistake worth making impossible here is authorising a write on
+/// the strength of knowing which product is plugged in.
+///
+/// Constructing one from a confidence that came off another axis is possible
+/// and is a defect. It is spelled [`FamilyConfidence::established`] so that
+/// doing it is visible in review and greppable in a diff, rather than looking
+/// like ordinary plumbing.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
+pub struct FamilyConfidence(Confidence);
+
+impl FamilyConfidence {
+    /// Records how well established a device's protocol family is.
+    ///
+    /// Callers: the protocol-family axis of the registry, and nothing else.
+    pub fn established(confidence: Confidence) -> Self {
+        Self(confidence)
+    }
+
+    pub fn value(self) -> Confidence {
+        self.0
+    }
+
+    pub fn as_str(self) -> &'static str {
+        self.0.as_str()
+    }
+
+    /// Whether a write may be attempted on the strength of this.
+    ///
+    /// Being certain which product is plugged in says nothing about which
+    /// opcodes it understands, and it is opcodes that brick boards
+    /// (spec.md § Domain rules).
+    pub fn permits_write(self) -> bool {
+        self.0 == Confidence::Verified
+    }
+}
+
+impl std::fmt::Display for FamilyConfidence {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::expect_used, clippy::panic, clippy::unwrap_used)]
@@ -88,14 +126,24 @@ mod tests {
     use super::*;
 
     #[test]
-    fn only_verified_permits_a_write() {
-        assert!(Confidence::Verified.permits_write());
+    fn only_a_verified_family_permits_a_write() {
+        assert!(FamilyConfidence::established(Confidence::Verified).permits_write());
         for lower in [Confidence::Unknown, Confidence::Candidate, Confidence::High] {
             assert!(
-                !lower.permits_write(),
+                !FamilyConfidence::established(lower).permits_write(),
                 "{lower:?} would have allowed a write"
             );
         }
+    }
+
+    #[test]
+    fn a_bare_confidence_cannot_authorise_anything() {
+        // Not an assertion so much as a statement of where the guarantee lives:
+        // `Confidence` has no `permits_write`, so a product-axis or
+        // structural-axis value has nothing to offer a write path. If that
+        // method ever returns to `Confidence`, this comment is the reason it
+        // should not.
+        assert_eq!(Confidence::Verified.as_str(), "verified");
     }
 
     #[test]
