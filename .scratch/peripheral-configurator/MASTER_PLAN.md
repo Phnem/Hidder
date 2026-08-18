@@ -270,7 +270,7 @@ Hardware-in-the-loop чеклист ведётся на AULA Hero 84 HE (еди�
 | TICKET-07 | Cargo workspace + Tauri skeleton + CI | **DONE_WITH_DEVIATIONS** | TICKET-04 (done) | `f770750` | самопроверка, блокеров нет |
 | TICKET-08 | Windows HID inventory — AULA | **DONE_WITH_DEVIATIONS** | TICKET-07 (done) | `503070e` | самопроверка, блокеров нет |
 | TICKET-09 | Remote EPOMAKER inventory validation | **DEFERRED_REMOTE_VALIDATION** | capability-гейт: сборка с безопасным Export (естественно — после 13/14 или ранний Level 0 из 16) | — | — |
-| TICKET-10 | Multi-signal fingerprinting (`pregistry`) | **DONE_WITH_DEVIATIONS** | TICKET-07/08/11/22 — все выполнены | `pending` | самопроверка, блокеров нет |
+| TICKET-10 | Multi-signal fingerprinting (`pregistry`) | **DONE_WITH_DEVIATIONS** | TICKET-07/08/11/22 — все выполнены | `51a2f38` | самопроверка, блокеров нет |
 | TICKET-11 | `psafety` ACL + `SafeCommandId` skeleton | **DONE_WITH_DEVIATIONS** | TICKET-07 (done) | `34e786c` | самопроверка, блокеров нет |
 | TICKET-12 | Первый protocol engine (AULA, read-only) | **READY — следующий** | TICKET-08/10/11 — все выполнены | — | — |
 | TICKET-13 | Tauri UI skeleton (Devices/HE/Journal) | PENDING | TICKET-07 (done), TICKET-12 | — | — |
@@ -378,7 +378,7 @@ Implementation summary: `data/devices/*.toml` (три реально наблю�
 Deviations: пять, см. тикет. Существенные две: реестр не в SQLite (TOML → сгенерированная таблица Rust; носитель другой, схема Приложения B по существу сохранена, API матчера от хранилища не зависит) и сигнал «safe identify opcode» не реализован, потому что это probe.
 Architecture notes: **линейное ranking сигналов отменено.** Каждый сигнал принадлежит ровно одной оси на уровне типа. Три правила, каждое под тестом: структура не поднимает product; family достижима только через product; family не может быть увереннее продукта (`min`). Отсюда главное следствие — знание продукта не является разрешением на запись. `SignalState` различает `Differed` и `Absent`: разошедшееся значение — свидетельство против, отсутствующее — свидетельство ни о чём.
 Verification evidence: fmt/clippy `-D warnings`/test/deny/DAG — зелёные, 109 тестов в workspace. Обязательный regression (VXE wired vs receiver) прогоняется на **реальных файлах захвата** через `include_str!`, а не на транскрипции. Демонстрация: `cargo run -p pregistry --example identify`.
-Commit: `pending`
+Commit: `51a2f38`
 Follow-up tickets: нет новых. Открытые концы: путь «family → verified → запись» не проверен на реальных данных (первое заполнение — TICKET-12); структурной оси понадобится собственный evidence-маркер, когда появятся community-записи (TICKET-18).
 
 ## Decisions
