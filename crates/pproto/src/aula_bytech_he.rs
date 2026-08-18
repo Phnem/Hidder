@@ -29,8 +29,7 @@
 //! event reports. Four different numbers about how far a key is pressed, and
 //! only this one is the setting being read.
 
-use psafety::CommandKey;
-use psafety::probe::{ProbeCommandId, ProbeResponse};
+use psafety::{CommandKey, CommandResponse, SafeCommandId};
 
 use crate::aula_bytech::{MAX_DATA_LEN, ResponseError, decode_response};
 
@@ -222,90 +221,25 @@ impl Travel {
     }
 }
 
-// --- read_travel_precision ---------------------------------------------------
-
-#[derive(Clone, Copy, PartialEq, Eq, Debug, thiserror::Error)]
-pub enum PrecisionError {
-    #[error("frame: {0}")]
-    Frame(#[from] ResponseError),
-}
-
-/// What the device said about its travel precision.
-///
-/// # Why a zero is not an error here
-///
-/// It was, in the first draft, on the reasoning that a zero scale silently
-/// turns every actuation point into 0.00 mm. That reasoning was right about the
-/// consequence and wrong about the protocol: the vendor reads this byte with the
-/// frame's own length ignored and then writes `precision / 1000 || 0.01`, so a
-/// zero is a case it handles rather than a fault it reports. Refusing it here
-/// would have made our reader stricter than the only implementation known to
-/// work with these boards.
-#[derive(Clone, Copy, PartialEq, Debug)]
-pub struct TravelPrecisionProbe {
-    pub scale: TravelScale,
-    /// The byte as it arrived, before the fallback was applied. Zero when the
-    /// device reported nothing.
-    pub raw: u8,
-    /// True when the answer was byte-identical to the request.
-    ///
-    /// Worth surfacing rather than hiding: a frame that echoes the request is
-    /// what an unsupported command looks like on boards in this class, and with
-    /// an empty payload it is *indistinguishable* from a genuine "no precision
-    /// reported". The caller is told, and decides.
-    pub echoed_request: bool,
-    pub checksum_ok: bool,
-}
-
-impl TravelPrecisionProbe {
-    /// The 63-byte frame this command sends, for comparing an answer against.
-    ///
-    /// Rebuilt rather than remembered so that the echo check cannot drift away
-    /// from what is actually written.
-    fn request_frame_body() -> Vec<u8> {
-        crate::aula_bytech::encode_request(
-            CommandKey::GroupSubcommand {
-                group: 0x82,
-                subcommand: 0x08,
-            },
-            &[],
-            REPORT_ID,
-        )
-        .map(|frame| frame.to_vec())
-        .unwrap_or_default()
-    }
-}
-
-impl ProbeResponse for TravelPrecisionProbe {
-    const COMMAND: ProbeCommandId = ProbeCommandId::AulaBytechReadTravelPrecision;
-    type Rejection = PrecisionError;
-
-    /// No data. The vendor sends this one empty, unlike the model-id read which
-    /// states how many bytes it wants back.
-    fn request_payload() -> Vec<u8> {
-        Vec::new()
-    }
-
-    fn decode(key: CommandKey, response: &[u8]) -> Result<Self, PrecisionError> {
-        let decoded = decode_response(key, 0, response, REPORT_ID)?;
-        // The vendor forces the length to 1 rather than trusting the frame's
-        // own length byte, so read the first data byte whether or not the frame
-        // claims to carry one. `decode_response` has already checked that the
-        // header echoes this command.
-        let raw = response.get(FIRST_DATA_BYTE).copied().unwrap_or(0);
-        let scale = if raw == 0 {
-            TravelScale::VendorFallback
-        } else {
-            TravelScale::Reported(TravelPrecision(raw))
-        };
-        Ok(TravelPrecisionProbe {
-            scale,
-            raw,
-            echoed_request: response == Self::request_frame_body().as_slice(),
-            checksum_ok: decoded.checksum_ok,
-        })
-    }
-}
+// --- read_travel_precision, and why there is no code for it ------------------
+//
+// `0x82:0x08` was sent to this board twice and returned our own frame byte for
+// byte both times. That is what an unsupported command looks like on boards in
+// this class, and with an empty payload it cannot be told apart from a genuine
+// "nothing to report" (docs/hardware/aula-bytech-exchange-003-actuation.md).
+//
+// So it is classified `unknown` in the ACL, which is the class the generator
+// emits no command id for -- neither a `SafeCommandId` nor a `ProbeCommandId`.
+// There is therefore no way to send it, and a decoder for a command that cannot
+// be sent would be a type implying a capability this board has not shown.
+//
+// What survives is the part that was actually learned: the vendor's fallback,
+// as [`TravelScale`] above. The device reported no precision, the vendor's own
+// software computes 0.01 mm per step in that case, and exchange 005 confirmed
+// that scale against four values a person set in the vendor's configurator. The
+// scale is still a two-case type rather than a constant, because a different
+// board in this family may well answer -- and if one ever does, this is where
+// the decoder comes back.
 
 // --- read_key_travel ---------------------------------------------------------
 
@@ -338,15 +272,22 @@ pub enum KeyTravelError {
     },
 }
 
-/// Actuation points for the four bootstrap keys, still in device units.
+/// Actuation points for W, A, S and D, still in device units.
+///
+/// A production read since 2026-08-18. It arrived through the bootstrap door as
+/// a probe, was checked against four different values set in the official
+/// configurator, and left through the front
+/// (docs/hardware/aula-bytech-exchange-005-actuation-verified.md). The type is
+/// the same shape it was; what changed is which gate it reaches, and that is a
+/// consequence of the ACL entry rather than of anything written here.
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct WasdTravelProbe {
+pub struct WasdTravelRead {
     pub travels: Vec<Travel>,
     pub checksum_ok: bool,
 }
 
-impl ProbeResponse for WasdTravelProbe {
-    const COMMAND: ProbeCommandId = ProbeCommandId::AulaBytechReadKeyTravel;
+impl CommandResponse for WasdTravelRead {
+    const COMMAND: SafeCommandId = SafeCommandId::AulaBytechReadKeyTravel;
     type Rejection = KeyTravelError;
 
     fn request_payload() -> Vec<u8> {
@@ -392,10 +333,88 @@ impl ProbeResponse for WasdTravelProbe {
             });
         }
 
-        Ok(WasdTravelProbe {
+        Ok(WasdTravelRead {
             travels,
             checksum_ok: decoded.checksum_ok,
         })
+    }
+}
+
+// --- the canonical capability -------------------------------------------------
+
+/// How many decimals of a millimetre this scale can actually distinguish.
+///
+/// Derived from the step rather than chosen: at 0.01 mm per raw unit two
+/// decimals are meaningful and a third would be invented. The vendor computes
+/// its own displayed precision the same way, from the same scalar.
+fn decimals_for(scale: TravelScale) -> u8 {
+    let step = scale.step_mm();
+    let mut decimals = 0u8;
+    let mut scaled = step;
+    while scaled < 1.0 && decimals < 6 {
+        scaled *= 10.0;
+        decimals += 1;
+    }
+    decimals
+}
+
+/// Turns a protocol read into the canonical `he.actuation` capability.
+///
+/// This is the point where protocol detail stops. Above it there are labelled
+/// keys and millimetres; below it there are vendor key ids, raw counts and a
+/// scale that had to be established. The layers above must not be able to see
+/// through this boundary -- a UI that received a vendor key id would need the
+/// vendor's key table to render it, and a UI that received a raw count would
+/// eventually display one.
+pub fn actuation_capability(read: &WasdTravelRead, scale: TravelScale) -> pcaps::Capability {
+    let decimals = decimals_for(scale);
+    let values = read
+        .travels
+        .iter()
+        .zip(WASD_KEY_LABELS)
+        .map(|(travel, label)| pcaps::KeyMeasurement {
+            label: label.to_string(),
+            measurement: pcaps::Measurement::new(
+                travel.to_millimetres(scale),
+                pcaps::Unit::Millimetres,
+                decimals,
+            ),
+        })
+        .collect();
+
+    pcaps::Capability {
+        id: pcaps::CapId::HeActuation,
+        origin: pcaps::Origin::VerifiedOnHardware {
+            command: "read_key_travel",
+        },
+        confidence: pcaps::Confidence::Verified,
+        value: pcaps::CapValue::PerKey(values),
+        provenance: provenance(scale),
+    }
+}
+
+/// One line saying why these numbers mean what they say.
+///
+/// Written out rather than assembled from debug formatting, because it is shown
+/// to a person who is deciding whether to trust a control, and it has to be
+/// honest about the weaker case: a scale the device did not report is the
+/// vendor's default, and saying so is the difference between inheriting a
+/// documented default and quietly inventing one.
+fn provenance(scale: TravelScale) -> String {
+    match scale {
+        TravelScale::Reported(precision) => format!(
+            "read with command read_key_travel; scale {} reported by the device",
+            precision
+        ),
+        TravelScale::VendorFallback => [
+            format!(
+                "read with command read_key_travel; scale {VENDOR_FALLBACK_STEP_MM} mm per step,"
+            ),
+            "the vendor's documented fallback for a device that reports none,".to_string(),
+            "confirmed against four values set in the official configurator on 2026-08-18"
+                .to_string(),
+        ]
+        .join(" "),
     }
 }
 
@@ -405,6 +424,7 @@ mod tests {
 
     use super::*;
     use crate::aula_bytech::{FRAME_LEN, checksum};
+    use pcaps::CapValue;
 
     fn frame(group: u8, subcommand: u8, data: &[u8]) -> [u8; FRAME_LEN] {
         let mut f = [0u8; FRAME_LEN];
@@ -419,13 +439,6 @@ mod tests {
         f[6..6 + data.len()].copy_from_slice(data);
         f[FRAME_LEN - 1] = checksum(REPORT_ID, &f);
         f
-    }
-
-    fn precision_key() -> CommandKey {
-        CommandKey::GroupSubcommand {
-            group: 0x82,
-            subcommand: 0x08,
-        }
     }
 
     fn travel_key() -> CommandKey {
@@ -475,54 +488,6 @@ mod tests {
         assert_eq!(TravelPrecision(50).step_mm(), 0.05);
     }
 
-    // --- read_travel_precision --------------------------------------------
-
-    #[test]
-    fn a_reported_precision_decodes() {
-        let decoded = TravelPrecisionProbe::decode(precision_key(), &frame(0x82, 0x08, &[10]))
-            .expect("a one-byte answer");
-        assert_eq!(decoded.scale, TravelScale::Reported(TravelPrecision(10)));
-        assert!(decoded.scale.is_from_device());
-        assert!(!decoded.echoed_request);
-        assert!(decoded.checksum_ok);
-    }
-
-    #[test]
-    fn a_zero_precision_falls_back_the_way_the_vendor_does() {
-        // The case our own board produces. The vendor writes `x / 1000 || 0.01`,
-        // so zero is handled rather than refused, and its configurator displays
-        // millimetres computed with 0.01 either way.
-        let decoded = TravelPrecisionProbe::decode(precision_key(), &frame(0x82, 0x08, &[0]))
-            .expect("zero is a case, not a fault");
-        assert_eq!(decoded.scale, TravelScale::VendorFallback);
-        assert_eq!(decoded.scale.step_mm(), 0.01);
-        assert!(!decoded.scale.is_from_device());
-    }
-
-    #[test]
-    fn an_answer_identical_to_the_request_is_flagged_as_an_echo() {
-        // What our board actually returned for this command: our own frame,
-        // byte for byte. With an empty payload that is indistinguishable from a
-        // genuine "no precision reported", so the decoder reports both facts and
-        // refuses to decide between them.
-        let echo = TravelPrecisionProbe::request_frame_body();
-        let decoded = TravelPrecisionProbe::decode(precision_key(), &echo)
-            .expect("an echo still parses as a frame");
-        assert!(decoded.echoed_request, "the echo was not noticed");
-        assert_eq!(decoded.raw, 0);
-        assert_eq!(decoded.scale, TravelScale::VendorFallback);
-    }
-
-    #[test]
-    fn a_precision_answer_to_another_command_is_refused() {
-        assert!(matches!(
-            TravelPrecisionProbe::decode(precision_key(), &frame(0x82, 0x01, &[10])),
-            Err(PrecisionError::Frame(
-                ResponseError::SubcommandMismatch { .. }
-            ))
-        ));
-    }
-
     // --- read_key_travel ---------------------------------------------------
 
     #[test]
@@ -534,7 +499,7 @@ mod tests {
             (KeyId::D, 200),
         ]);
         let decoded =
-            WasdTravelProbe::decode(travel_key(), &frame(0x93, 0x00, &data)).expect("well formed");
+            WasdTravelRead::decode(travel_key(), &frame(0x93, 0x00, &data)).expect("well formed");
         assert_eq!(decoded.travels.len(), 4);
         assert_eq!(decoded.travels[0].key_id, KeyId::W);
         assert_eq!(decoded.travels[0].raw, 50);
@@ -558,7 +523,7 @@ mod tests {
             (KeyId::D, 25),
         ]);
         assert!(matches!(
-            WasdTravelProbe::decode(travel_key(), &frame(0x93, 0x00, &data)),
+            WasdTravelRead::decode(travel_key(), &frame(0x93, 0x00, &data)),
             Err(KeyTravelError::UnexpectedKey {
                 index: 0,
                 expected: KeyId::W,
@@ -571,7 +536,7 @@ mod tests {
     fn a_short_answer_is_refused_rather_than_padded() {
         let data = travel_records(&[(KeyId::W, 40), (KeyId::A, 40)]);
         assert_eq!(
-            WasdTravelProbe::decode(travel_key(), &frame(0x93, 0x00, &data)),
+            WasdTravelRead::decode(travel_key(), &frame(0x93, 0x00, &data)),
             Err(KeyTravelError::WrongRecordCount { asked: 4, got: 2 })
         );
     }
@@ -586,7 +551,7 @@ mod tests {
         ]);
         data.push(0);
         assert_eq!(
-            WasdTravelProbe::decode(travel_key(), &frame(0x93, 0x00, &data)),
+            WasdTravelRead::decode(travel_key(), &frame(0x93, 0x00, &data)),
             Err(KeyTravelError::NotWholeRecords { len: 21 })
         );
     }
@@ -598,7 +563,7 @@ mod tests {
         // in this protocol's numbering, and 26, 4, 22, 7 -- their HID usages --
         // are `=`, F3, `8` and F6 on the very same board.
         assert_eq!(
-            WasdTravelProbe::request_payload(),
+            WasdTravelRead::request_payload(),
             vec![0x00, 30, 0x00, 43, 0x00, 44, 0x00, 45]
         );
     }
@@ -639,5 +604,161 @@ mod tests {
         assert!(WASD_KEY_IDS.len() <= MAX_KEYS_PER_READ);
         assert_eq!(MAX_KEYS_PER_READ, 11, "the vendor's own chunk size");
         assert!(WASD_KEY_IDS.len() * TRAVEL_RECORD <= MAX_DATA_LEN);
+    }
+    // --- the canonical capability -----------------------------------------
+
+    fn wasd_read(raws: [u16; 4]) -> WasdTravelRead {
+        WasdTravelRead {
+            travels: WASD_KEY_IDS
+                .iter()
+                .zip(raws)
+                .map(|(id, raw)| Travel { key_id: *id, raw })
+                .collect(),
+            checksum_ok: true,
+        }
+    }
+
+    #[test]
+    fn the_capability_converts_the_exchange_005_values() {
+        // The four values the official configurator wrote and this project read
+        // back, as they reach the layer above. If the conversion ever drifts,
+        // this is the test that disagrees with the hardware record.
+        let capability =
+            actuation_capability(&wasd_read([51, 102, 149, 200]), TravelScale::VendorFallback);
+        let CapValue::PerKey(keys) = &capability.value else {
+            panic!("actuation is per-key");
+        };
+        let rendered: Vec<(String, String)> = keys
+            .iter()
+            .map(|k| (k.label.clone(), k.measurement.render()))
+            .collect();
+        assert_eq!(
+            rendered,
+            vec![
+                ("W".to_string(), "0.51 mm".to_string()),
+                ("A".to_string(), "1.02 mm".to_string()),
+                ("S".to_string(), "1.49 mm".to_string()),
+                ("D".to_string(), "2.00 mm".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn the_labels_follow_the_keys_and_not_the_order_of_arrival() {
+        // W is the first key asked for, so W must be the first label. A mapping
+        // that drifted by one would put A's value under W and look entirely
+        // plausible while doing it.
+        let capability =
+            actuation_capability(&wasd_read([10, 20, 30, 40]), TravelScale::VendorFallback);
+        let CapValue::PerKey(keys) = &capability.value else {
+            panic!("per-key");
+        };
+        assert_eq!(
+            keys.iter().map(|k| k.label.as_str()).collect::<Vec<_>>(),
+            vec!["W", "A", "S", "D"]
+        );
+        assert_eq!(keys[0].measurement.render(), "0.10 mm");
+        assert_eq!(keys[3].measurement.render(), "0.40 mm");
+    }
+
+    #[test]
+    fn the_provenance_says_which_scale_applied_and_where_it_came_from() {
+        // Two cases that are not equally strong, and the difference has to
+        // survive all the way to something a person reads.
+        let fallback =
+            actuation_capability(&wasd_read([51, 51, 51, 51]), TravelScale::VendorFallback);
+        assert!(fallback.provenance.contains("fallback"));
+        assert!(fallback.provenance.contains("read_key_travel"));
+
+        let reported = actuation_capability(
+            &wasd_read([51, 51, 51, 51]),
+            TravelScale::Reported(TravelPrecision::from_micrometres(10)),
+        );
+        assert!(reported.provenance.contains("reported by the device"));
+        assert!(
+            !reported.provenance.contains("fallback"),
+            "a device-reported scale must not be described as a fallback"
+        );
+    }
+
+    #[test]
+    fn a_reported_scale_that_differs_changes_the_millimetres() {
+        // The reason the scale is a value rather than a constant: a board that
+        // reports a different precision must produce different millimetres from
+        // the same raw counts.
+        let coarse = actuation_capability(
+            &wasd_read([51, 51, 51, 51]),
+            TravelScale::Reported(TravelPrecision::from_micrometres(100)),
+        );
+        let CapValue::PerKey(keys) = &coarse.value else {
+            panic!("per-key");
+        };
+        // Compared as rendered rather than as a float, and that is the point
+        // rather than a convenience: 51 x 0.1 is 5.1000000000000005 in binary
+        // floating point, and what a person sees is the rendering. Asserting on
+        // the bits would be asserting on something no user can observe -- and
+        // would pass or fail for reasons that have nothing to do with the
+        // protocol.
+        assert_eq!(keys[0].measurement.render(), "5.1 mm");
+        assert_eq!(
+            keys[0].measurement.decimals, 1,
+            "a 0.1 mm step distinguishes one decimal, not two"
+        );
+    }
+
+    #[test]
+    fn the_decimals_come_from_the_step_rather_than_from_taste() {
+        assert_eq!(decimals_for(TravelScale::VendorFallback), 2);
+        assert_eq!(
+            decimals_for(TravelScale::Reported(TravelPrecision::from_micrometres(
+                100
+            ))),
+            1
+        );
+        assert_eq!(
+            decimals_for(TravelScale::Reported(TravelPrecision::from_micrometres(1))),
+            3
+        );
+    }
+
+    #[test]
+    fn the_capability_is_verified_and_names_the_command() {
+        let capability =
+            actuation_capability(&wasd_read([51, 51, 51, 51]), TravelScale::VendorFallback);
+        assert_eq!(capability.id, pcaps::CapId::HeActuation);
+        assert_eq!(capability.confidence, pcaps::Confidence::Verified);
+        assert_eq!(
+            capability.origin,
+            pcaps::Origin::VerifiedOnHardware {
+                command: "read_key_travel"
+            }
+        );
+    }
+
+    #[test]
+    fn no_protocol_key_id_reaches_the_capability() {
+        // The boundary. A vendor key id above this line would need the vendor's
+        // key table to render, which is the coupling this layer exists to stop
+        // -- and conflating two key-number spaces has already cost this project
+        // one hardware exchange.
+        let capability =
+            actuation_capability(&wasd_read([51, 102, 149, 200]), TravelScale::VendorFallback);
+        let CapValue::PerKey(keys) = &capability.value else {
+            panic!("per-key");
+        };
+        for key in keys {
+            assert!(
+                key.label.parse::<u16>().is_err(),
+                "a raw key id leaked out as a label: {}",
+                key.label
+            );
+        }
+        let rendered = format!("{capability:?}");
+        for id in WASD_KEY_IDS {
+            assert!(
+                !rendered.contains(&format!("KeyId({})", id.raw())),
+                "a KeyId reached the capability value: {rendered}"
+            );
+        }
     }
 }

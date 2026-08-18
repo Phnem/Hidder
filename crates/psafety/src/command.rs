@@ -215,18 +215,33 @@ mod tests {
     fn a_command_timing_never_leaks_into_a_sibling() {
         // The whole reason command timing exists: one measured command must not
         // speak for the next one in the same class.
-        for timing in COMMAND_TIMINGS {
-            for id in SafeCommandId::all() {
-                if id.family() != timing.family || id.name() == timing.command {
-                    continue;
-                }
-                let cadence = cadence_for(id.family(), Some(id.name()), id.class());
+        //
+        // Stated as "a command with no measurement of its own never resolves to
+        // a Command cadence", which is the property that actually matters. The
+        // earlier phrasing walked the sibling pairs instead, and that stopped
+        // being a test of anything the moment a second command earned its own
+        // number: two measured siblings each resolving to their own is the
+        // correct outcome, and the old loop called it a leak.
+        for id in SafeCommandId::all() {
+            let has_own = COMMAND_TIMINGS
+                .iter()
+                .any(|timing| timing.family == id.family() && timing.command == id.name());
+            let cadence = cadence_for(id.family(), Some(id.name()), id.class());
+            if has_own {
+                let cadence = cadence.expect("a command with its own timing has a cadence");
+                assert_eq!(
+                    cadence.source,
+                    crate::class::CadenceSource::Command,
+                    "{}::{} has its own measurement and did not use it",
+                    id.family(),
+                    id.name()
+                );
+            } else {
                 assert!(
                     cadence.is_none_or(|c| c.source == crate::class::CadenceSource::Class),
-                    "{}::{} inherited {}'s own measurement",
+                    "{}::{} has no measurement of its own and inherited a command-level one",
                     id.family(),
-                    id.name(),
-                    timing.command
+                    id.name()
                 );
             }
         }

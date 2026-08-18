@@ -2382,6 +2382,8 @@ dependencies = [
  "pprofile",
  "pproto",
  "pregistry",
+ "psafety",
+ "ptransport",
  "serde",
 ]
 
@@ -2493,6 +2495,8 @@ name = "pjournal"
 version = "0.0.0"
 dependencies = [
  "pcaps",
+ "psafety",
+ "ptransport",
  "serde",
 ]
 

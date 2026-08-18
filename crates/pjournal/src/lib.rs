@@ -18,3 +18,7 @@
 //! meant to be readable by the user and attachable to a bug report, and those
 //! two facts together mean payloads must never be in it. There is a test for
 //! this, not just this paragraph (spec.md § Test seams).
+
+pub mod log;
+
+pub use log::JournalLog;

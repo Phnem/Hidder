@@ -93,37 +93,59 @@ fn the_product_entry_for_our_board_stays_empty() {
 }
 
 #[test]
-fn the_aula_family_has_exactly_one_earned_command() {
-    // One command, verified on our own hardware, and read-only. This is the
-    // whole of what TICKET-12 earned, and the assertion is here so that the
-    // second one has to be added deliberately.
-    let earned: Vec<_> = SafeCommandId::all()
+fn the_aula_family_has_exactly_the_two_commands_it_earned() {
+    // Two commands, both verified on our own hardware, both read-only. This is
+    // the whole of what TICKET-12 earned, and the assertion is exact so that a
+    // third has to be added deliberately and visibly.
+    //
+    // `read_model_id` was earned by answering correctly and repeatably.
+    // `read_key_travel` was earned by a stronger check that only became
+    // available once there was something outside this project to compare
+    // against: four different values set by the official configurator, read
+    // back exactly (exchange 005).
+    let mut earned: Vec<_> = SafeCommandId::all()
         .filter(|id| id.family() == "aula-bytech")
         .map(|id| (id.name(), id.class()))
         .collect();
-    assert_eq!(earned, [("read_model_id", OpcodeClass::SafeRead)]);
+    earned.sort_unstable();
+    assert_eq!(
+        earned,
+        [
+            ("read_key_travel", OpcodeClass::SafeRead),
+            ("read_model_id", OpcodeClass::SafeRead),
+        ]
+    );
 }
 
 #[test]
-fn the_commands_awaiting_a_first_exchange_are_the_ones_the_plan_names() {
-    // An empty probe surface is the steady state, and this list should return to
-    // empty. While it is not empty, each entry is a command deliberately
-    // mid-bootstrap: recovered from a vendor artifact, never sent from here,
-    // reachable only through a gate that costs one confirmation per send.
+fn the_precision_read_has_no_command_id_of_any_kind() {
+    // It was sent twice and the board returned our own frame both times, which
+    // is what an unsupported command looks like on boards in this class. It
+    // stays in the ACL as `unknown` so the knowledge is not lost, and `unknown`
+    // is the class the generator emits nothing for -- so there is no value of
+    // any type in this program that means "read_travel_precision", through
+    // either door.
+    assert!(SafeCommandId::find("aula-bytech", "read_travel_precision").is_none());
+    assert!(psafety::ProbeCommandId::find("aula-bytech", "read_travel_precision").is_none());
+}
+
+#[test]
+fn nothing_is_awaiting_a_first_exchange() {
+    // An empty probe surface is the steady state, and as of the close of
+    // TICKET-12 the surface is empty again: both commands that passed through
+    // the bootstrap door have left it, one promoted and one recorded as
+    // unsupported.
     //
-    // Asserted as an exact set rather than as "non-empty", so a third entry
-    // appearing has to be a deliberate edit that shows up in review.
-    let mut probes: Vec<_> = psafety::ProbeCommandId::all()
+    // Asserted as empty rather than as a list, because a non-empty probe surface
+    // is a temporary condition by construction. An entry appearing here has to
+    // be a deliberate edit to the ACL that shows up in review, and it should be
+    // accompanied by a plan for how it leaves again.
+    let probes: Vec<_> = psafety::ProbeCommandId::all()
         .map(|id| (id.family(), id.name()))
         .collect();
-    probes.sort_unstable();
-    assert_eq!(
-        probes,
-        [
-            ("aula-bytech", "read_key_travel"),
-            ("aula-bytech", "read_travel_precision"),
-        ],
-        "the probe surface changed without the plan saying so"
+    assert!(
+        probes.is_empty(),
+        "something is mid-bootstrap without the plan saying so: {probes:?}"
     );
 }
 

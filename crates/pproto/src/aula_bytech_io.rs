@@ -55,14 +55,26 @@ pub enum Verdict {
 ///
 /// Borrows the channel rather than owning it, because the channel's lifetime is
 /// the caller's business: a probe closes it afterwards, a session keeps it.
-pub struct Exchange<'a, C: ReportChannel> {
-    channel: &'a mut C,
+pub struct Exchange<C: ReportChannel> {
+    channel: C,
     timeout: Duration,
     transcript: Transcript,
 }
 
-impl<'a, C: ReportChannel> Exchange<'a, C> {
-    pub fn new(channel: &'a mut C, timeout: Duration) -> Self {
+impl<C: ReportChannel> Exchange<C> {
+    /// Takes the channel by value, which covers both ways this is used.
+    ///
+    /// A long-lived session owns its channel outright, so the gate that owns
+    /// this owns the whole path down to the device and there is no borrow to
+    /// thread through it. A short-lived tool passes `&mut channel` instead and
+    /// keeps the channel to read a transcript off afterwards -- that still works
+    /// unchanged, because `&mut C` is itself a [`ReportChannel`].
+    ///
+    /// The distinction matters for rate limiting rather than for style: a gate
+    /// that had to be rebuilt around a borrowed channel for every operation
+    /// would start each one with an empty cadence history, and the limiter would
+    /// permit anything.
+    pub fn new(channel: C, timeout: Duration) -> Self {
         Self {
             channel,
             timeout,
@@ -127,7 +139,7 @@ impl<'a, C: ReportChannel> Exchange<'a, C> {
     }
 }
 
-impl<C: ReportChannel> ProbeSink for Exchange<'_, C> {
+impl<C: ReportChannel> ProbeSink for Exchange<C> {
     fn dispatch_probe(
         &mut self,
         _device: DeviceId,
@@ -137,7 +149,7 @@ impl<C: ReportChannel> ProbeSink for Exchange<'_, C> {
     }
 }
 
-impl<C: ReportChannel> CommandSink for Exchange<'_, C> {
+impl<C: ReportChannel> CommandSink for Exchange<C> {
     fn dispatch(
         &mut self,
         _device: DeviceId,

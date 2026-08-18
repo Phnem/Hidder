@@ -37,6 +37,12 @@ settle_after_ms   = 0
 evidence          = "hardware"
 note              = "Not the device's minimum interval -- nobody measured one, and looking for one was explicitly out of scope. This is a ceiling Peripheral chooses and has exercised: 5 exchanges at >= 1000 ms on our own HERO 84 HE, every answer structurally valid, every answer the same value, every response checksum matching, no stall, 2.5-2.8 ms per exchange (docs/hardware/aula-bytech-exchange-002-timing.md). A model id is read once on connect, so a conservative ceiling costs nothing."
 
+[timing.command.read_key_travel]
+min_gap_before_ms = 1000
+settle_after_ms   = 0
+evidence          = "hardware"
+note              = "Same shape and same reasoning as read_model_id's, and measured the same way: 5 exchanges at >= 1000 ms on our own HERO 84 HE, every answer structurally valid, all five carrying the same four values, every response checksum matching, no stall, 2.4-2.8 ms per exchange (docs/hardware/aula-bytech-exchange-005-actuation-verified.md). Not the device's minimum interval -- nobody measured one. Actuation is read on connect and after a change, so a conservative ceiling costs nothing. The round-trip times matching read_model_id's is the first sign that figure belongs to the transport rather than to one command; it is still not enough to write into [timing.class.safe_read], which would claim it for commands nobody has sent."
+
 [[command]]
 group      = 0x82
 subcommand = 0x01
@@ -64,20 +70,32 @@ is the weakest one and is meant to be: "we saw no effect" is not "there is no \
 effect".
 """
 
-# --- awaiting a first exchange -----------------------------------------------
+# --- what the bootstrap door produced ----------------------------------------
 #
-# Both entries below are `bootstrap_probe`: recovered from the vendor artifact
-# (docs/prior-art/aula-bytech-actuation.md), never sent from here. Each costs one
-# explicit confirmation and yields exactly one send, and neither can be reached
-# by the production gate. They become `safe_read` only after an exchange, a
-# comparison against the vendor's own configurator, and a human editing this
-# file.
+# Both entries below arrived as `bootstrap_probe` on 2026-08-18, recovered from
+# the vendor artifact and never sent from here. Both have now been through that
+# door once, and they left it in opposite directions -- which is the outcome the
+# class was designed to allow, rather than an inconsistency.
+#
+# `read_key_travel` answered, was checked against four values a person set in the
+# official configurator, and is a `safe_read` below.
+#
+# `read_travel_precision` returned our own frame byte for byte. That is what an
+# unsupported command looks like on boards in this class, and with an empty
+# payload it cannot be told apart from a genuine "nothing to report". So it is
+# `unknown`: a class the generator refuses to emit any command id for. It keeps
+# its note because the knowledge is worth having and the next person should not
+# have to rediscover it -- but nothing in the program can send it, and there is
+# no value of any type that means "this command".
+#
+# `ProbeCommandId` is consequently empty again, which is the state to prefer: it
+# means nothing is awaiting a first exchange.
 
 [[command]]
 group      = 0x82
 subcommand = 0x08
 name       = "read_travel_precision"
-class      = "bootstrap_probe"
+class      = "unknown"
 evidence   = "vendor_artifact"
 note       = """
 One byte: the micrometres one travel LSB represents. The vendor reads it once \
@@ -95,8 +113,8 @@ length to 1 rather than trusting the frame's own length byte.
 group      = 0x93
 subcommand = 0x00
 name       = "read_key_travel"
-class      = "bootstrap_probe"
-evidence   = "vendor_artifact"
+class      = "safe_read"
+evidence   = "hardware"
 note       = """
 Per-key actuation point. Records of five bytes: key id u16 big-endian, travel \
 u16 big-endian, one pad byte. Travel is in units of read_travel_precision \
@@ -119,8 +137,26 @@ per OS mode, not simply per key.
 
 The vendor chunks these so the response fits one frame: eleven keys per \
 exchange. Our codec is single-frame by choice, so a request here must name at \
-most eleven keys. The bootstrap probe names four -- W, A, S, D.
+most eleven keys. The production read names four -- W, A, S, D.
 
 Write twin is group 0x13. KNOWN WRITE, NOT IMPLEMENTED, and it will not be \
 given any command id.
+
+Was `bootstrap_probe` on `vendor_artifact` evidence until 2026-08-18. It is now \
+`safe_read` on `hardware` because the answer was checked against something \
+outside this project rather than against our own belief about it: the official \
+AULA configurator wrote four DIFFERENT actuation points -- 0.51, 1.02, 1.49 and \
+2.00 mm -- was closed, and one read here returned raw 51, 102, 149 and 200 in \
+that order. Exact on all four. Four distinct values are what rules out a \
+decoder that reports one record four times, which every earlier exchange left \
+open because every earlier exchange returned a uniform value \
+(docs/hardware/aula-bytech-exchange-005-actuation-verified.md). Promoted by \
+hand after review, which is the only way this transition happens -- nothing in \
+the program rewrites this file.
+
+Read-only on the evidence available: it is the vendor's own read path for its \
+trigger page, its write twin is a different group, ten reads here changed \
+nothing observable, and the values it returns are the ones another program \
+wrote. That last clause is the strongest read-only evidence this project has \
+for any command, and it is still not proof that there is no side effect.
 """

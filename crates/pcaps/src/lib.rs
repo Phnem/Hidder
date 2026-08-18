@@ -46,7 +46,7 @@
 /// separately. Collapsing them is what produces a matcher that is confidently
 /// wrong (TICKET-22: a receiver and the mouse behind it are byte-identical in
 /// structure and different products).
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default, serde::Serialize)]
 pub enum Confidence {
     /// Nothing matched, or nothing was recorded. The default everywhere.
     #[default]
@@ -117,6 +117,220 @@ impl std::fmt::Display for FamilyConfidence {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(self.as_str())
     }
+}
+
+// --- the capability vocabulary ----------------------------------------------
+
+/// The canonical name of something a device can be asked about.
+///
+/// A closed enum, not a string. The layers above this one -- including the UI --
+/// must not be able to invent a capability name, because a capability that does
+/// not exist should fail to compile rather than render as an empty panel.
+///
+/// One variant today. That is not a placeholder for a list this crate is waiting
+/// to grow: each variant is a promise that something can produce a value for it,
+/// and the way this set expands is by an engine earning the right to read
+/// something (spec.md FR1).
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, serde::Serialize)]
+pub enum CapId {
+    /// Per-key actuation point: the depth at which a key first registers, as an
+    /// absolute distance from the top of travel.
+    ///
+    /// Deliberately not "how far the key is pressed". Four different numbers
+    /// answer to that phrase on a Hall-effect board and only this one is a
+    /// setting: the two rapid-trigger sensitivities are deltas from a moving
+    /// reference, the calibration extremes are raw sensor readings, and the live
+    /// key position is an observation. Keeping them apart in the vocabulary is
+    /// what stops them being conflated in a UI
+    /// (docs/prior-art/ember-actuation-model.md).
+    HeActuation,
+}
+
+impl CapId {
+    /// The stable string form, for the IPC boundary and for the journal.
+    ///
+    /// Stable in the sense that matters: this string appears in a user-visible
+    /// journal and in saved profiles, so changing one is a compatibility break
+    /// rather than a rename.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            CapId::HeActuation => "he.actuation",
+        }
+    }
+
+    pub fn all() -> &'static [CapId] {
+        &[CapId::HeActuation]
+    }
+}
+
+impl std::fmt::Display for CapId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+/// Where knowledge about a capability came from.
+///
+/// Carried with every value, because the difference between "we read this off
+/// the board" and "the vendor's software implies boards like this have one" is
+/// the difference between a control that is safe to show and one that is not
+/// (spec.md FR1, architecture/INITIAL_REVIEW.md section 3).
+///
+/// Note which origin does **not** exist: "the device answered". A device
+/// answering is not evidence -- an unsupported command commonly replays the
+/// previous reply -- so an answer becomes [`Origin::VerifiedOnHardware`] only
+/// once something checked that it means what it is believed to mean, and the
+/// origin records which command did the earning.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, serde::Serialize)]
+pub enum Origin {
+    /// Read from a device by a named command whose meaning was verified against
+    /// something outside this project.
+    VerifiedOnHardware { command: &'static str },
+    /// Recovered from a vendor artifact -- a configurator bundle, firmware, a
+    /// capture -- and never confirmed against this device.
+    VendorArtifact,
+    /// Inferred. Never sufficient to enable a control that writes.
+    Assumed,
+}
+
+impl Origin {
+    /// Whether a value from this origin may be presented as a fact about the
+    /// device rather than as an expectation.
+    pub fn is_from_hardware(self) -> bool {
+        matches!(self, Origin::VerifiedOnHardware { .. })
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Origin::VerifiedOnHardware { .. } => "verified on hardware",
+            Origin::VendorArtifact => "from a vendor artifact",
+            Origin::Assumed => "assumed",
+        }
+    }
+}
+
+/// The unit a measurement is in, spelled rather than implied.
+///
+/// The alternative -- millimetres by convention -- is how a raw device count
+/// reaches a UI label that says "mm" without anything having converted it. This
+/// project has already had a scale go unexamined for want of a unit being
+/// written down.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, serde::Serialize)]
+pub enum Unit {
+    Millimetres,
+}
+
+impl Unit {
+    pub fn suffix(self) -> &'static str {
+        match self {
+            Unit::Millimetres => "mm",
+        }
+    }
+}
+
+/// A number with its unit and the resolution it was reported at.
+#[derive(Clone, Copy, PartialEq, Debug, serde::Serialize)]
+pub struct Measurement {
+    pub value: f64,
+    pub unit: Unit,
+    /// How many decimals are meaningful, derived from the device's own step
+    /// rather than chosen for looks. Showing more digits than the device can
+    /// distinguish invents precision.
+    pub decimals: u8,
+}
+
+impl Measurement {
+    pub fn new(value: f64, unit: Unit, decimals: u8) -> Self {
+        Self {
+            value,
+            unit,
+            decimals,
+        }
+    }
+
+    /// Rendered the way it should be shown, unit included.
+    pub fn render(&self) -> String {
+        format!(
+            "{:.*} {}",
+            usize::from(self.decimals),
+            self.value,
+            self.unit.suffix()
+        )
+    }
+}
+
+/// One key's value, with the key named in terms the UI can use.
+///
+/// `label` rather than a protocol key id, because which number identifies a key
+/// is a protocol detail and this crate sits above the protocol. A UI handed a
+/// vendor key id would need the vendor's key table to render it, which is
+/// exactly the coupling the capability layer exists to prevent -- and this
+/// project has already shipped one defect from treating two key-numbering
+/// spaces as interchangeable.
+#[derive(Clone, PartialEq, Debug, serde::Serialize)]
+pub struct KeyMeasurement {
+    pub label: String,
+    pub measurement: Measurement,
+}
+
+/// How a capability's value is shaped.
+///
+/// All four exist from the start and three have no producer yet. That is
+/// deliberate, and this crate's header says why: retrofitting a stream onto a
+/// scalar-only value type breaks every engine at once, and the shapes are
+/// already known -- DKS and SOCD are compound, a keymap is per-key, analog
+/// travel is a stream (TICKET-15).
+///
+/// A variant with no producer is not dead code here. It is the shape of a hole,
+/// held open so that filling it is an addition rather than a migration.
+#[derive(Clone, PartialEq, Debug, serde::Serialize)]
+pub enum CapValue {
+    /// One number for the whole device.
+    Scalar(Measurement),
+    /// One number per key.
+    PerKey(Vec<KeyMeasurement>),
+    /// Several named numbers that only mean anything together.
+    Compound(Vec<(&'static str, Measurement)>),
+    /// A continuous feed. Carries no samples: a stream's values arrive on their
+    /// own channel, and a snapshot of one would be a different thing wearing its
+    /// name (TICKET-15).
+    Stream { unit: Unit },
+}
+
+/// A capability, its value, and where the knowledge came from.
+#[derive(Clone, PartialEq, Debug, serde::Serialize)]
+pub struct Capability {
+    pub id: CapId,
+    pub origin: Origin,
+    pub confidence: Confidence,
+    pub value: CapValue,
+    /// Why this value means what it says, in one line a person can read.
+    ///
+    /// Not a debug string. The Journal screen has to answer "why is this control
+    /// enabled" without the reader opening the source, and a capability that
+    /// cannot explain itself is one nobody can audit (spec.md FR3).
+    pub provenance: String,
+}
+
+/// What is known about a capability that has no value.
+///
+/// Separate from `Option<Capability>` on purpose. "Not read yet", "this board
+/// does not have it" and "we have no way to ask" are three different states, and
+/// a UI must not render them alike -- collapsing them is how a missing feature
+/// and a missing implementation become indistinguishable (spec.md, domain
+/// rules).
+#[derive(Clone, PartialEq, Eq, Debug, serde::Serialize)]
+pub enum Unavailable {
+    /// Readable, not read yet.
+    NotRead,
+    /// This project has no verified command for it on this family. Says nothing
+    /// about whether the hardware has the feature.
+    NoVerifiedCommand,
+    /// Established, with evidence, that this device does not have it.
+    ///
+    /// Needs the same weight of evidence as a positive claim: an opcode going
+    /// unanswered proves only that this firmware did not answer it.
+    NotPresent { evidence: String },
 }
 
 #[cfg(test)]

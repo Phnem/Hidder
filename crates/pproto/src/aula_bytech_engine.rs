@@ -36,6 +36,7 @@ use psafety::{Clock, CommandSink, JournalSink, ReadError, SafetyGate};
 use ptransport::DeviceId;
 
 use crate::aula_bytech::{ModelIdError, ModelIdRead, VendorModelId};
+use crate::aula_bytech_he::{KeyTravelError, TravelScale, WasdTravelRead, actuation_capability};
 
 /// A HID top-level collection identified the way a protocol engine thinks about
 /// it: by what it is for, not by which numbers it happens to use.
@@ -128,6 +129,58 @@ impl AulaBytechEngine {
     {
         gate.read::<ModelIdRead>(device, confirmation)
             .map(|read| read.model_id)
+    }
+
+    /// Reads the actuation point of W, A, S and D as the canonical
+    /// `he.actuation` capability.
+    ///
+    /// Same shape as [`AulaBytechEngine::read_model_id`] and for the same
+    /// reasons: it names a response type, the gate turns that into an authorised
+    /// command, and no byte of `0x93` passes through this function.
+    ///
+    /// # The scale
+    ///
+    /// `scale` is a parameter rather than a constant because a travel value is a
+    /// count of steps whose size the device owns. On our board the device
+    /// reports none and [`TravelScale::VendorFallback`] applies; on a board that
+    /// answers `read_travel_precision` the caller passes what it answered. The
+    /// value carries which of the two applied, so a reader is never left to
+    /// assume.
+    ///
+    /// # What it does not do
+    ///
+    /// It reads four named keys, not the board. The vendor chunks these at
+    /// eleven keys per exchange, so a full 84-key read is eight exchanges and
+    /// needs multi-packet reassembly this codec deliberately does not have --
+    /// it refuses to chunk silently rather than writing twice without being
+    /// asked.
+    pub fn read_actuation<S, J, C>(
+        gate: &mut SafetyGate<S, J, C>,
+        device: DeviceId,
+        scale: TravelScale,
+        confirmation: Option<psafety::rate::UserConfirmation>,
+    ) -> Result<pcaps::Capability, ReadError<KeyTravelError>>
+    where
+        S: CommandSink,
+        J: JournalSink,
+        C: Clock,
+    {
+        gate.read::<WasdTravelRead>(device, confirmation)
+            .map(|read| actuation_capability(&read, scale))
+    }
+
+    /// The scale this board resolves to, and why.
+    ///
+    /// A named function rather than a constant so that the reason travels with
+    /// the value. Our HERO 84 HE answered `read_travel_precision` with our own
+    /// frame, which is indistinguishable from reporting nothing, so the vendor's
+    /// documented fallback applies -- and exchange 005 confirmed it against four
+    /// values a person set in the official configurator.
+    ///
+    /// Not a family constant. Another `bytech` board may report a precision of
+    /// its own, and [`TravelScale`] stays a two-case type so that it can.
+    pub fn travel_scale() -> TravelScale {
+        TravelScale::VendorFallback
     }
 }
 

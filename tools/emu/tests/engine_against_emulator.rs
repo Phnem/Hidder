@@ -21,12 +21,10 @@ use std::time::Duration;
 use pcaps::{Confidence, FamilyConfidence};
 use pemu::{Aula84He, EmulatedChannel, FakeFirmware};
 use pproto::aula_bytech_engine::AulaBytechEngine;
-use pproto::aula_bytech_he::{KeyId, TravelScale, WASD_KEY_IDS, WasdTravelProbe};
+use pproto::aula_bytech_he::{KeyId, WASD_KEY_IDS, WasdTravelRead};
 use pproto::aula_bytech_io::{Exchange, Verdict};
 use psafety::journal::{JournalEntry, JournalSink, Outcome, Refusal};
-use psafety::probe::{ProbeError, ProbeGate};
-use psafety::rate::UserConfirmation;
-use psafety::{Clock, ReadError, SafetyGate};
+use psafety::{Clock, CommandResponse, ReadError, SafetyGate};
 use ptransport::DeviceId;
 
 const TIMEOUT: Duration = Duration::from_millis(50);
@@ -205,8 +203,7 @@ fn an_unsupported_command_replaying_the_previous_answer_is_refused() {
 
     // Now the real decoder, handed exactly those bytes as if they answered the
     // actuation read.
-    use psafety::probe::ProbeResponse;
-    let rejection = WasdTravelProbe::decode(key_travel_command(), &previous)
+    let rejection = WasdTravelRead::decode(key_travel_command(), &previous)
         .expect_err("a replayed model id is not an actuation reading");
     assert!(
         format!("{rejection}").contains("frame"),
@@ -298,30 +295,114 @@ fn unsolicited_event_reports_are_skipped_rather_than_decoded() {
 // --- the actuation probe, against the fixture -------------------------------
 
 #[test]
-fn the_actuation_probe_decodes_the_recorded_wasd_answer() {
-    let mut channel = EmulatedChannel::new(Aula84He::observed());
-    let mut exchange = Exchange::new(&mut channel, TIMEOUT);
-    let gate = ProbeGate::new(
-        &mut exchange,
+fn the_engine_reads_he_actuation_through_the_production_gate() {
+    // What TICKET-12 closed with, exercised without hardware. No probe gate, no
+    // confirmation, no bootstrap type -- an ordinary capability read, the same
+    // call the UI will make.
+    let mut gate = SafetyGate::new(
+        Exchange::new(EmulatedChannel::new(Aula84He::observed()), TIMEOUT),
         CollectingJournal::default(),
         TestClock::default(),
     );
+    gate.identify_device(device(), AulaBytechEngine::family(), verified());
 
-    let probe = gate
-        .probe::<WasdTravelProbe>(
-            device(),
-            AulaBytechEngine::family(),
-            verified(),
-            UserConfirmation::given(),
-        )
-        .expect("the recorded answer decodes");
+    let capability = AulaBytechEngine::read_actuation(
+        &mut gate,
+        device(),
+        AulaBytechEngine::travel_scale(),
+        None,
+    )
+    .expect("the recorded answer decodes");
 
-    assert_eq!(probe.travels.len(), 4);
-    for (travel, expected) in probe.travels.iter().zip(WASD_KEY_IDS) {
-        assert_eq!(travel.key_id, expected);
-        assert_eq!(travel.raw, 40, "what the board reported on 2026-08-18");
-        assert_eq!(travel.to_millimetres(TravelScale::VendorFallback), 0.40);
+    assert_eq!(capability.id, pcaps::CapId::HeActuation);
+    assert_eq!(capability.confidence, Confidence::Verified);
+    assert_eq!(
+        capability.origin,
+        pcaps::Origin::VerifiedOnHardware {
+            command: "read_key_travel"
+        }
+    );
+
+    let pcaps::CapValue::PerKey(keys) = &capability.value else {
+        panic!("actuation is a per-key value: {:?}", capability.value);
+    };
+    let labelled: Vec<(&str, String)> = keys
+        .iter()
+        .map(|k| (k.label.as_str(), k.measurement.render()))
+        .collect();
+    // The fixture holds what the board reported on 2026-08-18, before the
+    // configurator was used again -- 0.40 mm across the four keys.
+    assert_eq!(
+        labelled,
+        vec![
+            ("W", "0.40 mm".to_string()),
+            ("A", "0.40 mm".to_string()),
+            ("S", "0.40 mm".to_string()),
+            ("D", "0.40 mm".to_string()),
+        ]
+    );
+}
+
+#[test]
+fn a_capability_carries_no_protocol_detail_upwards() {
+    // The boundary, asserted rather than trusted. Above `pcaps` there are
+    // labelled keys and millimetres; a vendor key id or a raw count reaching a
+    // UI is how a raw number ends up rendered next to the letters "mm".
+    let mut gate = SafetyGate::new(
+        Exchange::new(EmulatedChannel::new(Aula84He::observed()), TIMEOUT),
+        CollectingJournal::default(),
+        TestClock::default(),
+    );
+    gate.identify_device(device(), AulaBytechEngine::family(), verified());
+    let capability = AulaBytechEngine::read_actuation(
+        &mut gate,
+        device(),
+        AulaBytechEngine::travel_scale(),
+        None,
+    )
+    .expect("a read");
+
+    let pcaps::CapValue::PerKey(keys) = &capability.value else {
+        panic!("per-key");
+    };
+    for key in keys {
+        assert!(
+            key.label.parse::<u16>().is_err(),
+            "a key id reached the capability layer as a label: {}",
+            key.label
+        );
+        assert_eq!(key.measurement.unit, pcaps::Unit::Millimetres);
+        assert_eq!(
+            key.measurement.decimals, 2,
+            "two decimals is what a 0.01 mm step can distinguish"
+        );
     }
+    assert!(
+        capability.provenance.contains("read_key_travel"),
+        "the capability must be able to say what earned it: {}",
+        capability.provenance
+    );
+}
+
+#[test]
+fn the_actuation_read_is_paced_by_its_own_measured_cadence() {
+    // read_key_travel earned a 1000 ms ceiling of its own in exchange 005. Two
+    // reads inside that window means one write, not two.
+    let mut gate = SafetyGate::new(
+        Exchange::new(EmulatedChannel::new(Aula84He::observed()), TIMEOUT),
+        CollectingJournal::default(),
+        TestClock::default(),
+    );
+    gate.identify_device(device(), AulaBytechEngine::family(), verified());
+    let scale = AulaBytechEngine::travel_scale();
+
+    AulaBytechEngine::read_actuation(&mut gate, device(), scale, None).expect("the first read");
+    let error = AulaBytechEngine::read_actuation(&mut gate, device(), scale, None)
+        .expect_err("the second read is too soon");
+    assert!(matches!(
+        error,
+        ReadError::Refused(Refusal::RateLimited { .. })
+    ));
 }
 
 #[test]
@@ -342,8 +423,7 @@ fn a_reordered_answer_is_refused_rather_than_misattributed() {
         .expect("an answer")
         .to_vec();
 
-    use psafety::probe::ProbeResponse;
-    let rejection = WasdTravelProbe::decode(key_travel_command(), &reversed)
+    let rejection = WasdTravelRead::decode(key_travel_command(), &reversed)
         .expect_err("D's value must not be reported as W's");
     let text = format!("{rejection}");
     assert!(
@@ -429,29 +509,16 @@ fn every_exchange_is_journalled() {
     assert_eq!(entries[0].payload_len, 6);
 }
 
-/// The probe path refuses a probe whose family does not match, against a fake
-/// device just as against a real one.
+/// The bootstrap door is closed, and the test that used to drive a probe
+/// through it now asserts that there is nothing left to drive.
 #[test]
-fn a_probe_for_the_wrong_family_never_reaches_the_fake_device() {
-    let mut channel = EmulatedChannel::new(Aula84He::observed());
-    let mut exchange = Exchange::new(&mut channel, TIMEOUT);
-    let gate = ProbeGate::new(
-        &mut exchange,
-        CollectingJournal::default(),
-        TestClock::default(),
-    );
-    let error = gate
-        .probe::<WasdTravelProbe>(
-            device(),
-            "royuan-gen2",
-            verified(),
-            UserConfirmation::given(),
-        )
-        .expect_err("wrong family");
-    assert!(matches!(
-        error,
-        ProbeError::Refused(Refusal::WrongFamily { .. })
-    ));
-    drop(exchange);
-    assert!(channel.log().is_empty());
+fn nothing_is_reachable_through_the_bootstrap_door() {
+    // Both actuation commands left the probe class when TICKET-12 closed: one
+    // promoted, one recorded as unsupported. An empty probe surface is the
+    // steady state, and a fake device is the right place to notice it filling
+    // up again.
+    let probes: Vec<_> = psafety::ProbeCommandId::all()
+        .map(|id| (id.family(), id.name()))
+        .collect();
+    assert!(probes.is_empty(), "something is mid-bootstrap: {probes:?}");
 }

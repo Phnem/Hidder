@@ -166,6 +166,21 @@ impl Hid {
     /// returned: on a machine full of HID devices, some collections are always
     /// unopenable, and that is the observation being collected, not an error
     /// that should abort the run.
+    /// The report shape of a collection, read from its own descriptor.
+    ///
+    /// Convenience over [`Hid::inspect`] plus [`crate::shape::parse`], for the
+    /// common case where a caller wants the numbers rather than the bytes. A
+    /// collection that cannot be opened, or whose descriptor the backend will
+    /// not produce, yields an empty shape -- which callers must treat as "not
+    /// known", never as "no reports".
+    pub fn report_shape(&self, collection: &HidCollection) -> crate::shape::ReportShape {
+        self.inspect(collection)
+            .report_descriptor
+            .as_deref()
+            .map(crate::shape::parse)
+            .unwrap_or_default()
+    }
+
     pub fn inspect(&self, collection: &HidCollection) -> CollectionAccess {
         let path = match std::ffi::CString::new(collection.path.as_str()) {
             Ok(path) => path,

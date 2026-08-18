@@ -13,6 +13,8 @@ authors.workspace = true
 # see the note in crates/psafety/Cargo.toml.
 [dependencies]
 pcaps.workspace = true
+psafety.workspace = true
+ptransport.workspace = true
 serde.workspace = true
 
 [lints]

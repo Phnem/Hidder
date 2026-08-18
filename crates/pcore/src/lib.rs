@@ -22,3 +22,8 @@
 //! instance, has three possible sources depending on the device -- a standard HID
 //! usage, a vendor opcode, or a query to a wireless receiver rather than to the
 //! device itself -- and the UI must never learn which one applied.
+
+pub mod observe;
+pub mod session;
+
+pub use session::{CoreError, DeviceSession, DiscoveredDevice, Peripheral};

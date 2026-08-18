@@ -166,6 +166,17 @@ pub trait JournalSink {
     fn record(&mut self, entry: JournalEntry);
 }
 
+/// Forwarding impl, so a caller can lend a journal to a gate and still read it
+/// afterwards.
+///
+/// Lives here rather than beside the implementation, because the orphan rule
+/// puts it here: the trait is this crate's, and `&mut J` is nobody's.
+impl<J: JournalSink + ?Sized> JournalSink for &mut J {
+    fn record(&mut self, entry: JournalEntry) {
+        (**self).record(entry);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::expect_used, clippy::panic, clippy::unwrap_used)]

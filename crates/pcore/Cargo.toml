@@ -11,6 +11,8 @@ authors.workspace = true
 # DAG position: top of the library stack, below `app` only. Depends downward on
 # the feature layers; must never depend on app.
 [dependencies]
+ptransport.workspace = true
+psafety.workspace = true
 pproto.workspace = true
 pprofile.workspace = true
 plearn.workspace = true
