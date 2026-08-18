@@ -25,7 +25,7 @@ use std::time::{Duration, Instant};
 
 use psafety::probe::{AuthorizedProbe, ProbeSink};
 use psafety::{AuthorizedCommand, CommandSink};
-use ptransport::{DeviceId, ProbeChannel, ReceivedReport, TransportError};
+use ptransport::{DeviceId, ReceivedReport, ReportChannel, TransportError};
 
 use crate::aula_bytech;
 
@@ -55,14 +55,14 @@ pub enum Verdict {
 ///
 /// Borrows the channel rather than owning it, because the channel's lifetime is
 /// the caller's business: a probe closes it afterwards, a session keeps it.
-pub struct Exchange<'a> {
-    channel: &'a mut ProbeChannel,
+pub struct Exchange<'a, C: ReportChannel> {
+    channel: &'a mut C,
     timeout: Duration,
     transcript: Transcript,
 }
 
-impl<'a> Exchange<'a> {
-    pub fn new(channel: &'a mut ProbeChannel, timeout: Duration) -> Self {
+impl<'a, C: ReportChannel> Exchange<'a, C> {
+    pub fn new(channel: &'a mut C, timeout: Duration) -> Self {
         Self {
             channel,
             timeout,
@@ -127,7 +127,7 @@ impl<'a> Exchange<'a> {
     }
 }
 
-impl ProbeSink for Exchange<'_> {
+impl<C: ReportChannel> ProbeSink for Exchange<'_, C> {
     fn dispatch_probe(
         &mut self,
         _device: DeviceId,
@@ -137,7 +137,7 @@ impl ProbeSink for Exchange<'_> {
     }
 }
 
-impl CommandSink for Exchange<'_> {
+impl<C: ReportChannel> CommandSink for Exchange<'_, C> {
     fn dispatch(
         &mut self,
         _device: DeviceId,

@@ -2388,6 +2388,14 @@ dependencies = [
 [[package]]
 name = "pemu"
 version = "0.0.0"
+dependencies = [
+ "pcaps",
+ "pproto",
+ "pregistry",
+ "psafety",
+ "ptransport",
+ "serde_json",
+]
 
 [[package]]
 name = "percent-encoding"

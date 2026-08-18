@@ -138,3 +138,13 @@ jobs:
 
       - name: Test
         run: cargo test --workspace
+
+      # Named separately from the workspace run above, and deliberately after
+      # it, because this is the one suite whose value is a *negative* claim: the
+      # protocol engine, the safety gate and the fingerprint matcher are all
+      # exercised end to end here, and no runner in this matrix has a keyboard
+      # plugged into it. If a device ever became necessary for these to pass,
+      # the transport abstraction would have started leaking and this step is
+      # where it shows up rather than in a developer's working copy.
+      - name: Protocol and fingerprint tests, with no device attached
+        run: cargo test -p pemu

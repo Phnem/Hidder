@@ -8,11 +8,29 @@ license.workspace = true
 publish.workspace = true
 authors.workspace = true
 
+[lib]
+name = "pemu"
+path = "src/lib.rs"
+
 [[bin]]
 name = "pemu"
 path = "src/main.rs"
 
+# DAG position: top, beside the app. It may depend on anything below it and
+# nothing may depend on it -- which is the whole reason the integration tests
+# that drive a real protocol engine against a fake device live *here* rather
+# than in `pproto`. A test crate at this layer can reach down through every
+# layer at once; a dev-dependency pointing the other way would reverse the DAG,
+# and `scripts/check_crate_dag.py` refuses those in dev-dependencies too.
 [dependencies]
+ptransport.workspace = true
+
+[dev-dependencies]
+pcaps.workspace = true
+pregistry.workspace = true
+psafety.workspace = true
+pproto.workspace = true
+serde_json.workspace = true
 
 [lints]
 workspace = true

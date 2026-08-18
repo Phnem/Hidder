@@ -27,7 +27,7 @@ use pproto::aula_bytech_io::{Exchange, Verdict};
 use pregistry::{CollectionObservation, DeviceObservation, Registry};
 use psafety::journal::{JournalEntry, JournalSink};
 use psafety::{MonotonicClock, ReadError, SafetyGate};
-use ptransport::{DeviceId, Hid, HidCollection, ProbeChannel};
+use ptransport::{DeviceId, Hid, HidCollection, ProbeChannel, ReportChannel};
 
 /// Only to *find* a candidate board. Nine models share this pair, which is
 /// precisely why the read below exists.

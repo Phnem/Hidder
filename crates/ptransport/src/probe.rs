@@ -60,6 +60,69 @@ pub struct ReceivedReport {
     pub bytes: Vec<u8>,
 }
 
+/// One report-level channel to a device, whatever is behind it.
+///
+/// # Why this is a trait
+///
+/// Not for dependency injection as a habit. It exists because the claim that
+/// this crate hides the operating system is only worth anything if something
+/// other than an operating system can satisfy it, and until TICKET-14 nothing
+/// ever had. [`ProbeChannel`] was the sole implementation, `hidapi` types were
+/// reachable through it by construction, and the layers above were written
+/// against a struct that could only be obtained by opening a real device. That
+/// is not a hidden backend; it is an unexamined one.
+///
+/// So the emulator is not a testing convenience bolted on afterwards. It is the
+/// second implementation, and its existence is what turns "the transport
+/// abstraction does not leak" from an intention into something a build can
+/// check: if a recorded device could not sit behind this trait without the
+/// layers above noticing, the abstraction would have been leaking all along and
+/// the leak would have been found the hard way, on someone else's hardware.
+///
+/// # What an implementation owes a caller
+///
+/// - **One write is one write.** No retry, no second attempt on failure, no
+///   reopening. A caller that wants to send twice says so twice.
+/// - **A timeout is not an error.** Nothing heard within the deadline is
+///   `Ok(None)`: a result to record and stop on, not an exception to recover
+///   from by sending something else.
+/// - **No interpretation.** Reports come back as they arrived, report id
+///   included. Deciding which of them answers a request belongs to whatever owns
+///   the family's codec, and an implementation that filtered would be deciding
+///   it silently.
+/// - **The report id is the device's, not the caller's.** It comes from the
+///   descriptor, so a board in the same family that numbers its reports
+///   differently still works.
+pub trait ReportChannel {
+    /// The report id this channel writes on, derived from the device's own
+    /// descriptor.
+    fn report_id(&self) -> u8;
+
+    /// Writes one output report, once.
+    ///
+    /// Returns the exact bytes handed to the backend -- report id followed by
+    /// the frame -- so a caller can record what went out without reconstructing
+    /// it and being wrong about the reconstruction.
+    fn write_report(&mut self, frame: &[u8]) -> Result<Vec<u8>, TransportError>;
+
+    /// Reads one report, or `None` if the deadline passed first.
+    fn read_report(&self, timeout: Duration) -> Result<Option<ReceivedReport>, TransportError>;
+}
+
+impl<C: ReportChannel + ?Sized> ReportChannel for &mut C {
+    fn report_id(&self) -> u8 {
+        (**self).report_id()
+    }
+
+    fn write_report(&mut self, frame: &[u8]) -> Result<Vec<u8>, TransportError> {
+        (**self).write_report(frame)
+    }
+
+    fn read_report(&self, timeout: Duration) -> Result<Option<ReceivedReport>, TransportError> {
+        (**self).read_report(timeout)
+    }
+}
+
 /// An opened vendor collection, good for one exchange.
 pub struct ProbeChannel {
     device: HidDevice,
@@ -109,9 +172,11 @@ impl ProbeChannel {
     pub fn device(&self) -> DeviceId {
         self.device_id
     }
+}
 
+impl ReportChannel for ProbeChannel {
     /// The report id derived from the descriptor.
-    pub fn report_id(&self) -> u8 {
+    fn report_id(&self) -> u8 {
         self.report_id
     }
 
@@ -120,7 +185,7 @@ impl ProbeChannel {
     /// Returns the exact bytes handed to the backend -- the report id followed
     /// by the frame -- so the caller can record what went out without
     /// reconstructing it.
-    pub fn write_report(&mut self, frame: &[u8]) -> Result<Vec<u8>, TransportError> {
+    fn write_report(&mut self, frame: &[u8]) -> Result<Vec<u8>, TransportError> {
         let mut buffer = Vec::with_capacity(frame.len() + 1);
         buffer.push(self.report_id);
         buffer.extend_from_slice(frame);
@@ -137,7 +202,7 @@ impl ProbeChannel {
     /// A timeout is not an error here. Nothing was heard, which is a result the
     /// caller has to be able to record and stop on, rather than an exception to
     /// recover from by sending something else.
-    pub fn read_report(&self, timeout: Duration) -> Result<Option<ReceivedReport>, TransportError> {
+    fn read_report(&self, timeout: Duration) -> Result<Option<ReceivedReport>, TransportError> {
         let millis = i32::try_from(timeout.as_millis()).unwrap_or(i32::MAX);
         let mut buffer = vec![0u8; MAX_REPORT];
         let read = self

@@ -30,7 +30,7 @@ pub mod platform;
 pub mod probe;
 
 pub use inventory::{CollectionAccess, Hid, HidCollection};
-pub use probe::{ProbeChannel, ReceivedReport};
+pub use probe::{ProbeChannel, ReceivedReport, ReportChannel};
 
 /// Stable identity of a device for the lifetime of a session.
 ///

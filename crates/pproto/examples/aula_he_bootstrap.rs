@@ -29,7 +29,7 @@ use psafety::MonotonicClock;
 use psafety::journal::{JournalEntry, JournalSink};
 use psafety::probe::{ProbeError, ProbeGate};
 use psafety::rate::UserConfirmation;
-use ptransport::{DeviceId, Hid, HidCollection, ProbeChannel};
+use ptransport::{DeviceId, Hid, HidCollection, ProbeChannel, ReportChannel};
 
 const VENDOR_ID: u16 = 0x372E;
 const PRODUCT_ID: u16 = 0x103E;
