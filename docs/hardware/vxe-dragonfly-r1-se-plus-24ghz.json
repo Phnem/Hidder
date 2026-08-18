@@ -1,0 +1,232 @@
+{
+  "captured_unix": 1787023303,
+  "collections": [
+    {
+      "interface_number": 0,
+      "manufacturer": "Compx",
+      "open_error": null,
+      "opened": true,
+      "path": "\\\\?\\HID#VID_3554&PID_F58E&MI_00#b&26540bb&0&0000#{4d1e55b2-f16f-11cf-88cb-001111000030}\\KBD",
+      "product": "VXE Mouse 1K Dongle",
+      "release_number": "0x0110",
+      "report_descriptor_error": null,
+      "report_descriptor_fnv1a64": "d681df95aa1eda7e",
+      "report_descriptor_hex": "05010906a101050719e029e715002501750195088102750895018103190029ff150026ff0075089506810005081901290315002501750195039102750595019103c0",
+      "report_descriptor_len": 66,
+      "reports": [
+        {
+          "feature_bits": 0,
+          "input_bits": 64,
+          "numbered": false,
+          "output_bits": 8,
+          "report_id": 0
+        }
+      ],
+      "serial_number": null,
+      "serial_number_present": true,
+      "usage": "0x0006",
+      "usage_page": "0x0001",
+      "vendor_defined": false
+    },
+    {
+      "interface_number": 1,
+      "manufacturer": "Compx",
+      "open_error": null,
+      "opened": true,
+      "path": "\\\\?\\HID#VID_3554&PID_F58E&MI_01&Col04#b&2171fd07&0&0003#{4d1e55b2-f16f-11cf-88cb-001111000030}",
+      "product": "VXE Mouse 1K Dongle",
+      "release_number": "0x0110",
+      "report_descriptor_error": null,
+      "report_descriptor_fnv1a64": "80e01dbf86ba3578",
+      "report_descriptor_hex": "05010980a10185031981298315002501750195038102750595018103c0",
+      "report_descriptor_len": 29,
+      "reports": [
+        {
+          "feature_bits": 0,
+          "input_bits": 8,
+          "numbered": true,
+          "output_bits": 0,
+          "report_id": 3
+        }
+      ],
+      "serial_number": null,
+      "serial_number_present": true,
+      "usage": "0x0080",
+      "usage_page": "0x0001",
+      "vendor_defined": false
+    },
+    {
+      "interface_number": 1,
+      "manufacturer": "Compx",
+      "open_error": null,
+      "opened": true,
+      "path": "\\\\?\\HID#VID_3554&PID_F58E&MI_01&Col03#b&2171fd07&0&0002#{4d1e55b2-f16f-11cf-88cb-001111000030}",
+      "product": "VXE Mouse 1K Dongle",
+      "release_number": "0x0110",
+      "report_descriptor_error": null,
+      "report_descriptor_fnv1a64": "365d4c9a827c4d82",
+      "report_descriptor_hex": "050c0901a101850519002a3c021500263c02751095018100c0",
+      "report_descriptor_len": 25,
+      "reports": [
+        {
+          "feature_bits": 0,
+          "input_bits": 16,
+          "numbered": true,
+          "output_bits": 0,
+          "report_id": 5
+        }
+      ],
+      "serial_number": null,
+      "serial_number_present": true,
+      "usage": "0x0001",
+      "usage_page": "0x000C",
+      "vendor_defined": false
+    },
+    {
+      "interface_number": 1,
+      "manufacturer": "Compx",
+      "open_error": null,
+      "opened": true,
+      "path": "\\\\?\\HID#VID_3554&PID_F58E&MI_01&Col05#b&2171fd07&0&0004#{4d1e55b2-f16f-11cf-88cb-001111000030}",
+      "product": "VXE Mouse 1K Dongle",
+      "release_number": "0x0110",
+      "report_descriptor_error": null,
+      "report_descriptor_fnv1a64": "c2bb04bd91f1d9b6",
+      "report_descriptor_hex": "0602ff0902a10185080902150026ff007508951081000902150026ff00750895109100c0",
+      "report_descriptor_len": 36,
+      "reports": [
+        {
+          "feature_bits": 0,
+          "input_bits": 128,
+          "numbered": true,
+          "output_bits": 128,
+          "report_id": 8
+        }
+      ],
+      "serial_number": null,
+      "serial_number_present": true,
+      "usage": "0x0002",
+      "usage_page": "0xFF02",
+      "vendor_defined": true
+    },
+    {
+      "interface_number": 1,
+      "manufacturer": "Compx",
+      "open_error": null,
+      "opened": true,
+      "path": "\\\\?\\HID#VID_3554&PID_F58E&MI_01&Col02#b&2171fd07&0&0001#{4d1e55b2-f16f-11cf-88cb-001111000030}",
+      "product": "VXE Mouse 1K Dongle",
+      "release_number": "0x0110",
+      "report_descriptor_error": null,
+      "report_descriptor_fnv1a64": "63b37376354d464e",
+      "report_descriptor_hex": "0603ff0900a10185020900150026ff00750895078102c0",
+      "report_descriptor_len": 23,
+      "reports": [
+        {
+          "feature_bits": 0,
+          "input_bits": 56,
+          "numbered": true,
+          "output_bits": 0,
+          "report_id": 2
+        }
+      ],
+      "serial_number": null,
+      "serial_number_present": true,
+      "usage": "0x0000",
+      "usage_page": "0xFF03",
+      "vendor_defined": true
+    },
+    {
+      "interface_number": 1,
+      "manufacturer": "Compx",
+      "open_error": null,
+      "opened": true,
+      "path": "\\\\?\\HID#VID_3554&PID_F58E&MI_01&Col06#b&2171fd07&0&0005#{4d1e55b2-f16f-11cf-88cb-001111000030}",
+      "product": "VXE Mouse 1K Dongle",
+      "release_number": "0x0110",
+      "report_descriptor_error": null,
+      "report_descriptor_fnv1a64": "deacbb83de706f1d",
+      "report_descriptor_hex": "0604ff0902a10185060902150026ff0075089507b102c0",
+      "report_descriptor_len": 23,
+      "reports": [
+        {
+          "feature_bits": 56,
+          "input_bits": 0,
+          "numbered": true,
+          "output_bits": 0,
+          "report_id": 6
+        }
+      ],
+      "serial_number": null,
+      "serial_number_present": true,
+      "usage": "0x0002",
+      "usage_page": "0xFF04",
+      "vendor_defined": true
+    },
+    {
+      "interface_number": 1,
+      "manufacturer": "Compx",
+      "open_error": null,
+      "opened": true,
+      "path": "\\\\?\\HID#VID_3554&PID_F58E&MI_01&Col01#b&2171fd07&0&0000#{4d1e55b2-f16f-11cf-88cb-001111000030}",
+      "product": "VXE Mouse 1K Dongle",
+      "release_number": "0x0110",
+      "report_descriptor_error": null,
+      "report_descriptor_fnv1a64": "b760328a99c26a1a",
+      "report_descriptor_hex": "0605ff0900a10185100900150026ff00750895078102c0",
+      "report_descriptor_len": 23,
+      "reports": [
+        {
+          "feature_bits": 0,
+          "input_bits": 56,
+          "numbered": true,
+          "output_bits": 0,
+          "report_id": 16
+        }
+      ],
+      "serial_number": null,
+      "serial_number_present": true,
+      "usage": "0x0000",
+      "usage_page": "0xFF05",
+      "vendor_defined": true
+    },
+    {
+      "interface_number": 2,
+      "manufacturer": "Compx",
+      "open_error": null,
+      "opened": true,
+      "path": "\\\\?\\HID#VID_3554&PID_F58E&MI_02#b&9ae70c2&0&0000#{4d1e55b2-f16f-11cf-88cb-001111000030}",
+      "product": "VXE Mouse 1K Dongle",
+      "release_number": "0x0110",
+      "report_descriptor_error": null,
+      "report_descriptor_fnv1a64": "25077c26ff7765e3",
+      "report_descriptor_hex": "05010902a1010901a1000509190129051500250175019505810275039501810305010930093116008026ff7f751095028106c00900a10009381581257f750895018106c00900a100050c0a38021581257f750895018106c0c0",
+      "report_descriptor_len": 89,
+      "reports": [
+        {
+          "feature_bits": 0,
+          "input_bits": 56,
+          "numbered": false,
+          "output_bits": 0,
+          "report_id": 0
+        }
+      ],
+      "serial_number": null,
+      "serial_number_present": true,
+      "usage": "0x0002",
+      "usage_page": "0x0001",
+      "vendor_defined": false
+    }
+  ],
+  "host_os": "windows",
+  "label": "VXE Dragonfly R1 SE+ (2.4GHz receiver)",
+  "method": {
+    "feature_reports_sent": "none",
+    "input_reports_read": "none",
+    "read_only": true,
+    "writes": "none"
+  },
+  "product_id": "0xF58E",
+  "schema": "peripheral.hid-inventory/1",
+  "vendor_id": "0x3554"
+}
