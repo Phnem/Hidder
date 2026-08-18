@@ -133,11 +133,110 @@ array after 160 rotations. Confirmed by decoding known-good positions:
 Recorded so the work is repeatable, not so it can be reused: no decoded vendor
 source is stored in this repository.
 
+## Protocol family: the vendor groups by SDK module, not by product id
+
+The application stores a `sdkModuleName` per connected device and picks a
+protocol module by it. The set of modules:
+
+```text
+sparkLinkV1   sparkLinkV2   bytech   bytechMechanical
+hfd           hfdMechanical rlw      vision   hx   jm   ttgk
+```
+
+**Our board resolves to `bytech`.** Not inferred: the Info module that HERO 84 HE
+loads (`info-CRdif018.js`, unobfuscated) sets `sdkModuleName = "bytech"` as a
+constant of that class, and the store copies it on connect. Our board's
+manufacturer string is `BY Tech`, which is consistent, but the module assignment
+is the evidence, not the string.
+
+This is the vendor's own notion of a protocol family, and it is a much better
+family boundary than anything derivable from identity: it names the code that
+speaks to the device. Candidate family id for the registry once a read is
+verified: **`aula-bytech`** — scoped to what we have actually confirmed rather
+than to every board the vendor files under `bytech`.
+
+## How the vendor tells nine identical-looking models apart
+
+It asks the device.
+
+On connect, before anything else, the Info module calls `readDeviceUUID(...)`
+and gets back a numeric device id. That value then selects the key layout:
+`initDeviceLayout` switches on `deviceInfo.deviceId`, and elsewhere a lookup maps
+ids to marketing names (for instance `19791209299978` → HERO 68 Air,
+`19791209299984` → HERO 68 XS, `19791209299989` → AULA HERO 75 HE).
+
+Two things follow:
+
+- The UUID is a **model** identifier, not a per-unit serial. The application
+  carries a static table of them, and they map to product names. Recording one
+  is not a privacy problem the way a serial number is; it is still not recorded
+  here, because none has been read from our board.
+- This is the missing half of the "nine models share `0x372E:0x103E`" finding:
+  the vendor distinguishes them with a protocol read. Any registry that wants to
+  tell those nine apart has to do the same thing, which is precisely a
+  protocol-evidence route to identity rather than a product-identity one.
+
+## Keyboard service API
+
+The keyboard SDK exposes, among others:
+
+**Reads** — `readDeviceUUID`, `getUuid`, `getDeviceInfo`, `getFirmwareVersion`,
+`getDeviceFeatures`, `getKeyMatrixPositions`, `getSupportedSwitches`,
+`getSupportedAdvancedKeyTypes`, `getTravelPrecision`, `getPollingRate`,
+`getDebounceTime`, `getSleepTime`, `getOsMode`, `getWinKeyLock`,
+`getWasdArrowKeysSwapped`, `getComboOptimization`, `getLowPowerModeEnabled`,
+`checkLowPowerModeSupported`, `getBatteryStatus`.
+
+**KNOWN WRITE — NOT IMPLEMENTED**, recorded so they are recognisable and avoided:
+`setPollingRate`, `setDebounceMode`, `setDebounceTime`, `setSleepTime`,
+`setWinKeyLock`, `setWasdArrowKeysSwapped`, `setComboOptimization`,
+`setLowPowerModeEnabled`, `resetKeyboard`, `resetUSB`, `resetDevice`, and the
+whole OTA path (`encodeOTAStart`, `encodeOTAEnd`, `encodeCheckOTAStatus`,
+`WIRELESS_OTA_MODE`).
+
+None of these will be given a `SafeCommandId`, sent, or tested against hardware
+by this ticket. `resetKeyboard`, `resetUSB` and the OTA calls are in the class
+the project forbids outright.
+
+`getBatteryStatus` is noted for the wireless question (spec Q3) and nothing more:
+it belongs to a device we do not have a verified family for, and reading it is
+still a protocol exchange.
+
+## Frame format — mouse stack only
+
+The bundle contains at least two protocol stacks. The one that was fully decoded
+is the **mouse and dongle** stack, and its shape is recorded here explicitly
+marked as *not* the keyboard's:
+
+```text
+payload length   63 bytes            (report id is prepended by sendReport -> 64 on the wire)
+checksum         byte 0 = sum(bytes 1..62) & 0xFF
+command ids      symbolic: UUID, BASICS, FIRMWARE_INFO, WIRELESS_ONLINE,
+                 SLEEP_LEVEL, LOD, MOUSE_KEY, MACRO_DATA, OTA_CHECK, OTA_END
+dispatch         responses matched by command id; unknown ids are logged as
+                 "Unknown report response command ID:"
+```
+
+The 63-plus-report-id arithmetic is a useful corroboration of the 64-byte reports
+TICKET-08 saw, but **it must not be assumed to hold for the keyboard**: it was
+read out of the mouse protocol class, and this ticket is about a keyboard.
+
 ## What is still missing
 
-The numeric opcode for any command, including the one this ticket wants: a
-single, provably read-only request issued on the connect path. Until that is
-recovered from the artifact, TICKET-12 has nothing it is allowed to send, and
-guessing one from ROYUAN, from QMK/VIA conventions, or from the shape of
-`0xFF60:0x0061` is explicitly out of bounds. The usage page confirms which
-channel the vendor talks on; it does not tell us what it says.
+**The numeric command id for the keyboard stack.** The best candidate is now
+identified by name and by role rather than by number: `readDeviceUUID` /
+`encodeGetUUID` / `decodeGetUUID`, called on the connect path before any user
+action, its result used to pick a layout, with no save, commit, flash or reboot
+anywhere near it. What is not yet recovered is the byte it puts on the wire.
+
+The obstacle is mechanical rather than conceptual: in the keyboard protocol
+class the encoder and decoder are defined under computed member names, so the
+methods have to be resolved through that class's own string array before the
+command constants become readable. The same technique already worked twice in
+this bundle, so this is a further decoding pass rather than a dead end.
+
+Until that byte is recovered from the artifact, TICKET-12 has nothing it is
+allowed to send. Guessing one from ROYUAN, from QMK/VIA conventions, or from the
+shape of `0xFF60:0x0061` is explicitly out of bounds: the usage page confirms
+which channel the vendor talks on, not what it says. The 63-byte framing above
+belongs to the mouse stack and is not evidence about the keyboard either.
