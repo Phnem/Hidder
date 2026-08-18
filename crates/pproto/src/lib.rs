@@ -42,4 +42,5 @@
 
 pub mod aula_bytech;
 pub mod aula_bytech_engine;
+pub mod aula_bytech_he;
 pub mod aula_bytech_io;

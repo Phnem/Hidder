@@ -105,16 +105,25 @@ fn the_aula_family_has_exactly_one_earned_command() {
 }
 
 #[test]
-fn no_command_is_awaiting_a_first_exchange() {
-    // An empty probe surface is the steady state, not an oversight: a
-    // `bootstrap_probe` entry means a command is mid-bootstrap, and none is.
-    // A variant appearing here is a deliberate act that should show in review.
-    let probes: Vec<_> = psafety::ProbeCommandId::all()
+fn the_commands_awaiting_a_first_exchange_are_the_ones_the_plan_names() {
+    // An empty probe surface is the steady state, and this list should return to
+    // empty. While it is not empty, each entry is a command deliberately
+    // mid-bootstrap: recovered from a vendor artifact, never sent from here,
+    // reachable only through a gate that costs one confirmation per send.
+    //
+    // Asserted as an exact set rather than as "non-empty", so a third entry
+    // appearing has to be a deliberate edit that shows up in review.
+    let mut probes: Vec<_> = psafety::ProbeCommandId::all()
         .map(|id| (id.family(), id.name()))
         .collect();
-    assert!(
-        probes.is_empty(),
-        "something is awaiting a first exchange: {probes:?}"
+    probes.sort_unstable();
+    assert_eq!(
+        probes,
+        [
+            ("aula-bytech", "read_key_travel"),
+            ("aula-bytech", "read_travel_precision"),
+        ],
+        "the probe surface changed without the plan saying so"
     );
 }
 

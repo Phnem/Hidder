@@ -23,6 +23,7 @@
 
 use std::time::{Duration, Instant};
 
+use psafety::probe::{AuthorizedProbe, ProbeSink};
 use psafety::{AuthorizedCommand, CommandSink};
 use ptransport::{DeviceId, ProbeChannel, ReceivedReport, TransportError};
 
@@ -75,13 +76,15 @@ impl<'a> Exchange<'a> {
 
     /// Encodes, writes once, and returns the first report that is not an event.
     ///
-    /// Private because the only public entry point is the [`CommandSink`]
-    /// implementation: a caller reaches this by holding something the gate
+    /// Private because the two public entry points are the two sink
+    /// implementations: a caller reaches this by holding something a gate
     /// minted, never by assembling a key of its own.
     ///
-    /// A `ProbeSink` implementation lived here too while `read_model_id` was
-    /// still bootstrapping. It went when the command was promoted; the next
-    /// family that needs one adds it back, in a diff someone reviews.
+    /// Both sinks exist because both doors are in use. `read_model_id` came
+    /// through the probe door and now goes through the production one; the two
+    /// actuation reads are at the probe door today. The adapter does not care
+    /// which -- it encodes whatever authorised value it is handed -- and that is
+    /// the point of it being one adapter.
     fn run(&mut self, key: psafety::CommandKey, payload: &[u8]) -> Result<Vec<u8>, TransportError> {
         let report_id = self.channel.report_id();
         let frame = aula_bytech::encode_request(key, payload, report_id)
@@ -121,6 +124,16 @@ impl<'a> Exchange<'a> {
                 .push((report, Verdict::CandidateAnswer));
             return Ok(body);
         }
+    }
+}
+
+impl ProbeSink for Exchange<'_> {
+    fn dispatch_probe(
+        &mut self,
+        _device: DeviceId,
+        probe: AuthorizedProbe,
+    ) -> Result<Vec<u8>, TransportError> {
+        self.run(probe.key(), probe.payload())
     }
 }
 

@@ -63,3 +63,56 @@ vendor bundle, and six reads here changed nothing observable. That last clause \
 is the weakest one and is meant to be: "we saw no effect" is not "there is no \
 effect".
 """
+
+# --- awaiting a first exchange -----------------------------------------------
+#
+# Both entries below are `bootstrap_probe`: recovered from the vendor artifact
+# (docs/prior-art/aula-bytech-actuation.md), never sent from here. Each costs one
+# explicit confirmation and yields exactly one send, and neither can be reached
+# by the production gate. They become `safe_read` only after an exchange, a
+# comparison against the vendor's own configurator, and a human editing this
+# file.
+
+[[command]]
+group      = 0x82
+subcommand = 0x08
+name       = "read_travel_precision"
+class      = "bootstrap_probe"
+evidence   = "vendor_artifact"
+note       = """
+One byte: the micrometres one travel LSB represents. The vendor reads it once \
+when its trigger page mounts and derives every millimetre figure on that page \
+from it -- actuation, both rapid-trigger sensitivities, the dead zone, the \
+slider step and the displayed decimal count. So this is not an incidental \
+detail: without it a travel value cannot be converted at all, and a plausible \
+guess at the scale is exactly the mistake that turns a wrong number into a \
+confident one. Same group as the verified read_model_id, which is corroboration \
+and not evidence. The request carries no data; the vendor forces the response \
+length to 1 rather than trusting the frame's own length byte.
+"""
+
+[[command]]
+group      = 0x93
+subcommand = 0x00
+name       = "read_key_travel"
+class      = "bootstrap_probe"
+evidence   = "vendor_artifact"
+note       = """
+Per-key actuation point. Records of five bytes: key id u16 big-endian, travel \
+u16 big-endian, one pad byte. Travel is in units of read_travel_precision \
+micrometres.
+
+The second byte is NOT a subcommand index. It packs the layer and the OS mode \
+as (layer & 3) | ((system & 7) << 2), and 0x00 is layer Normal with system \
+Windows. This entry therefore authorises reading that layer and that mode and \
+nothing else; Fn1, Fn2, Tap or MacOS are different bytes and would each need \
+their own reviewed entry. An actuation value on this board is per key per layer \
+per OS mode, not simply per key.
+
+The vendor chunks these so the response fits one frame: eleven keys per \
+exchange. Our codec is single-frame by choice, so a request here must name at \
+most eleven keys. The bootstrap probe names four -- W, A, S, D.
+
+Write twin is group 0x13. KNOWN WRITE, NOT IMPLEMENTED, and it will not be \
+given any command id.
+"""
