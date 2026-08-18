@@ -1,6 +1,6 @@
 //! Device registry and fingerprinting.
 //!
-//! Skeleton only. Real matching arrives with TICKET-10.
+//! Implemented in TICKET-10.
 //!
 //! # What this crate hides
 //!
@@ -40,3 +40,33 @@
 //! in one family parse the same request differently, and a shared family is not
 //! evidence. Our schema has family plus confidence and no lineage level between
 //! family and board. Do not settle this before the first engine exists.
+
+pub mod identity;
+pub mod matcher;
+pub mod observation;
+
+// The generator, compiled into the crate only for its own tests. `build.rs`
+// includes the same file, so the code under test is the code that runs.
+#[cfg(test)]
+mod codegen;
+
+mod generated {
+    // `Confidence` and `FamilyClaim` go unused whenever no entry in the
+    // registry claims a protocol family -- which is the state today, and is the
+    // point rather than an oversight.
+    #[allow(unused_imports)]
+    use crate::identity::{
+        Confidence, DeviceEntry, DeviceKind, FamilyClaim, ProductIdentity, StructuralCollection,
+    };
+
+    include!(concat!(env!("OUT_DIR"), "/registry.rs"));
+}
+
+pub use identity::{
+    Axis, Confidence, DeviceEntry, DeviceKind, FamilyClaim, ProductIdentity, Signal, SignalOutcome,
+    SignalState, StructuralCollection, StructuralId,
+};
+pub use matcher::{
+    FamilyOutcome, FamilyReason, Identification, ProductOutcome, Registry, StructuralOutcome,
+};
+pub use observation::{CollectionObservation, DeviceObservation};

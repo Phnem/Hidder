@@ -1,0 +1,101 @@
+# Generated from docs/hardware/vxe-dragonfly-r1-se-plus-24ghz.json by TICKET-10, then annotated by hand.
+# Numbers are transcribed mechanically; names, brands, kind and notes are human.
+
+schema = "peripheral.device-registry/1"
+id     = "vxe-dragonfly-r1se-plus-receiver"
+name   = "VXE Dragonfly R1 SE+ (2.4GHz receiver)"
+brands = ["VXE"]
+kind   = "receiver"
+note   = "The 2.4 GHz receiver. Presents byte-identical descriptors to the mouse above and keeps presenting them with no mouse present at all, so structure cannot separate the two products -- which is exactly what the structural axis is allowed to be honest about."
+
+# protocol-family axis. Absent means unknown, and unknown is the honest
+# answer here: no engine speaks to this device and no exchange has ever
+# taken place with it. A family is never inferred from the fields below.
+
+[product]
+vendor_id    = 0x3554
+product_id   = 0xF58E
+manufacturer = "Compx"
+product      = "VXE Mouse 1K Dongle"
+release      = 0x0110
+
+[structure]
+interfaces = 3
+
+[[structure.collection]]
+interface          = 0
+usage_page         = 0x0001
+usage              = 0x0006
+descriptor_fnv1a64 = "d681df95aa1eda7e"
+input_bytes        = 8
+output_bytes       = 1
+feature_bytes      = 0
+
+[[structure.collection]]
+interface          = 1
+usage_page         = 0x0001
+usage              = 0x0080
+descriptor_fnv1a64 = "80e01dbf86ba3578"
+report_id          = 3
+input_bytes        = 1
+output_bytes       = 0
+feature_bytes      = 0
+
+[[structure.collection]]
+interface          = 1
+usage_page         = 0x000C
+usage              = 0x0001
+descriptor_fnv1a64 = "365d4c9a827c4d82"
+report_id          = 5
+input_bytes        = 2
+output_bytes       = 0
+feature_bytes      = 0
+
+[[structure.collection]]
+interface          = 1
+usage_page         = 0xFF02
+usage              = 0x0002
+descriptor_fnv1a64 = "c2bb04bd91f1d9b6"
+report_id          = 8
+input_bytes        = 16
+output_bytes       = 16
+feature_bytes      = 0
+
+[[structure.collection]]
+interface          = 1
+usage_page         = 0xFF03
+usage              = 0x0000
+descriptor_fnv1a64 = "63b37376354d464e"
+report_id          = 2
+input_bytes        = 7
+output_bytes       = 0
+feature_bytes      = 0
+
+[[structure.collection]]
+interface          = 1
+usage_page         = 0xFF04
+usage              = 0x0002
+descriptor_fnv1a64 = "deacbb83de706f1d"
+report_id          = 6
+input_bytes        = 0
+output_bytes       = 0
+feature_bytes      = 7
+
+[[structure.collection]]
+interface          = 1
+usage_page         = 0xFF05
+usage              = 0x0000
+descriptor_fnv1a64 = "b760328a99c26a1a"
+report_id          = 16
+input_bytes        = 7
+output_bytes       = 0
+feature_bytes      = 0
+
+[[structure.collection]]
+interface          = 2
+usage_page         = 0x0001
+usage              = 0x0002
+descriptor_fnv1a64 = "25077c26ff7765e3"
+input_bytes        = 7
+output_bytes       = 0
+feature_bytes      = 0

@@ -1,6 +1,6 @@
 # Current handoff
 
-Обновлено: 2026-08-18, после закрытия TICKET-22.
+Обновлено: 2026-08-18, после закрытия TICKET-10.
 
 ## Original goal
 
@@ -36,6 +36,7 @@ READY_FOR_IMPLEMENTATION. Фазы 1 и 2 закрыты (Phase 2 переотк
 | TICKET-07 | DONE_WITH_DEVIATIONS | коммит `f770750` — весь скелет |
 | TICKET-08 | DONE_WITH_DEVIATIONS | `ptransport::inventory` + `docs/hardware/aula-hero-84-he.{json,md}` |
 | TICKET-11 | DONE_WITH_DEVIATIONS | `psafety` целиком + `data/protocols/*.toml` |
+| TICKET-10 | DONE_WITH_DEVIATIONS | `pregistry` (три оси идентичности) + `data/devices/*.toml` + `pcaps::Confidence` |
 | TICKET-22 | DONE_WITH_DEVIATIONS | `docs/hardware/vxe-dragonfly-r1-se-plus-{24ghz,wired}.{json,md}` + `comparison-aula-vs-vxe.md` |
 
 ### Что теперь невозможно обойти (TICKET-11)
@@ -105,8 +106,8 @@ VID `0x372E`, PID `0x103E`, строки `BY Tech` / `HERO 84 HE` (бренд AU
 
 1. ~~**TICKET-11** — `psafety` ACL + `SafeCommandId`~~ — **выполнен**.
 2. ~~**TICKET-22** — HID-инвентарь VXE Dragonfly R1 SE+~~ — **выполнен** (BT не получен, см. ниже).
-3. **TICKET-10** — `pregistry` + многосигнальный fingerprinting; на входе keyboard + mouse + receiver. ← **следующий**
-4. **TICKET-12** — первый AULA engine, строго read-only, через `DeviceSession`/`pregistry`/capability-модель/safety-границы, не через `hidapi` напрямую.
+3. ~~**TICKET-10** — `pregistry` + fingerprinting~~ — **выполнен**.
+4. **TICKET-12** — первый AULA engine, строго read-only, через `DeviceSession`/`pregistry`/capability-модель/safety-границы, не через `hidapi` напрямую. ← **следующий**
 5. **TICKET-13** → **TICKET-14** — UI и эмулятор.
 6. **TICKET-05** — OEM-карта; параллельный research track, ничего не блокирует.
 7. **TICKET-09 → TICKET-06** — remote-валидация EPOMAKER; параллельный трек за capability-гейтом.
@@ -170,28 +171,28 @@ VID `0x372E`, PID `0x103E`, строки `BY Tech` / `HERO 84 HE` (бренд AU
 - Создание remote-репозитория (для реального прогона CI) — требует решения пользователя, публикация кода проприетарного проекта.
 - **Второго protocol family по-прежнему нет.** С 2026-08-18 есть второе локальное устройство (мышь), и оно снимает риск для `pregistry`/`ptransport` — но не для `ProtocolEngine`: TICKET-22 строго read-only и протокольного слоя не даёт. Прежняя формулировка, остающаяся в силе для engine-уровня: Риск «архитектура валидирована на одном устройстве и одном protocol family» (риск №3 architecture review, «premature trait finalization») **усилился** и остаётся открытым. До первого remote-артефакта единственное «второе устройство» в тестах — эмулятор, собранный из записей самой AULA, а значит не способный опровергнуть AULA-специфичные предположения. Считать этот риск закрытым переносом EPOMAKER **нельзя**; он обязан быть виден на архитектурном ревью.
 
-## Files most relevant to the next ticket (TICKET-10)
+## Files most relevant to the next ticket (TICKET-12)
 
-- `issues/10-multi-signal-fingerprinting.md` — scope, acceptance criteria, TDD REQUIRED;
-- `docs/hardware/comparison-aula-vs-vxe.md` — **главный вход**: чем различаются три topology и почему порядок силы сигналов из спецификации неполон;
-- `docs/hardware/aula-hero-84-he.{json,md}`, `vxe-dragonfly-r1-se-plus-{24ghz,wired}.{json,md}` — сами захваты;
-- `spec.md` Приложение B — схема реестра; FR4 — многосигнальный matcher с explicit confidence;
-- `spec.md` § Domain rules — «family не выводится из VID:PID», порядок силы сигналов (тот самый, который надо развести на два вопроса);
-- `crates/psafety/src/gate.rs` — `identify_device(device, family)`: точка, куда TICKET-10 обязан довезти confidence;
-- `data/protocols/*.toml` — per-family источник, использующий ту же схему `opcode_acl`; держать согласованными.
+- `issues/12-first-protocol-engine-aula-readonly.md` — scope, acceptance criteria;
+- `crates/psafety/src/gate.rs` — `identify_device(device, family, family_confidence)` и `execute`: единственный путь к устройству. Engine обязан ходить только сюда;
+- `crates/pregistry/src/matcher.rs` — что возвращает матчер и почему оси раздельные;
+- `crates/pregistry/examples/identify.rs` — как выглядит результат матчинга сегодня (`cargo run -p pregistry --example identify`);
+- `data/protocols/aula-hero84-he.toml` — **ноль опкодов**: пока сюда не добавится ни одной записи, отправить AULA нечего;
+- `data/devices/aula-hero84-he.toml` — запись реестра; ось family пуста и заполнить её должен этот тикет;
+- `docs/hardware/aula-hero-84-he.{json,md}` — два vendor-TLC, `0xFF00:0x0001` (feature 64) и `0xFF60:0x0061` (in/out 64); какой конфигурационный — неизвестно.
 
 ## Exact recommended next action
 
-**TICKET-10.** Реализовать `pregistry`: схему из Приложения B, YAML → SQLite build-шаг, многосигнальный matcher с explicit confidence, записи AULA и VXE по данным TICKET-08/22.
+**TICKET-12.** Первый protocol engine для AULA, строго read-only.
 
-Три вопроса, которые тикет обязан решить по данным, а не по удобству схемы:
+Что он обязан сделать впервые за проект и чего до него сделать было нельзя:
 
-1. **Разделить два вопроса fingerprint'а.** «Что это за устройство по форме» (хеш дескриптора, TLC) и «с каким физическим предметом я разговариваю» (строки, release, VID:PID) — это разные веса. На VXE первые два сигнала идентичны у ресивера и мыши; матчер, взвешивающий всё одним ранжированием, будет уверенно ошибаться.
-2. **Одна запись или несколько** для одного физического устройства с разными VID:PID по режимам подключения; и **ресивер с мышью** — два устройства реестра или одно составное. Ответ обосновать данными.
-3. **Confidence обязан доехать** до `SafetyGate::identify_device` — иначе к первому write-тикету правило `confidence >= Verified` окажется незаписанным нигде в коде.
+1. **Заполнить ось protocol-family реальными данными.** Сегодня она `unknown` у всех трёх устройств, и правило «запись только при `Verified`» поэтому нечему разрешать. Путь «family определена → запись разрешена» ни разу целиком не исполнялся — это записанный риск, и закрывает его этот тикет.
+2. **Пройти через гейт, а не мимо.** Engine держит `&mut SafetyGate` и не имеет доступа к sink. Любой опкод, который он захочет отправить, сначала должен появиться в `data/protocols/aula-hero84-he.toml` с классом и evidence — иначе для него не существует `SafeCommandId`.
+3. **Решить отложенный вопрос про ошибки.** Здесь впервые появляется настоящий I/O, а значит впервые становится нужно решить, требуется ли platform-native классификация ошибок: kill-switch реагирует только на типизированный `EndpointStalled`, и если транспорт не умеет его типизировать, kill-switch не сработает вовсе (находка TICKET-08).
 
 Предупреждения, всё ещё релевантные:
 
-- `opened = true` означает только доступ уровня перечисления — не «с устройством можно обмениваться». Не повышать confidence на этом основании.
-- Классификация ошибок `hidapi` по тексту не работает; kill-switch реагирует только на типизированный `EndpointStalled`. Решение о platform-native классификации — TICKET-12/15.
-- Второго protocol family по-прежнему нет. Мышь дала вторую topology, но не второй протокол: TICKET-22 был read-only.
+- `opened = true` означает только доступ уровня перечисления. Не повышать confidence на этом основании.
+- Ответ устройства — не доказательство: неподдержанная команда часто повторяет предыдущий ответ.
+- Второго protocol family по-прежнему нет. Мышь дала вторую topology, но не второй протокол.

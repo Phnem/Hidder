@@ -646,3 +646,66 @@ battery usage    нет             нет                 нет
 ### Next eligible ticket
 
 TICKET-10 (`pregistry` + многосигнальный fingerprinting) — теперь с данными по трём topology и с конкретным вопросом, который обязан решить.
+
+## 2026-08-18 — TICKET-10
+
+### Outcome
+
+DONE_WITH_DEVIATIONS
+
+### Work completed
+
+`pregistry` из заглушки стал работающим матчером с **тремя независимыми осями идентичности** вместо единого линейного ranking сигналов. Источник — `data/devices/*.toml` (три реально наблюдавшихся endpoint, сгенерированы из артефактов TICKET-08/22), кодоген на `build.rs` по образцу TICKET-11. `pcaps::Confidence` стал общим словарём. `SafetyGate::identify_device` теперь принимает family-confidence.
+
+### Decisions made
+
+- **Линейное ranking отменено по решению пользователя** (после данных TICKET-22). Спецификация ранжировала сигналы одной цепочкой от дескриптора к VID:PID; на VXE это даёт уверенно неверный ответ, потому что два сильнейших сигнала не различают ресивер и мышь. Вместо цепочки — три оси: endpoint/structural, physical product, protocol-family.
+- **Каждый сигнал принадлежит ровно одной оси на уровне типа** (`Signal::axis()`). Сигнал, «немного помогающий» двум осям, — признак непродуманности, а не удобство.
+- **Три правила изоляции осей**, каждое под тестом: структура не поднимает product; family достижима только через product; family не может быть увереннее продукта (`min`). Главное следствие: знание продукта не является разрешением на запись.
+- **`SignalState` различает три состояния**, а не два. `Differed` — свидетельство против, `Absent` — свидетельство ни о чём. Строка, которую устройство не отдало, и строка, которая не совпала, считаться одинаково не должны.
+- **`Confidence` живёт в `pcaps`.** `psafety` и `pregistry` — соседи по DAG и зависеть друг от друга не могут, а слово нужно обоим; второй enum разъехался бы тихо и в вопросе, относящемся к безопасности.
+- **Реестр не в SQLite** (см. Deviations): TOML → сгенерированная таблица Rust. Носитель другой, схема Приложения B по существу сохранена, API матчера работает со срезом и от хранилища не зависит.
+- **Никаких probes.** `DeviceObservation` строится единственным конструктором `from_enumeration` и не имеет поля, которое могло бы прийти из обмена. Сигнал «safe identify opcode» из спецификации остался неиспользованным.
+
+### Результат на реальном железе
+
+```text
+AULA Hero 84 HE   structural 4677b3488a43cfc9 [verified]  shared by: aula-hero84-he
+                  product    aula-hero84-he    [verified]
+                  family     unknown           [unknown]
+VXE wired         structural bbcbc7e8c2828786 [verified]  shared by: receiver, wired
+                  product    ...-wired         [verified]
+                  family     unknown           [unknown]
+VXE receiver      structural bbcbc7e8c2828786 [verified]  shared by: receiver, wired
+                  product    ...-receiver      [verified]
+                  family     unknown           [unknown]
+write permitted: no — для всех трёх
+```
+
+Два VXE-endpoint: **один** structural id, **разные** product id. Ровно то, что линейная шкала выразить не могла.
+
+### Root causes discovered
+
+Одно наблюдение стоит записи, потому что оно про модель, а не про код. Ось protocol-family оказалась пустой на всём реальном железе — и это не пробел реализации, а точное состояние знания: обмена ни с одним устройством не было. Полезный побочный эффект: правило «запись только при verified family» сегодня физически нечему разрешать, и это видно в тесте, а не в комментарии. Обратная сторона — путь «family определена → запись разрешена» целиком не исполнялся ни разу и проверен только синтетикой. Занесено в риск-регистр с адресатом TICKET-12.
+
+### Deviations
+
+Пять, полные записи в `issues/10-*.md`. Существенные: реестр не в SQLite (TOML → таблица Rust, обоснование в тикете) и сигнал «safe identify opcode» не реализован, потому что это probe. Остальные три (TOML вместо YAML, `Confidence` в `pcaps`, генерация записей реестра скриптом из захватов) — либо следствие уже принятых решений, либо строже исходной формулировки.
+
+### Verification
+
+`cargo fmt --all --check`, `clippy --workspace --all-targets -D warnings`, `test --workspace` (109 passed), `cargo deny check licenses bans sources`, `check_crate_dag.py` — все зелёные.
+
+Обязательный regression (VXE wired vs receiver: одна структура, разные продукты) прогоняется **на реальных файлах захвата** через `include_str!`, а не на транскрипции: транскрипция — это как регрессионный тест начинает соглашаться с кодом вместо железа. Демонстрация: `cargo run -p pregistry --example identify`.
+
+### Review result
+
+Блокирующих findings нет. Три незакрывающих, все занесены в тикет и два — в риск-регистр: путь family→verified→запись не проверен на реальных данных; структурная ось объявляет `Verified` на основании того, что все записи наши, и это основание исчезнет с приходом community-submissions; ветка `Candidate` для структуры (обновлённая прошивка) проверена только синтетикой.
+
+### New risks
+
+Два новых, оба выше. Один снят: «порядок силы fingerprint-сигналов неполон» закрыт этим тикетом.
+
+### Next eligible ticket
+
+TICKET-12 (первый protocol engine, AULA, read-only) — и именно он впервые заполнит ось protocol-family реальными данными.

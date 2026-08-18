@@ -17,6 +17,7 @@
 //! one: this crate is on the command path and never sees an input report at all.
 //! The capture-side privacy filter is a separate seam (spec.md FR8).
 
+use pcaps::Confidence;
 use ptransport::{DeviceId, TransportError};
 
 use crate::class::OpcodeClass;
@@ -83,6 +84,15 @@ pub enum Refusal {
     /// The device is quarantined after a stall and stays that way until it is
     /// physically reconnected.
     Quarantined,
+    /// The family this device speaks is not established well enough to write to
+    /// it. Reads are unaffected: an unidentified device opens read-only rather
+    /// than not at all (spec.md § Failure and fallback behavior).
+    ///
+    /// Note which confidence this is. Being certain which *product* is plugged
+    /// in earns nothing here -- two products can be indistinguishable in
+    /// structure and identical in every capability except the one that matters,
+    /// and it is the opcode vocabulary that bricks boards.
+    UnverifiedFamily { confidence: Confidence },
     /// The family's measured cadence says not yet.
     RateLimited { wait_ms: u64 },
     /// An unmeasured family needs a person to approve this one operation.

@@ -7,6 +7,7 @@ rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
 authors.workspace = true
+build = "build.rs"
 
 # DAG position: middle layer. May depend on ptransport (device signals) and
 # pcaps (capability ids in device definitions). Must never depend on pproto,
@@ -15,6 +16,20 @@ authors.workspace = true
 ptransport.workspace = true
 pcaps.workspace = true
 serde.workspace = true
+
+# Reads data/devices/*.toml at build time. Same reasoning as psafety: the parser
+# is part of what decides which firmware the write gate is pointed at, so it is a
+# maintained one with unknown fields rejected rather than a hand-rolled one.
+[build-dependencies]
+serde = { workspace = true }
+toml = "1"
+
+[dev-dependencies]
+serde = { workspace = true }
+toml = "1"
+# The hardware regression test reads the capture files themselves rather than
+# transcribing them, so that it agrees with the hardware and not with the code.
+serde_json = { workspace = true }
 
 [lints]
 workspace = true

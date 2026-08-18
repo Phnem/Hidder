@@ -1,0 +1,92 @@
+# Generated from docs/hardware/aula-hero-84-he.json by TICKET-10, then annotated by hand.
+# Numbers are transcribed mechanically; names, brands, kind and notes are human.
+
+schema = "peripheral.device-registry/1"
+id     = "aula-hero84-he"
+name   = "AULA Hero 84 HE"
+brands = ["AULA"]
+kind   = "keyboard"
+note   = "Reference board, wired only. TICKET-08. The brand on the box does not appear in the device strings at all."
+
+# protocol-family axis. Absent means unknown, and unknown is the honest
+# answer here: no engine speaks to this device and no exchange has ever
+# taken place with it. A family is never inferred from the fields below.
+
+[product]
+vendor_id    = 0x372E
+product_id   = 0x103E
+manufacturer = "BY Tech"
+product      = "HERO 84 HE"
+release      = 0x0216
+
+[structure]
+interfaces = 3
+
+[[structure.collection]]
+interface          = 0
+usage_page         = 0x0001
+usage              = 0x0006
+descriptor_fnv1a64 = "109a9237d49eacf8"
+input_bytes        = 8
+output_bytes       = 1
+feature_bytes      = 0
+
+[[structure.collection]]
+interface          = 1
+usage_page         = 0x0001
+usage              = 0x0002
+descriptor_fnv1a64 = "cbf687674d395883"
+report_id          = 2
+input_bytes        = 4
+output_bytes       = 0
+feature_bytes      = 1
+
+[[structure.collection]]
+interface          = 1
+usage_page         = 0x0001
+usage              = 0x0006
+descriptor_fnv1a64 = "e14b38659ede0f9e"
+report_id          = 7
+input_bytes        = 15
+output_bytes       = 0
+feature_bytes      = 0
+
+[[structure.collection]]
+interface          = 1
+usage_page         = 0x0001
+usage              = 0x0080
+descriptor_fnv1a64 = "a05419723d11acc6"
+report_id          = 5
+input_bytes        = 1
+output_bytes       = 0
+feature_bytes      = 0
+
+[[structure.collection]]
+interface          = 1
+usage_page         = 0x000C
+usage              = 0x0001
+descriptor_fnv1a64 = "6a7267dc6466e44b"
+report_id          = 4
+input_bytes        = 2
+output_bytes       = 0
+feature_bytes      = 0
+
+[[structure.collection]]
+interface          = 2
+usage_page         = 0xFF00
+usage              = 0x0001
+descriptor_fnv1a64 = "c0e89e9e96f42145"
+report_id          = 3
+input_bytes        = 0
+output_bytes       = 0
+feature_bytes      = 63
+
+[[structure.collection]]
+interface          = 2
+usage_page         = 0xFF60
+usage              = 0x0061
+descriptor_fnv1a64 = "57273a389450efe7"
+report_id          = 9
+input_bytes        = 63
+output_bytes       = 63
+feature_bytes      = 0
