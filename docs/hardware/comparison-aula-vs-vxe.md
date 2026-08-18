@@ -117,9 +117,14 @@ The receiver was captured three times, in three states of the mouse:
 
 So the receiver is a self-contained HID device whose collections do not reflect
 what is behind it. It presents a mouse collection, a keyboard collection and
-four vendor channels whether or not any mouse exists. No separate logical device
-appears behind it, and nothing in the enumeration distinguishes "receiver with a
-mouse paired" from "receiver alone".
+four vendor channels whether or not any mouse exists.
+
+Stated precisely, because the loose version of this claim is wrong: **no
+separate enumerated HID device appears for the peripheral behind the receiver**.
+That is a statement about enumeration, not about addressability. A remote
+peripheral can still be addressable through the receiver's vendor protocol --
+that is how receivers for this class of device usually work -- and nothing here
+tests for it, because testing for it means sending something.
 
 Practical consequence: a device list built from enumeration alone will show the
 dongle as a mouse that is always present. Telling the difference requires asking
@@ -144,9 +149,11 @@ successful pairing would add a fourth column here.
 |---|---|
 | `3554:F58E`, `VXE Mouse 1K Dongle`, release `0x0110` | the receiver |
 | `3554:F58F`, `VXE R1SE+`, release `0x0315` | the mouse itself, over its own cable |
-| the eight collections and their descriptors | **both, indistinguishably** — the receiver presents the same set |
+| the eight collections and their descriptors | **do not separate the two** — the receiver presents the same set, so descriptor and topology are not evidence about which of the two products is on the wire. They remain perfectly good evidence about the *shape* of the endpoint |
 | serial number | per physical unit; present in both, withheld from these files |
 
-The middle row is the awkward one, and it is the point of this table: the
-descriptor set is not evidence about which of the two objects is on the other
-end of the wire.
+The middle row is the awkward one, and it is the point of this table. Note what
+it does and does not say: the descriptor set does not distinguish these two
+physical products from each other. It is not "unowned", and it is not useless --
+it still describes the endpoint's structure faithfully. It simply answers a
+different question than "which product is this".
