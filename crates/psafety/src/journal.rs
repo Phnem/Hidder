@@ -34,7 +34,7 @@ impl From<OpcodeClass> for Intent {
     fn from(class: OpcodeClass) -> Self {
         match class {
             OpcodeClass::SafeRead => Intent::Read,
-            OpcodeClass::ProbeOk => Intent::Probe,
+            OpcodeClass::ProbeOk | OpcodeClass::BootstrapProbe => Intent::Probe,
             OpcodeClass::SafeWrite | OpcodeClass::SlowFlash => Intent::Write,
         }
     }
@@ -132,6 +132,16 @@ pub enum Outcome {
     Completed,
     Refused(Refusal),
     Failed(FailureKind),
+    /// The device answered and the answer failed typed validation.
+    ///
+    /// Distinct from `Completed` and from `Failed` on purpose, and the
+    /// distinction is the whole reason the probe path exists. An unsupported
+    /// command often replays the previous reply, so "bytes came back" is not
+    /// evidence that a command did what it is believed to do. A probe that
+    /// produced bytes nobody could make sense of has told us the opposite of
+    /// what a completed one tells us, and an entry that recorded both the same
+    /// way would be unreadable at exactly the moment it matters.
+    Rejected,
 }
 
 /// One attempt to reach a device.
@@ -208,6 +218,7 @@ mod tests {
     fn intent_follows_the_class() {
         assert_eq!(Intent::from(OpcodeClass::SafeRead), Intent::Read);
         assert_eq!(Intent::from(OpcodeClass::ProbeOk), Intent::Probe);
+        assert_eq!(Intent::from(OpcodeClass::BootstrapProbe), Intent::Probe);
         assert_eq!(Intent::from(OpcodeClass::SafeWrite), Intent::Write);
         assert_eq!(Intent::from(OpcodeClass::SlowFlash), Intent::Write);
     }

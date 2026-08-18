@@ -2,17 +2,19 @@
 //! receives.
 
 use crate::class::{Burst, FamilyTiming, OpcodeClass};
+use crate::key::CommandKey;
 
 /// What the generated table knows about one command.
 ///
-/// `opcode` is `pub(crate)` and stays that way. The byte is the thing this whole
-/// crate exists to control: it is read in exactly one place, when the gate mints
-/// an [`AuthorizedCommand`] after every check has passed.
+/// `key` is `pub(crate)` and stays that way. The bytes that identify a command
+/// are the thing this whole crate exists to control: they are read in exactly
+/// one place, when the gate mints an [`AuthorizedCommand`] after every check has
+/// passed.
 pub(crate) struct CommandRecord {
     pub(crate) id: SafeCommandId,
     pub(crate) family: &'static str,
     pub(crate) name: &'static str,
-    pub(crate) opcode: u8,
+    pub(crate) key: CommandKey,
     pub(crate) class: OpcodeClass,
 }
 
@@ -45,8 +47,8 @@ impl SafeCommandId {
         self.record().class
     }
 
-    pub(crate) fn opcode(self) -> u8 {
-        self.record().opcode
+    pub(crate) fn key(self) -> CommandKey {
+        self.record().key
     }
 
     /// Every command that exists, for tests and for the support table.
@@ -56,8 +58,8 @@ impl SafeCommandId {
 
     /// Looks up a command by family and name.
     ///
-    /// Deliberately not "by opcode": there is no lookup in this crate that turns
-    /// a byte into a command, because that is precisely the operation the
+    /// Deliberately not "by key": there is no lookup in this crate that turns
+    /// bytes into a command, because that is precisely the operation the
     /// boundary forbids. A caller with a byte and an intention to send it has
     /// nowhere to go.
     pub fn find(family: &str, name: &str) -> Option<SafeCommandId> {
@@ -103,18 +105,22 @@ impl AuthorizedCommand {
         self.id
     }
 
-    /// The opcode byte to put at the head of the frame.
+    /// What identifies this command on the wire.
     ///
-    /// This is where the byte leaves the crate, and it is the only place. It
-    /// comes from the generated table, never from the caller: a payload cannot
-    /// become an opcode, because the opcode is not something the caller
-    /// supplied.
-    pub fn opcode(&self) -> u8 {
-        self.id.opcode()
+    /// This is where those bytes leave the crate, and it is the only place. They
+    /// come from the generated table, never from the caller: a payload cannot
+    /// become a command identity, because the identity is not something the
+    /// caller supplied.
+    ///
+    /// A [`CommandKey`] rather than a byte since TICKET-12, because one family's
+    /// commands are group/subcommand pairs and collapsing a pair to its group
+    /// would authorise every subcommand in it.
+    pub fn key(&self) -> CommandKey {
+        self.id.key()
     }
 
     /// Parameters for the command. Data, not instructions: whatever is in here,
-    /// the device is told to do what [`AuthorizedCommand::opcode`] says.
+    /// the device is told to do what [`AuthorizedCommand::key`] says.
     pub fn payload(&self) -> &[u8] {
         &self.payload
     }
@@ -163,7 +169,7 @@ mod tests {
     }
 
     #[test]
-    fn a_command_cannot_be_found_by_opcode() {
+    fn a_command_cannot_be_found_by_key() {
         // A compile-time property expressed as a reminder: `find` takes a name.
         // If a `find_by_opcode` ever appears, this test's comment is the note
         // explaining why it must not.
@@ -172,13 +178,13 @@ mod tests {
     }
 
     #[test]
-    fn the_payload_cannot_choose_the_opcode() {
+    fn the_payload_cannot_choose_the_command() {
         let id = SafeCommandId::find("royuan-gen2", "identify").expect("fixture command");
         let hostile = AuthorizedCommand::new(id, vec![0xAC; 8]);
         assert_eq!(
-            hostile.opcode(),
-            0x8F,
-            "the opcode came from the payload instead of the table"
+            hostile.key(),
+            CommandKey::Opcode(0x8F),
+            "the command identity came from the payload instead of the table"
         );
     }
 }

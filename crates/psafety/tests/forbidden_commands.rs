@@ -81,12 +81,49 @@ fn nothing_in_the_registry_writes_yet() {
 }
 
 #[test]
-fn the_board_we_own_has_no_commands_at_all() {
-    let aula: Vec<_> = SafeCommandId::all()
-        .filter(|id| id.family() == "aula-hero84-he")
-        .map(SafeCommandId::name)
+fn the_board_we_own_has_no_production_command_at_all() {
+    // Two families now, and neither may produce a `SafeCommandId`.
+    // `aula-hero84-he` is the product entry and stays empty. `aula-bytech` is
+    // the protocol family, and everything it knows came from a vendor artifact,
+    // which does not earn a production read -- only a bootstrap probe.
+    for family in ["aula-hero84-he", "aula-bytech"] {
+        let earned: Vec<_> = SafeCommandId::all()
+            .filter(|id| id.family() == family)
+            .map(SafeCommandId::name)
+            .collect();
+        assert!(
+            earned.is_empty(),
+            "unearned production commands for {family}: {earned:?}"
+        );
+    }
+}
+
+#[test]
+fn the_aula_bootstrap_probe_is_the_only_probe_that_exists() {
+    let probes: Vec<_> = psafety::ProbeCommandId::all()
+        .map(|id| (id.family(), id.name()))
         .collect();
-    assert!(aula.is_empty(), "unearned commands for the AULA: {aula:?}");
+    assert_eq!(
+        probes,
+        [("aula-bytech", "read_model_id")],
+        "the probe surface grew without the plan saying so"
+    );
+}
+
+#[test]
+fn a_vendor_artifact_cannot_reach_the_production_path() {
+    // The bootstrap rule, stated as a property rather than as a comment: every
+    // probe command is absent from `SafeCommandId`, so the only door a
+    // vendor-artifact command has is the one that costs a confirmation and
+    // yields exactly one send.
+    for id in psafety::ProbeCommandId::all() {
+        assert!(
+            SafeCommandId::find(id.family(), id.name()).is_none(),
+            "{}::{} is executable through the production gate",
+            id.family(),
+            id.name()
+        );
+    }
 }
 
 #[test]
@@ -95,7 +132,7 @@ fn the_families_we_know_about_are_the_ones_we_documented() {
     families.sort_unstable();
     assert_eq!(
         families,
-        ["aula-hero84-he", "royuan-gen2", "royuan-yc500"],
+        ["aula-bytech", "aula-hero84-he", "royuan-gen2", "royuan-yc500"],
         "a family appeared or vanished without the plan saying so"
     );
 }
@@ -132,4 +169,31 @@ fn a_command_cannot_be_looked_up_by_opcode_from_outside() {
     let found = SafeCommandId::find("royuan-gen2", "identify");
     assert!(found.is_some());
     assert!(SafeCommandId::find("royuan-gen2", "0x8f").is_none());
+}
+
+#[test]
+fn a_probe_cannot_be_named_by_its_bytes_from_outside() {
+    // What is closed, stated as a test rather than as a comment: there is no
+    // public way to turn `0x82:0x01` into a `ProbeCommandId`, no public
+    // constructor for `AuthorizedProbe`, and `ProbeCommandId::key` is
+    // crate-private. A caller that wants to send this command has to name the
+    // `ProbeResponse` type, which names the command, which came from the table.
+    //
+    // `find` takes a family and a name, and nothing spelled like a byte is one.
+    assert!(psafety::ProbeCommandId::find("aula-bytech", "read_model_id").is_some());
+    for byte_ish in ["0x82", "0x82:0x01", "130", "130,1"] {
+        assert!(
+            psafety::ProbeCommandId::find("aula-bytech", byte_ish).is_none(),
+            "{byte_ish} resolved to a probe"
+        );
+    }
+}
+
+#[test]
+fn a_probe_belongs_to_one_family_and_refuses_every_other() {
+    // The collision check, on the probe path. The same two bytes mean something
+    // else in another family, and a probe carries its family with it.
+    let probe = psafety::ProbeCommandId::find("aula-bytech", "read_model_id").expect("ships");
+    assert_eq!(probe.family(), "aula-bytech");
+    assert!(psafety::ProbeCommandId::find("royuan-gen2", "read_model_id").is_none());
 }

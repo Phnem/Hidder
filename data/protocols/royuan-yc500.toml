@@ -10,7 +10,7 @@
 # Same standing as gen2: prior art only (docs/prior-art/royuan.md, facts, no
 # code), no engine, no board here, every write refused.
 
-schema       = "peripheral.opcode-acl/1"
+schema       = "peripheral.opcode-acl/2"
 family       = "royuan-yc500"
 display_name = "ROYUAN yc500"
 note         = "Prior-art family, no engine and no hardware here. Kept beside royuan-gen2 because the pair is the documented case of colliding opcodes with different semantics."
@@ -35,56 +35,56 @@ note              = "User-picture upload: pages 40-100 ms apart, 2 s settle, at 
 max_operations    = 2
 per_window_ms     = 10000
 
-[[opcode]]
+[[command]]
 opcode   = 0x8F
 name     = "identify"
 class    = "probe_ok"
 evidence = "hardware_third_party"
 note     = "Shared with gen2, and one of the few bytes that means the same thing in both."
 
-[[opcode]]
+[[command]]
 opcode   = 0x80
 name     = "revision"
 class    = "probe_ok"
 evidence = "hardware_third_party"
 note     = "Shared with gen2. Firmware version from two answer bytes."
 
-[[opcode]]
+[[command]]
 opcode   = 0x87
 name     = "read_led_params"
 class    = "safe_read"
 evidence = "hardware_third_party"
 note     = "Answered on X86."
 
-[[opcode]]
+[[command]]
 opcode   = 0x88
 name     = "read_side_led_params"
 class    = "safe_read"
 evidence = "hardware_third_party"
 note     = "Answered on X86."
 
-[[opcode]]
+[[command]]
 opcode   = 0x8B
 name     = "read_macro"
 class    = "safe_read"
 evidence = "hardware_third_party"
 note     = "Answered on X86. Pages 0-4, raw answers with no opcode echo."
 
-[[opcode]]
+[[command]]
 opcode   = 0x8C
 name     = "read_user_picture"
 class    = "safe_read"
 evidence = "hardware_third_party"
 note     = "Answered on X86."
 
-[[opcode]]
+[[command]]
 opcode   = 0x90
 name     = "read_fn_layer"
 class    = "safe_read"
 evidence = "hardware_third_party"
 note     = "Answered on X86."
 
-[[opcode]]
+[[command]]
 opcode   = 0x97
 name     = "read_auto_os"
 class    = "safe_read"
@@ -93,58 +93,58 @@ note     = "Answered on X86."
 
 # --- classified, and classified as refused -------------------------------
 
-[[opcode]]
+[[command]]
 opcode   = 0xAC
 name     = "erase_display_flash"
 class    = "destructive"
 evidence = "hardware_third_party"
 note     = "Erases the flash chip. Same byte, same meaning as gen2 -- one of the few destructive opcodes that does not move between the two."
 
-[[opcode]]
+[[command]]
 opcode   = 0x30
 name     = "boot_logo_a"
 class    = "destructive"
-evidence = "vendor_js"
+evidence = "vendor_artifact"
 note     = "Enters the bootloader. Named 'boot logo' by the vendor, which is exactly the kind of harmless-looking name this classification exists to catch."
 
-[[opcode]]
+[[command]]
 opcode   = 0x31
 name     = "boot_logo_b"
 class    = "destructive"
-evidence = "vendor_js"
+evidence = "vendor_artifact"
 note     = "Bootloader entry, second of the pair."
 
-[[opcode]]
+[[command]]
 opcode   = 0x02
 name     = "factory_reset"
 class    = "destructive"
-evidence = "vendor_js"
+evidence = "vendor_artifact"
 note     = "Resets user configuration. This byte is 0x01 on gen2. Sending either family's number to the other is sending an unknown command."
 
-[[opcode]]
+[[command]]
 opcode   = 0x06
 name     = "set_options"
 class    = "unknown"
-evidence = "vendor_js"
+evidence = "vendor_artifact"
 note     = "Options here, Debounce on gen2. Byte 2 carries a full-keyboard lock bit, so a misdirected write can lock a stranger's keyboard. Refused."
 
-[[opcode]]
+[[command]]
 opcode   = 0x09
 name     = "set_keymatrix"
 class    = "unknown"
-evidence = "vendor_js"
+evidence = "vendor_artifact"
 note     = "Keymatrix here, Options on gen2. Refused."
 
-[[opcode]]
+[[command]]
 opcode   = 0x11
 name     = "set_debounce"
 class    = "unknown"
-evidence = "vendor_js"
+evidence = "vendor_artifact"
 note     = "Debounce here, sleep timers on gen2. Refused."
 
-[[opcode]]
+[[command]]
 opcode   = 0x07
 name     = "set_led_params"
 class    = "unknown"
-evidence = "vendor_js"
+evidence = "vendor_artifact"
 note     = "Survives a power cycle, so it is a flash write. Refused until verified here."

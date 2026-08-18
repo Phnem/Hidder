@@ -1,0 +1,54 @@
+# AULA `bytech` -- the protocol family our HERO 84 HE actually speaks.
+#
+# Distinct from `aula-hero84-he`, which is a *product* entry and stays empty.
+# The family boundary here is the vendor's own: the application picks a protocol
+# module per device by an `sdkModuleName`, our board resolves to `bytech`, and
+# `bytech` is the only module in the vendor bundle that binds this keyboard
+# codec. One frame format, one builder, one decoder, one response validator,
+# instantiated in exactly one place (docs/prior-art/aula-webhid.md).
+#
+# What that buys and what it does not: it shows the vendor's *driver* hands
+# every `bytech` board the same encoder. It does not show that every such
+# board's *firmware* answers the same way. So the family evidence is
+# VendorArtifact, and it stays there until an exchange happens -- and even then
+# only for the board the exchange happened on.
+#
+# This file contains exactly one entry on purpose. The rest of the family's
+# command namespace was readable during the same pass and was deliberately not
+# written down: an opcode recorded here is an opcode someone can be tempted to
+# classify, and the vertical slice needs one read.
+
+schema       = "peripheral.opcode-acl/2"
+family       = "aula-bytech"
+display_name = "AULA bytech (keyboard)"
+note         = "Vendor-defined protocol family, named after the vendor's own SDK module rather than after any product. Config endpoint 0xFF60:0x0061; 63-byte frames both directions with the report id prepended by the HID write; checksum seeded with the report id. Membership established for HERO 84 HE (VID 0x372E PID 0x103E) from the vendor's module binding, not from its 'BY Tech' manufacturer string."
+
+# No [timing.class.*] section, and that is not an omission.
+#
+# The only entry below is a probe, and a probe is one operation per
+# authorisation with the gate consumed in the act. There is no second operation
+# for a measured interval to sit between, so declaring one would describe
+# something that cannot happen -- the generator refuses `[timing.class.bootstrap_probe]`
+# for exactly that reason. When this family earns its first `safe_read`, that
+# read will need measured timing, and the numbers will come from the probe that
+# earned it rather than from anywhere else.
+
+[[command]]
+group      = 0x82
+subcommand = 0x01
+name       = "read_model_id"
+class      = "bootstrap_probe"
+evidence   = "vendor_artifact"
+note       = """
+The vendor calls this readDeviceUUID; the value it returns identifies a model \
+and a key layout, not a physical unit, so our name says model id. Recovered \
+from the vendor's own configurator bundle by static analysis \
+(docs/prior-art/aula-bytech-readdeviceuuid.md, bundle SHA-256 9c6c6a71...). \
+Read-only on the evidence available: it is the first call on the connect path, \
+before any user action, its result is consumed as a table lookup, nothing is \
+written back, and group 0x82 has no write counterpart anywhere in the vendor \
+bundle. All of that is evidence about the vendor's driver, which is why this is \
+bootstrap_probe on a vendor artifact and not safe_read -- the firmware has not been \
+asked yet. It becomes a safe_read on `hardware` evidence only after a probe \
+succeeds here and a human reviews the result.
+"""

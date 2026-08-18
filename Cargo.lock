@@ -2588,6 +2588,7 @@ dependencies = [
  "pregistry",
  "psafety",
  "ptransport",
+ "thiserror 2.0.20",
 ]
 
 [[package]]

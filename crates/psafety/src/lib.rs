@@ -27,15 +27,48 @@
 //!  CommandSink -> DeviceSession -> the wire
 //! ```
 //!
+//! # There are two doors, and the second one is narrower
+//!
+//! The path above is for commands that have been verified. TICKET-12 added a
+//! second, for the one case that path cannot serve: the first send of a command
+//! nobody here has ever sent. A `safe_read` is earned with hardware evidence,
+//! and hardware evidence is earned by sending the command once, so without
+//! somewhere for that first send to live the rule is unsatisfiable and the
+//! pressure is to put a hole in it.
+//!
+//! ```text
+//!   ProbeCommandId                  a different generated enum; only
+//!     |                             `bootstrap_probe` entries appear in it
+//!     v
+//!  ProbeGate::probe(self, ..)       consumes the gate, so one authorisation is
+//!     |                             one send and a series cannot be expressed
+//!     |  UserConfirmation           by value, one person, one question
+//!     v
+//!  AuthorizedProbe                  its own type: a ProbeSink cannot be handed
+//!     |                             a production command and vice versa
+//!     v
+//!  ProbeSink -> the wire -> ProbeResponse::decode -> a typed value or an error
+//! ```
+//!
+//! No raw bytes enter or leave that path, there is no retry loop in it, and
+//! nothing on it writes to the ACL. Promoting a probed command to a
+//! [`SafeCommandId`] is a person editing `data/protocols/*.toml` and rebuilding
+//! -- see [`probe`] for why each of those is the way it is.
+//!
 //! # What is actually closed, and what is not
 //!
 //! Closed here, by construction rather than by discipline:
 //!
-//! - an opcode classified `destructive` or `unknown`, or classified by nobody,
-//!   has no [`SafeCommandId`] variant, so no code anywhere can name it;
-//! - [`SafeCommandId::opcode`] is crate-private, so the byte is read in exactly
-//!   one place: when the gate mints an [`AuthorizedCommand`] after every check
-//!   has passed;
+//! - a command classified `destructive` or `unknown`, or classified by nobody,
+//!   has no [`SafeCommandId`] and no [`ProbeCommandId`] variant, so no code
+//!   anywhere can name it;
+//! - `SafeCommandId::key` is crate-private, so the bytes that identify a
+//!   command are read in exactly one place: when the gate mints an
+//!   [`AuthorizedCommand`] after every check has passed;
+//! - that identity is a [`CommandKey`] and not a byte, because one family
+//!   addresses commands as a group plus a subcommand, and authorising the group
+//!   would authorise every subcommand in it -- including the ones nobody has
+//!   classified;
 //! - [`AuthorizedCommand`] has no public constructor and is consumed on
 //!   dispatch, so a sink can neither forge one nor replay the one it got;
 //! - the gate owns its sink instead of lending it out, so an engine has no
@@ -76,6 +109,8 @@ pub mod class;
 pub mod command;
 pub mod gate;
 pub mod journal;
+pub mod key;
+pub mod probe;
 pub mod rate;
 
 // The generator, compiled into the crate only for its own tests. `build.rs`
@@ -86,6 +121,10 @@ mod codegen;
 pub use class::{Burst, FamilyTiming, OpcodeClass};
 pub use command::{AuthorizedCommand, SafeCommandId, known_families};
 pub use gate::{BackupState, Clock, CommandSink, MonotonicClock, SafetyError, SafetyGate};
+pub use key::{CommandKey, HeaderBytes};
+pub use probe::{
+    AuthorizedProbe, ProbeCommandId, ProbeError, ProbeGate, ProbeResponse, ProbeSink,
+};
 pub use journal::{
     FailureKind, Intent, JournalEntry, JournalSink, Outcome, Refusal, Verification,
     VerificationMethod,

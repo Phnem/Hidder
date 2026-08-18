@@ -62,8 +62,13 @@ fn main() {
         Err(error) => panic!("opcode ACL is not usable: {error}"),
     };
 
-    let out = std::path::PathBuf::from(std::env::var("OUT_DIR").expect("cargo sets OUT_DIR"))
-        .join("safe_command_id.rs");
-    std::fs::write(&out, emit(&registry))
-        .unwrap_or_else(|e| panic!("cannot write {}: {e}", out.display()));
+    let out_dir = std::path::PathBuf::from(std::env::var("OUT_DIR").expect("cargo sets OUT_DIR"));
+    for (name, text) in [
+        ("safe_command_id.rs", emit(&registry)),
+        ("probe_command_id.rs", emit_probe(&registry)),
+    ] {
+        let out = out_dir.join(name);
+        std::fs::write(&out, text)
+            .unwrap_or_else(|e| panic!("cannot write {}: {e}", out.display()));
+    }
 }

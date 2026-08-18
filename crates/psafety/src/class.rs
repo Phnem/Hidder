@@ -13,8 +13,29 @@
 pub enum OpcodeClass {
     /// Reads state and changes nothing.
     SafeRead,
-    /// May be sent to a board that has not been identified yet.
+    /// May be sent to a board that has not been identified yet. A production
+    /// read, repeatable and paced by the family's measured cadence, whose
+    /// purpose happens to be identification.
     ProbeOk,
+    /// Read-only, believed safe on a vendor artifact, and never yet sent to
+    /// hardware by this project.
+    ///
+    /// Not a weaker `SafeRead`: a different door. It generates a
+    /// [`ProbeCommandId`] rather than a [`SafeCommandId`], reaches
+    /// [`ProbeGate`] rather than [`SafetyGate`], and costs one explicit
+    /// confirmation per send with no second send available. It exists so that
+    /// the first exchange with a new family has somewhere to happen that is not
+    /// a hole in the rule that a `safe_read` is earned on hardware evidence.
+    ///
+    /// A command does not stay here. It is sent once, the answer is reviewed by
+    /// a person, and the ACL entry is rewritten as a `safe_read` on `hardware`
+    /// evidence -- by hand, in a diff, not by the program.
+    ///
+    /// [`ProbeCommandId`]: crate::ProbeCommandId
+    /// [`SafeCommandId`]: crate::SafeCommandId
+    /// [`ProbeGate`]: crate::ProbeGate
+    /// [`SafetyGate`]: crate::SafetyGate
+    BootstrapProbe,
     /// Writes state that does not survive a power cycle.
     SafeWrite,
     /// Writes state that does survive a power cycle. However it is presented in
@@ -41,6 +62,7 @@ impl OpcodeClass {
         match self {
             OpcodeClass::SafeRead => "safe_read",
             OpcodeClass::ProbeOk => "probe_ok",
+            OpcodeClass::BootstrapProbe => "bootstrap_probe",
             OpcodeClass::SafeWrite => "safe_write",
             OpcodeClass::SlowFlash => "slow_flash",
         }
@@ -79,6 +101,7 @@ mod tests {
     fn only_writing_classes_write() {
         assert!(!OpcodeClass::SafeRead.writes());
         assert!(!OpcodeClass::ProbeOk.writes());
+        assert!(!OpcodeClass::BootstrapProbe.writes());
         assert!(OpcodeClass::SafeWrite.writes());
         assert!(OpcodeClass::SlowFlash.writes());
     }

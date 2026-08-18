@@ -14,7 +14,7 @@
 # Entries arrive when TICKET-12 verifies a read on the hardware, one opcode at a
 # time, each with its own evidence.
 
-schema       = "peripheral.opcode-acl/1"
+schema       = "peripheral.opcode-acl/2"
 family       = "aula-hero84-he"
 display_name = "AULA Hero 84 HE"
 note         = "Reference board. VID 0x372E PID 0x103E, strings 'BY Tech'/'HERO 84 HE', release 0x0216. Not ROYUAN: the VID is absent from that family's list and the vendor channel has a different shape (docs/hardware/aula-hero-84-he.md). No opcode is known."

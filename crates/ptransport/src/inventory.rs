@@ -101,6 +101,12 @@ pub struct CollectionAccess {
 }
 
 impl Hid {
+    /// The backend, for the one module in this crate that opens a handle.
+    /// Crate-internal: `hidapi` types must not appear in a public signature.
+    pub(crate) fn api_ref(&self) -> &HidApi {
+        &self.api
+    }
+
     pub fn open() -> Result<Self, TransportError> {
         HidApi::new()
             .map(|api| Self { api })

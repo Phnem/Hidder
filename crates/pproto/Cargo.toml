@@ -15,6 +15,7 @@ ptransport.workspace = true
 pcaps.workspace = true
 pregistry.workspace = true
 psafety.workspace = true
+thiserror.workspace = true
 
 [lints]
 workspace = true

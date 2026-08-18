@@ -360,7 +360,7 @@ mod tests {
     #[derive(Default)]
     struct RecordingSink {
         dispatched: Rc<Cell<usize>>,
-        seen_opcode: Rc<Cell<u8>>,
+        seen_key: Rc<Cell<Option<crate::key::CommandKey>>>,
         fail_with: Option<TransportError>,
     }
 
@@ -371,10 +371,10 @@ mod tests {
             command: AuthorizedCommand,
         ) -> Result<Vec<u8>, TransportError> {
             self.dispatched.set(self.dispatched.get() + 1);
-            self.seen_opcode.set(command.opcode());
+            self.seen_key.set(Some(command.key()));
             match self.fail_with.take() {
                 Some(error) => Err(error),
-                None => Ok(vec![command.opcode()]),
+                None => Ok(command.key().header_bytes().to_vec()),
             }
         }
     }
@@ -394,7 +394,7 @@ mod tests {
         gate: SafetyGate<RecordingSink, RecordingJournal, TestClock>,
         now: Rc<Cell<u64>>,
         dispatched: Rc<Cell<usize>>,
-        seen_opcode: Rc<Cell<u8>>,
+        seen_key: Rc<Cell<Option<crate::key::CommandKey>>>,
         entries: Rc<std::cell::RefCell<Vec<JournalEntry>>>,
         device: DeviceId,
     }
@@ -402,12 +402,12 @@ mod tests {
     fn harness(fail_with: Option<TransportError>) -> Harness {
         let now = Rc::new(Cell::new(1_000));
         let dispatched = Rc::new(Cell::new(0));
-        let seen_opcode = Rc::new(Cell::new(0));
+        let seen_key = Rc::new(Cell::new(None));
         let entries = Rc::new(std::cell::RefCell::new(Vec::new()));
         let gate = SafetyGate::new(
             RecordingSink {
                 dispatched: Rc::clone(&dispatched),
-                seen_opcode: Rc::clone(&seen_opcode),
+                seen_key: Rc::clone(&seen_key),
                 fail_with,
             },
             RecordingJournal {
@@ -421,7 +421,7 @@ mod tests {
             gate,
             now,
             dispatched,
-            seen_opcode,
+            seen_key,
             entries,
             device: DeviceId::new(1),
         }
@@ -620,9 +620,9 @@ mod tests {
             .expect("an approved read on an identified device");
         assert_eq!(h.dispatched.get(), 1);
         assert_eq!(
-            h.seen_opcode.get(),
-            0x8F,
-            "the opcode must come from the table, never from the payload"
+            h.seen_key.get(),
+            Some(crate::key::CommandKey::Opcode(0x8F)),
+            "the command identity must come from the table, never from the payload"
         );
         assert_eq!(answer, vec![0x8F]);
     }

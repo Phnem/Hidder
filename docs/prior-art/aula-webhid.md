@@ -17,7 +17,7 @@ sent to the keyboard at any point while producing it.
 | Landing page | `https://aulastar.com/aula-hub/` (links to the app) |
 | Application | `https://hub.aulacn.com/` |
 | Main bundle | `https://hub.aulacn.com/assets/index-BYKWhEoJ.js` |
-| Bundle size | 2 434 617 bytes |
+| Bundle size | 2 472 348 bytes (this figure read 2 434 617 until 2026-08-18; the hash below is the identifier that matters, and it is unchanged) |
 | Bundle SHA-256 | `9c6c6a71796243073b6512d3e3aa1946ee76b77182c57edf5722149b3a37d0ab` |
 | Retrieved | 2026-08-18T05:39:35Z |
 | Source map | **none published** — `index-BYKWhEoJ.js.map` returns the SPA HTML fallback, not a map |
@@ -100,8 +100,14 @@ DevGetPairResult      DevSetMacro
 
 Most of this set is mouse and dongle vocabulary; `DevGetInfo` and
 `DevGetAxisCfg` are the two that plausibly apply to a keyboard, "axis" being the
-vendor's word for a magnetic switch. Which of these the keyboard path actually
-uses is not established.
+vendor's word for a magnetic switch.
+
+**Correction from the second pass: the keyboard path uses none of them.** These
+names belong to the mouse and dongle stacks. The keyboard SDK has its own
+service API with its own numbering, where a command is a `(group, subcommand)`
+pair rather than a symbolic name — see
+[`aula-bytech-readdeviceuuid.md`](aula-bytech-readdeviceuuid.md). Nothing in the
+list above is evidence about the keyboard.
 
 ## Pages the keyboard loads
 
@@ -130,6 +136,14 @@ For the transport module the accessor resolves as `index - 240` into a 169-entry
 array after 160 rotations. Confirmed by decoding known-good positions:
 `device`, `reportId`, `send`, `sendCommand`, `onInputReport`, `resetQueue`.
 
+The second pass generalised this rather than repeating it by hand: array
+literals parsed, each rotation solved by evaluating candidate rotations against
+the inline checksum, accessor offsets read off the accessor definitions, and
+call sites rewritten against the nearest preceding alias binding. The bundle
+carries 104 such arrays and 103 accessors; 93 rotation loops were located and
+all 93 solve. The generalised pass reproduces the hand result above exactly,
+which is what makes it trustworthy.
+
 Recorded so the work is repeatable, not so it can be reused: no decoded vendor
 source is stored in this repository.
 
@@ -154,6 +168,23 @@ family boundary than anything derivable from identity: it names the code that
 speaks to the device. Candidate family id for the registry once a read is
 verified: **`aula-bytech`** — scoped to what we have actually confirmed rather
 than to every board the vendor files under `bytech`.
+
+**The module name and the codec do coincide, and that was checked rather than
+assumed.** There is exactly one keyboard codec class in the bundle, holding one
+frame-config object, one command builder, one decoder and one response
+validator; it is instantiated in exactly one place. Of the eleven
+`sdkModuleName` values that have an Info module here, `bytech` is the only one
+whose module imports that SDK — every other module binds a different one. So
+frame format, command namespace, response validation and codec semantics are
+shared across `bytech` by construction.
+
+Two limits on what that buys. It shows the *driver* hands every `bytech` board
+the same encoder, not that every such board's firmware answers the same way, so
+the family stays `VendorArtifact` until an exchange happens. And
+`bytechMechanical` is not a `bytech` sub-family on this evidence: it has no Info
+module of its own, appears here as a UI panel name, and where the two are
+grouped for behaviour it is grouped away from `bytech`. It is out of scope, not
+included.
 
 ## How the vendor tells nine identical-looking models apart
 
@@ -202,6 +233,16 @@ the project forbids outright.
 it belongs to a device we do not have a verified family for, and reading it is
 still a protocol exchange.
 
+It is also the clearest illustration of why "the SDK has a method" is not a
+capability claim, and the second pass sharpened it: the Info module calls
+`getBatteryStatus()` on the connect path for **every** `bytech` board including
+ours, and then uses the result only for two of them — the two wireless models it
+names explicitly. A method that exists, is on this model's call path, and whose
+answer this model's own driver throws away. Five separate things are worth
+tracking per method and they are not the same thing: the SDK has it; this model's
+connect path calls it; its encoding is known; a hardware exchange has confirmed
+it; the hardware actually has the capability.
+
 ## Frame format — mouse stack only
 
 The bundle contains at least two protocol stacks. The one that was fully decoded
@@ -223,20 +264,25 @@ read out of the mouse protocol class, and this ticket is about a keyboard.
 
 ## What is still missing
 
-**The numeric command id for the keyboard stack.** The best candidate is now
-identified by name and by role rather than by number: `readDeviceUUID` /
-`encodeGetUUID` / `decodeGetUUID`, called on the connect path before any user
-action, its result used to pick a layout, with no save, commit, flash or reboot
-anywhere near it. What is not yet recovered is the byte it puts on the wire.
+**Nothing about `readDeviceUUID` — that one is recovered.** A second targeted
+pass resolved the keyboard codec's own string array and read the command out of
+it: group `0x82`, subcommand `0x01`, a 63-byte frame with a report-id-seeded
+checksum, and a six-byte big-endian model id in the reply. The frame, the
+checksum, the response validator and the decoder are written up in
+[`aula-bytech-readdeviceuuid.md`](aula-bytech-readdeviceuuid.md), together with
+the reason the exchange still has not happened: the ACL requires hardware
+evidence for a `safe_read` and its schema cannot express a `(group, subcommand)`
+pair, so there is no lawful route to send it yet.
 
-The obstacle is mechanical rather than conceptual: in the keyboard protocol
-class the encoder and decoder are defined under computed member names, so the
-methods have to be resolved through that class's own string array before the
-command constants become readable. The same technique already worked twice in
-this bundle, so this is a further decoding pass rather than a dead end.
+The keyboard's frame does share the mouse stack's 63-byte payload size — but its
+checksum is a different algorithm at a different offset, and the size was
+established independently by our own report descriptor (`95 3F`, TICKET-08). The
+correspondence is a coincidence of packet size, not shared framing, and the
+warning above stands for every other field.
 
-Until that byte is recovered from the artifact, TICKET-12 has nothing it is
-allowed to send. Guessing one from ROYUAN, from QMK/VIA conventions, or from the
-shape of `0xFF60:0x0061` is explicitly out of bounds: the usage page confirms
-which channel the vendor talks on, not what it says. The 63-byte framing above
-belongs to the mouse stack and is not evidence about the keyboard either.
+**Still missing for everything else.** The numeric ids for the rest of the
+keyboard namespace are readable by the same method now, but nothing beyond
+`readDeviceUUID` has been recovered deliberately: the vertical slice does not
+need them, and an opcode written down is an opcode someone can be tempted to
+send. Guessing any of them from ROYUAN, from QMK/VIA conventions, or from the
+shape of `0xFF60:0x0061` remains out of bounds.
