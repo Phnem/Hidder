@@ -77,6 +77,70 @@ pub struct Burst {
     pub per_window_ms: u64,
 }
 
+/// One command's own measured timing, which outranks its class's.
+///
+/// The reason this exists: `read_model_id` was measured on hardware, and
+/// writing that measurement into `[timing.class.safe_read]` would have claimed
+/// it for every `safe_read` the family ever gains. A number measured for one
+/// command is evidence about that command. The next one gets its own, or falls
+/// back to a class number that was itself measured across the class.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct CommandTiming {
+    pub family: &'static str,
+    pub command: &'static str,
+    pub min_gap_before_ms: u64,
+    pub settle_after_ms: u64,
+    pub burst: Option<Burst>,
+}
+
+/// Where a cadence came from.
+///
+/// Carried so that a journal or a report can say which measurement is
+/// throttling an operation, rather than leaving a reader to guess whether a
+/// number is specific to the command or inherited.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum CadenceSource {
+    /// Measured for this exact command.
+    Command,
+    /// Measured for the class, and inherited by every command in it.
+    Class,
+}
+
+/// The resolved answer to "how often may this go".
+///
+/// Resolution order, and there is no fourth step: this command's own measured
+/// timing, then its class's, then nothing -- and nothing means a person is
+/// asked, never that an interval is invented.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct Cadence {
+    pub min_gap_before_ms: u64,
+    pub settle_after_ms: u64,
+    pub burst: Option<Burst>,
+    pub source: CadenceSource,
+}
+
+impl From<&'static FamilyTiming> for Cadence {
+    fn from(timing: &'static FamilyTiming) -> Self {
+        Self {
+            min_gap_before_ms: timing.min_gap_before_ms,
+            settle_after_ms: timing.settle_after_ms,
+            burst: timing.burst,
+            source: CadenceSource::Class,
+        }
+    }
+}
+
+impl From<&'static CommandTiming> for Cadence {
+    fn from(timing: &'static CommandTiming) -> Self {
+        Self {
+            min_gap_before_ms: timing.min_gap_before_ms,
+            settle_after_ms: timing.settle_after_ms,
+            burst: timing.burst,
+            source: CadenceSource::Command,
+        }
+    }
+}
+
 /// One family's measured timing for one class of command.
 ///
 /// Two numbers, not one, and the second is the one prior art learned the hard

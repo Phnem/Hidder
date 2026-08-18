@@ -120,13 +120,14 @@ mod codegen;
 
 pub use class::{Burst, FamilyTiming, OpcodeClass};
 pub use command::{AuthorizedCommand, SafeCommandId, known_families};
-pub use gate::{BackupState, Clock, CommandSink, MonotonicClock, SafetyError, SafetyGate};
-pub use key::{CommandKey, HeaderBytes};
-pub use probe::{
-    AuthorizedProbe, ProbeCommandId, ProbeError, ProbeGate, ProbeResponse, ProbeSink,
+pub use gate::{
+    BackupState, Clock, CommandResponse, CommandSink, MonotonicClock, ReadError, SafetyError,
+    SafetyGate,
 };
 pub use journal::{
     FailureKind, Intent, JournalEntry, JournalSink, Outcome, Refusal, Verification,
     VerificationMethod,
 };
+pub use key::{CommandKey, HeaderBytes};
+pub use probe::{AuthorizedProbe, ProbeCommandId, ProbeError, ProbeGate, ProbeResponse, ProbeSink};
 pub use rate::{RateDecision, RateLimiter, UserConfirmation, WaitReason};

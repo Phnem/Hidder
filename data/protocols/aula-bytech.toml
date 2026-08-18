@@ -9,9 +9,9 @@
 #
 # What that buys and what it does not: it shows the vendor's *driver* hands
 # every `bytech` board the same encoder. It does not show that every such
-# board's *firmware* answers the same way. So the family evidence is
-# VendorArtifact, and it stays there until an exchange happens -- and even then
-# only for the board the exchange happened on.
+# board's *firmware* answers the same way. The family evidence stays
+# VendorArtifact for every board except the one an exchange actually happened
+# on.
 #
 # This file contains exactly one entry on purpose. The rest of the family's
 # command namespace was readable during the same pass and was deliberately not
@@ -21,34 +21,45 @@
 schema       = "peripheral.opcode-acl/2"
 family       = "aula-bytech"
 display_name = "AULA bytech (keyboard)"
-note         = "Vendor-defined protocol family, named after the vendor's own SDK module rather than after any product. Config endpoint 0xFF60:0x0061; 63-byte frames both directions with the report id prepended by the HID write; checksum seeded with the report id. Membership established for HERO 84 HE (VID 0x372E PID 0x103E) from the vendor's module binding, not from its 'BY Tech' manufacturer string."
+note         = "Vendor-defined protocol family, named after the vendor's own SDK module rather than after any product. Config endpoint 0xFF60:0x0061; 63-byte frames both directions with the report id prepended by the HID write; checksum seeded with the report id. Membership established for HERO 84 HE (VID 0x372E PID 0x103E) from the vendor's module binding, not from its 'BY Tech' manufacturer string, and confirmed by exchange on 2026-08-18 (docs/hardware/aula-bytech-exchange-001.md)."
 
 # No [timing.class.*] section, and that is not an omission.
 #
-# The only entry below is a probe, and a probe is one operation per
-# authorisation with the gate consumed in the act. There is no second operation
-# for a measured interval to sit between, so declaring one would describe
-# something that cannot happen -- the generator refuses `[timing.class.bootstrap_probe]`
-# for exactly that reason. When this family earns its first `safe_read`, that
-# read will need measured timing, and the numbers will come from the probe that
-# earned it rather than from anywhere else.
+# One command in this family has been measured, and its number is declared on
+# the command below rather than on its class. Writing it into
+# [timing.class.safe_read] would claim the same cadence for every safe_read this
+# family ever gains -- including commands nobody has sent. A measurement is
+# evidence about the thing that was measured. The next command earns its own.
+
+[timing.command.read_model_id]
+min_gap_before_ms = 1000
+settle_after_ms   = 0
+evidence          = "hardware"
+note              = "Not the device's minimum interval -- nobody measured one, and looking for one was explicitly out of scope. This is a ceiling Peripheral chooses and has exercised: 5 exchanges at >= 1000 ms on our own HERO 84 HE, every answer structurally valid, every answer the same value, every response checksum matching, no stall, 2.5-2.8 ms per exchange (docs/hardware/aula-bytech-exchange-002-timing.md). A model id is read once on connect, so a conservative ceiling costs nothing."
 
 [[command]]
 group      = 0x82
 subcommand = 0x01
 name       = "read_model_id"
-class      = "bootstrap_probe"
-evidence   = "vendor_artifact"
+class      = "safe_read"
+evidence   = "hardware"
 note       = """
 The vendor calls this readDeviceUUID; the value it returns identifies a model \
 and a key layout, not a physical unit, so our name says model id. Recovered \
-from the vendor's own configurator bundle by static analysis \
-(docs/prior-art/aula-bytech-readdeviceuuid.md, bundle SHA-256 9c6c6a71...). \
-Read-only on the evidence available: it is the first call on the connect path, \
-before any user action, its result is consumed as a table lookup, nothing is \
-written back, and group 0x82 has no write counterpart anywhere in the vendor \
-bundle. All of that is evidence about the vendor's driver, which is why this is \
-bootstrap_probe on a vendor artifact and not safe_read -- the firmware has not been \
-asked yet. It becomes a safe_read on `hardware` evidence only after a probe \
-succeeds here and a human reviews the result.
+from the vendor's configurator bundle by static analysis \
+(docs/prior-art/aula-bytech-readdeviceuuid.md), then sent to our own board.
+
+Was `bootstrap_probe` on `vendor_artifact` evidence until 2026-08-18. It is now \
+`safe_read` on `hardware` because it has been sent here and answered here: one \
+exchange establishing the semantics (exchange-001) and five establishing that \
+the conservative cadence above works (exchange-002). Promoted by hand after \
+review, which is the only way this transition happens -- nothing in the program \
+rewrites this file.
+
+Read-only on the evidence available: it is the first call on the vendor's \
+connect path, before any user action, its result is consumed as a table lookup, \
+nothing is written back, group 0x82 has no write counterpart anywhere in the \
+vendor bundle, and six reads here changed nothing observable. That last clause \
+is the weakest one and is meant to be: "we saw no effect" is not "there is no \
+effect".
 """

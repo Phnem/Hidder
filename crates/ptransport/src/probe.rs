@@ -84,9 +84,7 @@ impl ProbeChannel {
     ) -> Result<Self, TransportError> {
         let path = CString::new(collection.path.as_str())
             .map_err(|_| TransportError::Backend("device path contains an interior NUL".into()))?;
-        let device = hid
-            .open_path(&path)
-            .map_err(TransportError::Backend)?;
+        let device = hid.open_path(&path).map_err(TransportError::Backend)?;
 
         let mut buffer = vec![0u8; 4096];
         let len = device

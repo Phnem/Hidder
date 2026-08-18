@@ -50,6 +50,11 @@ struct AclFile {
 struct TimingSection {
     #[serde(default)]
     class: std::collections::BTreeMap<String, ClassTiming>,
+    /// Per-command timing, which outranks the class's. Keyed by the command's
+    /// `name`, so a typo names a command that does not exist and fails the
+    /// build rather than silently governing nothing.
+    #[serde(default)]
+    command: std::collections::BTreeMap<String, ClassTiming>,
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -234,6 +239,17 @@ pub struct Timing {
     pub per_window_ms: Option<u64>,
 }
 
+/// One command's own measured timing, which outranks its class's.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PerCommandTiming {
+    pub family: String,
+    pub command: String,
+    pub min_gap_before_ms: u64,
+    pub settle_after_ms: u64,
+    pub max_operations: Option<u32>,
+    pub per_window_ms: Option<u64>,
+}
+
 /// Everything the generator learned from one directory of family files.
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct Registry {
@@ -243,11 +259,14 @@ pub struct Registry {
     /// Commands reaching the probe gate: `probe_ok`, and nothing else.
     pub probes: Vec<Command>,
     pub timings: Vec<Timing>,
+    pub command_timings: Vec<PerCommandTiming>,
     pub families: Vec<String>,
 }
 
 /// Reads one family file. `Err` is a build failure, always.
-pub fn parse_family(source: &str) -> Result<(Vec<Command>, Vec<Timing>, String), String> {
+type ParsedFamily = (Vec<Command>, Vec<Timing>, Vec<PerCommandTiming>, String);
+
+pub fn parse_family(source: &str) -> Result<ParsedFamily, String> {
     let file: AclFile = toml::from_str(source).map_err(|e| e.to_string())?;
 
     if file.schema != SCHEMA {
@@ -353,10 +372,11 @@ pub fn parse_family(source: &str) -> Result<(Vec<Command>, Vec<Timing>, String),
         // The hole TICKET-12 found: authorising a bare `0x82` in a family that
         // also addresses `0x82:0x01` would grant every subcommand of that group,
         // including the fifteen nobody has classified.
-        if let Some(other) = seen_keys
-            .iter()
-            .find(|o| **o != key && o.group_byte() == key.group_byte() && o.is_bare_opcode() != key.is_bare_opcode())
-        {
+        if let Some(other) = seen_keys.iter().find(|o| {
+            **o != key
+                && o.group_byte() == key.group_byte()
+                && o.is_bare_opcode() != key.is_bare_opcode()
+        }) {
             return Err(format!(
                 "family {}: command {} overlaps {}; a bare opcode and a group/subcommand pair cannot share a leading byte, because authorising the bare one would authorise every subcommand of that group",
                 file.family,
@@ -413,15 +433,6 @@ pub fn parse_family(source: &str) -> Result<(Vec<Command>, Vec<Timing>, String),
                 ),
             });
         }
-        // Probes are exempt: see the refusal of `[timing.class.probe_ok]` above.
-        if !class.probes() && !timed_classes.contains(&class) {
-            return Err(format!(
-                "family {}: command {} is class {spelling}, but the family declares no measured timing for that class; there is no global default to fall back on",
-                file.family,
-                key.describe()
-            ));
-        }
-
         commands.push(Command {
             variant: variant_name(&file.family, &entry.name),
             family: file.family.clone(),
@@ -432,15 +443,84 @@ pub fn parse_family(source: &str) -> Result<(Vec<Command>, Vec<Timing>, String),
         });
     }
 
-    Ok((commands, timings, file.family.clone()))
+    // Command timing is validated last, because it can only be checked against
+    // the commands the file actually declares.
+    let mut command_timings = Vec::new();
+    for (name, timing) in &file.timing.command {
+        let Some(entry) = commands.iter().find(|c| &c.name == name) else {
+            return Err(format!(
+                "family {}: timing declared for command {name:?}, which this family does not declare as an executable command; a measurement that governs nothing is a typo",
+                file.family
+            ));
+        };
+        if entry.class.probes() {
+            return Err(format!(
+                "family {}: timing declared for command {name:?}, which is a bootstrap probe; a probe is one operation per authorisation with no second operation to pace against, so there is no cadence to measure",
+                file.family
+            ));
+        }
+        if !ALL_EVIDENCE.contains(&timing.evidence.as_str()) {
+            return Err(format!(
+                "family {}: timing for command {name:?} cites unknown evidence {:?}",
+                file.family, timing.evidence
+            ));
+        }
+        if timing.note.trim().is_empty() {
+            return Err(format!(
+                "family {}: timing for command {name:?} must record where the number was measured",
+                file.family
+            ));
+        }
+        if entry.class == ExecutableClass::SlowFlash && timing.settle_after_ms == 0 {
+            return Err(format!(
+                "family {}: command {name:?} is slow_flash and must declare a settle_after_ms; a flash write with no measured quiet period afterwards is how an endpoint gets wedged",
+                file.family
+            ));
+        }
+        if timing.max_operations.is_some() != timing.per_window_ms.is_some() {
+            return Err(format!(
+                "family {}: timing for command {name:?} declares half a burst limit; max_operations and per_window_ms come as a pair",
+                file.family
+            ));
+        }
+        command_timings.push(PerCommandTiming {
+            family: file.family.clone(),
+            command: name.clone(),
+            min_gap_before_ms: timing.min_gap_before_ms,
+            settle_after_ms: timing.settle_after_ms,
+            max_operations: timing.max_operations,
+            per_window_ms: timing.per_window_ms,
+        });
+    }
+
+    // Now that per-command timing is known, "every class a family uses must be
+    // measured" can be applied only to the commands it does not already cover.
+    // A command with its own measurement does not need its class to have one --
+    // which is the normal state for a family whose first command has just been
+    // verified, and the whole reason command timing exists.
+    for entry in &commands {
+        if entry.class.probes() {
+            continue;
+        }
+        let has_own = command_timings.iter().any(|t| t.command == entry.name);
+        if !has_own && !timed_classes.contains(&entry.class) {
+            return Err(format!(
+                "family {}: command {} is class {}, and neither it nor its class declares measured timing; there is no global default to fall back on",
+                file.family,
+                entry.key.describe(),
+                entry.class.source_name()
+            ));
+        }
+    }
+
+    Ok((commands, timings, command_timings, file.family.clone()))
 }
 
 /// Exactly one of the two shapes, never both and never neither.
 fn parse_key(family: &str, entry: &CommandEntry) -> Result<Key, String> {
     let byte = |label: &str, value: i64| -> Result<u8, String> {
-        u8::try_from(value).map_err(|_| {
-            format!("family {family}: {label} {value:#x} does not fit in a byte")
-        })
+        u8::try_from(value)
+            .map_err(|_| format!("family {family}: {label} {value:#x} does not fit in a byte"))
     };
     match (entry.opcode, entry.group, entry.subcommand) {
         (Some(opcode), None, None) => Ok(Key::Opcode(byte("opcode", opcode)?)),
@@ -468,7 +548,7 @@ pub fn build_registry(sources: &[(String, String)]) -> Result<Registry, String> 
     let mut registry = Registry::default();
     let mut all = Vec::new();
     for (origin, source) in sources {
-        let (commands, timings, family) =
+        let (commands, timings, command_timings, family) =
             parse_family(source).map_err(|e| format!("{origin}: {e}"))?;
         if registry.families.contains(&family) {
             return Err(format!("{origin}: family {family} is declared twice"));
@@ -476,6 +556,7 @@ pub fn build_registry(sources: &[(String, String)]) -> Result<Registry, String> 
         registry.families.push(family);
         all.extend(commands);
         registry.timings.extend(timings);
+        registry.command_timings.extend(command_timings);
     }
 
     for command in all {
@@ -499,6 +580,9 @@ pub fn build_registry(sources: &[(String, String)]) -> Result<Registry, String> 
     registry
         .timings
         .sort_by(|a, b| (&a.family, &a.class).cmp(&(&b.family, &b.class)));
+    registry
+        .command_timings
+        .sort_by(|a, b| (&a.family, &a.command).cmp(&(&b.family, &b.command)));
 
     let mut seen = BTreeSet::new();
     for command in registry.commands.iter().chain(registry.probes.iter()) {
@@ -574,6 +658,22 @@ pub fn emit(registry: &Registry) -> String {
     }
     out.push_str("];\n\n");
 
+    out.push_str("pub(crate) const COMMAND_TIMINGS: &[CommandTiming] = &[\n");
+    for timing in &registry.command_timings {
+        let burst = match (timing.max_operations, timing.per_window_ms) {
+            (Some(max), Some(window)) => {
+                format!("Some(Burst {{ max_operations: {max}, per_window_ms: {window} }})")
+            }
+            _ => "None".to_owned(),
+        };
+        let _ = writeln!(
+            out,
+            "    CommandTiming {{ family: {:?}, command: {:?}, min_gap_before_ms: {}, settle_after_ms: {}, burst: {burst} }},",
+            timing.family, timing.command, timing.min_gap_before_ms, timing.settle_after_ms,
+        );
+    }
+    out.push_str("];\n\n");
+
     out.push_str("/// Families the ACL knows about, whether or not they have any command.\n");
     out.push_str("pub(crate) const FAMILIES: &[&str] = &[\n");
     for family in &registry.families {
@@ -606,11 +706,28 @@ pub fn emit_probe(registry: &Registry) -> String {
     for (index, command) in registry.probes.iter().enumerate() {
         let _ = writeln!(
             out,
-            "    /// `{}` on family `{}` (probe_ok, evidence: {}).",
+            "    /// `{}` on family `{}` (bootstrap_probe, evidence: {}).",
             command.name, command.family, command.evidence
         );
         let _ = writeln!(out, "    {} = {index},", command.variant);
     }
+    // A fixture, present only when psafety compiles its own tests.
+    //
+    // An empty `ProbeCommandId` is the *desirable* steady state: it means no
+    // command is currently awaiting its first hardware exchange. But the probe
+    // gate's mechanics -- one send per gate, refusal before dispatch, typed
+    // rejection, no retry -- are safety behaviour that must stay covered
+    // whether or not a real command happens to be mid-bootstrap. So the
+    // generator emits one variant that exists in no build except this crate's
+    // `cargo test`: it cannot be named by another crate, cannot reach a release
+    // binary, and names a family the ACL does not contain, so it can never
+    // match a real device.
+    let _ = writeln!(out, "    #[cfg(test)]");
+    let _ = writeln!(
+        out,
+        "    /// Test fixture. Not a device command; see the note above.",
+    );
+    let _ = writeln!(out, "    TestFixture = {},", registry.probes.len());
     out.push_str("}\n\n");
 
     out.push_str("pub(crate) const PROBES: &[ProbeRecord] = &[\n");
@@ -624,6 +741,10 @@ pub fn emit_probe(registry: &Registry) -> String {
             command.key.rust_expr(),
         );
     }
+    out.push_str("    #[cfg(test)]\n");
+    out.push_str(
+        "    ProbeRecord { id: ProbeCommandId::TestFixture, family: \"test-fixture-family\", name: \"test_fixture\", key: CommandKey::GroupSubcommand { group: 0x82, subcommand: 0x01 } },\n",
+    );
     out.push_str("];\n");
     out
 }
@@ -726,7 +847,7 @@ note       = "first read, not yet verified on hardware here"
     }
 
     fn parse(source: &str) -> Result<Vec<Command>, String> {
-        parse_family(source).map(|(commands, _, _)| commands)
+        parse_family(source).map(|(commands, ..)| commands)
     }
 
     // --- the refusals that matter most ----------------------------------
@@ -817,7 +938,8 @@ note       = "first read, not yet verified on hardware here"
 
     #[test]
     fn declaring_both_shapes_is_refused() {
-        let source = good_probe_family().replace("group      = 0x82", "opcode     = 0x82\ngroup      = 0x82");
+        let source = good_probe_family()
+            .replace("group      = 0x82", "opcode     = 0x82\ngroup      = 0x82");
         let error = parse(&source).expect_err("a command has one identity");
         assert!(error.contains("one identity"), "unhelpful message: {error}");
     }
@@ -917,7 +1039,10 @@ note       = "a different command in the same group"
 
     #[test]
     fn a_bootstrap_probe_on_an_assumption_is_refused() {
-        let source = good_probe_family().replace(r#"evidence   = "vendor_artifact""#, r#"evidence   = "assumed""#);
+        let source = good_probe_family().replace(
+            r#"evidence   = "vendor_artifact""#,
+            r#"evidence   = "assumed""#,
+        );
         assert!(
             parse(&source).is_err(),
             "a probe reaches real firmware; an assumption is not a reason to send one"
@@ -952,7 +1077,12 @@ note       = "a different command in the same group"
             !emit(&registry).contains("0x82"),
             "a probe's bytes leaked into the SafeCommandId table"
         );
-        assert!(emit_probe(&registry).contains("0x82"));
+        let probes = emit_probe(&registry);
+        assert!(probes.contains("TestFamilyReadModelId"));
+        assert!(
+            probes.contains("test-fixture-family"),
+            "the cfg(test) fixture should always be emitted"
+        );
     }
 
     #[test]
@@ -988,6 +1118,148 @@ note              = "invented"
 "#;
         let error = parse(&source).expect_err("there is no cadence between one operation");
         assert!(error.contains("cadence"), "unhelpful message: {error}");
+    }
+
+    // --- timing may be per command, and outranks the class ---------------
+
+    #[test]
+    fn a_command_may_carry_its_own_measurement_instead_of_its_class() {
+        // The case TICKET-12 created: one command verified on hardware, its
+        // class not measured at all. Writing the number into the class would
+        // have claimed it for every future safe_read in the family.
+        let source = r#"
+schema       = "peripheral.opcode-acl/2"
+family       = "test-family"
+display_name = "Test family"
+note         = "fixture"
+
+[timing.command.read_model_id]
+min_gap_before_ms = 1000
+settle_after_ms   = 0
+evidence          = "hardware"
+note              = "measured here"
+
+[[command]]
+group      = 0x82
+subcommand = 0x01
+name       = "read_model_id"
+class      = "safe_read"
+evidence   = "hardware"
+note       = "verified on our own board"
+"#;
+        let (commands, timings, command_timings, _) =
+            parse_family(source).expect("a command may be measured without its class being");
+        assert_eq!(commands.len(), 1);
+        assert!(timings.is_empty(), "no class timing was declared");
+        assert_eq!(command_timings.len(), 1);
+        assert_eq!(command_timings[0].min_gap_before_ms, 1000);
+    }
+
+    #[test]
+    fn a_sibling_command_does_not_inherit_another_commands_measurement() {
+        // The refusal that makes command timing worth having: the second
+        // command in the class is not covered by the first one's numbers, so it
+        // fails the build until it has its own or the class has some.
+        let source = r#"
+schema       = "peripheral.opcode-acl/2"
+family       = "test-family"
+display_name = "Test family"
+note         = "fixture"
+
+[timing.command.read_model_id]
+min_gap_before_ms = 1000
+settle_after_ms   = 0
+evidence          = "hardware"
+note              = "measured here"
+
+[[command]]
+group      = 0x82
+subcommand = 0x01
+name       = "read_model_id"
+class      = "safe_read"
+evidence   = "hardware"
+note       = "verified on our own board"
+
+[[command]]
+group      = 0x82
+subcommand = 0x02
+name       = "read_firmware_version"
+class      = "safe_read"
+evidence   = "hardware"
+note       = "not measured, and not covered by its neighbour"
+"#;
+        let error = parse_family(source).expect_err("the sibling has no cadence of its own");
+        assert!(
+            error.contains("neither it nor its class"),
+            "unhelpful message: {error}"
+        );
+    }
+
+    #[test]
+    fn timing_for_a_command_that_does_not_exist_is_refused() {
+        let source = good_family()
+            + r#"
+[timing.command.no_such_command]
+min_gap_before_ms = 10
+settle_after_ms   = 0
+evidence          = "hardware"
+note              = "governs nothing"
+"#;
+        let error = parse_family(source.as_str()).expect_err("a measurement that governs nothing");
+        assert!(error.contains("typo"), "unhelpful message: {error}");
+    }
+
+    #[test]
+    fn timing_for_a_bootstrap_probe_command_is_refused() {
+        let source = good_probe_family()
+            + r#"
+[timing.command.read_model_id]
+min_gap_before_ms = 1000
+settle_after_ms   = 0
+evidence          = "hardware"
+note              = "invented"
+"#;
+        let error = parse_family(source.as_str()).expect_err("there is no second operation");
+        assert!(error.contains("cadence"), "unhelpful message: {error}");
+    }
+
+    #[test]
+    fn a_command_measurement_without_a_note_is_refused() {
+        let source = good_family()
+            + r#"
+[timing.command.revision]
+min_gap_before_ms = 10
+settle_after_ms   = 0
+evidence          = "hardware"
+note              = "  "
+"#;
+        assert!(
+            parse_family(source.as_str()).is_err(),
+            "a number with no record of where it was measured is not a measurement"
+        );
+    }
+
+    #[test]
+    fn a_command_measurement_reaches_the_generated_table() {
+        let source = good_family()
+            + r#"
+[timing.command.revision]
+min_gap_before_ms = 1000
+settle_after_ms   = 0
+evidence          = "hardware"
+note              = "measured on our own board"
+"#;
+        let registry = build_registry(&[("fixture".to_owned(), source)]).expect("valid");
+        let emitted = emit(&registry);
+        assert!(
+            emitted.contains("COMMAND_TIMINGS"),
+            "the table is missing:\n{emitted}"
+        );
+        assert!(
+            emitted.contains("command: \"revision\"")
+                && emitted.contains("min_gap_before_ms: 1000"),
+            "the measurement did not reach the table:\n{emitted}"
+        );
     }
 
     #[test]
@@ -1077,9 +1349,11 @@ family       = "known-nothing"
 display_name = "Known nothing"
 note         = "the board is here, the knowledge is not"
 "#;
-        let (commands, timings, family) = parse_family(source).expect("a family may know nothing");
+        let (commands, timings, command_timings, family) =
+            parse_family(source).expect("a family may know nothing");
         assert!(commands.is_empty());
         assert!(timings.is_empty());
+        assert!(command_timings.is_empty());
         assert_eq!(family, "known-nothing");
     }
 

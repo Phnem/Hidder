@@ -52,12 +52,23 @@
 //!   produces a value and a journal entry; turning that into `evidence =
 //!   "hardware"` is a human editing a reviewed file, followed by a rebuild.
 
+// When the ACL declares no `bootstrap_probe` -- the steady state, and the state
+// to prefer -- `ProbeCommandId` has no variants, so it is uninhabited and every
+// body in this module that handles one is statically unreachable. That is the
+// correct outcome, not dead code to be tidied away: it means nothing in the
+// build can run a probe, which is exactly what an empty probe surface should
+// mean. The module is still compiled, still type-checked, and still tested
+// against the fixture variant.
+#![allow(unreachable_code, unused_variables, clippy::diverging_sub_expression)]
+
 use pcaps::{Confidence, FamilyConfidence};
 use ptransport::{DeviceId, TransportError};
 
 use crate::class::OpcodeClass;
 use crate::gate::Clock;
-use crate::journal::{FailureKind, Intent, JournalEntry, JournalSink, Outcome, Refusal, Verification};
+use crate::journal::{
+    FailureKind, Intent, JournalEntry, JournalSink, Outcome, Refusal, Verification,
+};
 use crate::key::CommandKey;
 use crate::rate::UserConfirmation;
 
@@ -177,6 +188,19 @@ pub trait ProbeSink {
         device: DeviceId,
         probe: AuthorizedProbe,
     ) -> Result<Vec<u8>, TransportError>;
+}
+
+/// Forwarding impl, so a caller can keep the sink and read a transcript off it
+/// after the gate has run. The gate still consumes what it is given -- a `&mut`
+/// borrow -- so nothing about one-probe-per-gate changes.
+impl<S: ProbeSink + ?Sized> ProbeSink for &mut S {
+    fn dispatch_probe(
+        &mut self,
+        device: DeviceId,
+        probe: AuthorizedProbe,
+    ) -> Result<Vec<u8>, TransportError> {
+        (**self).dispatch_probe(device, probe)
+    }
 }
 
 /// A typed answer to one probe.
@@ -299,7 +323,9 @@ impl<S: ProbeSink, J: JournalSink, C: Clock> ProbeGate<S, J, C> {
         let key = id.key();
         // One call. No loop, so no retry can be added by adjusting a constant:
         // adding one would mean writing a loop, in a diff someone reviews.
-        let result = self.sink.dispatch_probe(device, AuthorizedProbe::new(id, payload));
+        let result = self
+            .sink
+            .dispatch_probe(device, AuthorizedProbe::new(id, payload));
         let finished_ms = self.clock.now_ms();
 
         match result {
@@ -396,8 +422,10 @@ mod tests {
         }
     }
 
-    /// The one probe the ACL currently declares, decoded by a test-local type so
-    /// these tests do not depend on the real codec crate.
+    /// A probe decoded by a test-local type, so these tests exercise the gate's
+    /// mechanics rather than any particular family's codec -- and keep working
+    /// when the ACL declares no bootstrap probe at all, which is the state it
+    /// should normally be in.
     #[derive(Debug)]
     struct Echoed(Vec<u8>);
 
@@ -405,7 +433,7 @@ mod tests {
     struct NotEchoed;
 
     impl ProbeResponse for Echoed {
-        const COMMAND: ProbeCommandId = ProbeCommandId::AulaBytechReadModelId;
+        const COMMAND: ProbeCommandId = ProbeCommandId::TestFixture;
         type Rejection = NotEchoed;
 
         fn request_payload() -> Vec<u8> {
@@ -421,6 +449,10 @@ mod tests {
             }
         }
     }
+
+    /// The fixture's family. Deliberately not a family the ACL declares, so a
+    /// fixture can never be mistaken for a command that could reach a device.
+    const FIXTURE_FAMILY: &str = "test-fixture-family";
 
     fn identified() -> FamilyConfidence {
         FamilyConfidence::established(Confidence::Candidate)
@@ -441,7 +473,7 @@ mod tests {
         gate(sink)
             .probe::<Echoed>(
                 DeviceId::new(1),
-                "aula-bytech",
+                FIXTURE_FAMILY,
                 identified(),
                 UserConfirmation::given(),
             )
@@ -489,7 +521,7 @@ mod tests {
         let error = gate(sink)
             .probe::<Echoed>(
                 DeviceId::new(1),
-                "aula-bytech",
+                FIXTURE_FAMILY,
                 FamilyConfidence::default(),
                 UserConfirmation::given(),
             )
@@ -512,7 +544,7 @@ mod tests {
         let gate = gate(sink);
         let _ = gate.probe::<Echoed>(
             DeviceId::new(1),
-            "aula-bytech",
+            FIXTURE_FAMILY,
             identified(),
             UserConfirmation::given(),
         );
@@ -536,7 +568,7 @@ mod tests {
         let error = gate(sink)
             .probe::<Echoed>(
                 DeviceId::new(1),
-                "aula-bytech",
+                FIXTURE_FAMILY,
                 identified(),
                 UserConfirmation::given(),
             )
@@ -556,7 +588,7 @@ mod tests {
         };
         let _ = ProbeGate::new(sink, journal, FixedClock).probe::<Echoed>(
             DeviceId::new(1),
-            "aula-bytech",
+            FIXTURE_FAMILY,
             identified(),
             UserConfirmation::given(),
         );
@@ -578,7 +610,7 @@ mod tests {
         let error = gate(sink)
             .probe::<Echoed>(
                 DeviceId::new(1),
-                "aula-bytech",
+                FIXTURE_FAMILY,
                 identified(),
                 UserConfirmation::given(),
             )
@@ -591,14 +623,17 @@ mod tests {
     }
 
     #[test]
-    fn every_probe_is_read_only_and_belongs_to_a_known_family() {
+    fn every_real_probe_is_read_only_and_belongs_to_a_known_family() {
         for id in ProbeCommandId::all() {
             assert_eq!(id.class(), OpcodeClass::BootstrapProbe);
-            assert!(
-                !id.class().writes(),
-                "{} is a probe that writes",
-                id.name()
-            );
+            assert!(!id.class().writes(), "{} is a probe that writes", id.name());
+            if id.family() == FIXTURE_FAMILY {
+                // The test fixture, which exists in no other build. It names a
+                // family the ACL does not declare, which is precisely what stops
+                // it from ever matching a device.
+                assert!(!crate::known_families().contains(&FIXTURE_FAMILY));
+                continue;
+            }
             assert!(
                 crate::known_families().contains(&id.family()),
                 "{} belongs to an unlisted family",

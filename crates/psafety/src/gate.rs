@@ -10,6 +10,7 @@ use crate::command::{AuthorizedCommand, SafeCommandId};
 use crate::journal::{
     FailureKind, Intent, JournalEntry, JournalSink, Outcome, Refusal, Verification,
 };
+use crate::key::CommandKey;
 use crate::rate::{RateDecision, RateLimiter, UserConfirmation};
 
 /// Where an authorised command goes once every check has passed.
@@ -28,6 +29,19 @@ pub trait CommandSink {
         device: DeviceId,
         command: AuthorizedCommand,
     ) -> Result<Vec<u8>, TransportError>;
+}
+
+/// Forwarding impl, so a caller can retain the sink -- to read a transcript off
+/// it, typically -- while the gate borrows it. Authorisation is unaffected: the
+/// gate still mints the command and still consumes it on dispatch.
+impl<S: CommandSink + ?Sized> CommandSink for &mut S {
+    fn dispatch(
+        &mut self,
+        device: DeviceId,
+        command: AuthorizedCommand,
+    ) -> Result<Vec<u8>, TransportError> {
+        (**self).dispatch(device, command)
+    }
 }
 
 /// Monotonic time in milliseconds. Injected so the cadence tests are about
@@ -57,11 +71,60 @@ impl Clock for MonotonicClock {
     }
 }
 
+/// A typed answer to one production read.
+///
+/// The read-path twin of [`crate::ProbeResponse`], and it exists for the same
+/// reason: so that a caller names a *type*, the command comes from that type's
+/// associated constant, and the bytes that identify the command never pass
+/// through the caller's hands. An engine holding this trait can ask for a model
+/// id; it cannot ask for `0x82:0x01`.
+pub trait CommandResponse: Sized {
+    /// Which command this decodes the answer to.
+    const COMMAND: SafeCommandId;
+
+    /// Why an answer was not acceptable. Reported and journalled; never
+    /// silently coerced into a value.
+    type Rejection: std::fmt::Debug;
+
+    /// The parameters the request carries.
+    fn request_payload() -> Vec<u8>;
+
+    /// Validates and decodes the device's answer.
+    ///
+    /// Receives the [`CommandKey`] so it can check an echoed header without
+    /// being handed the request frame. Returning `Err` is the honest outcome for
+    /// anything unexpected: an unsupported command replaying a previous reply is
+    /// documented behaviour on boards in this class, so "bytes came back" is not
+    /// evidence that the command did what it is believed to do.
+    fn decode(key: CommandKey, response: &[u8]) -> Result<Self, Self::Rejection>;
+}
+
 #[derive(Debug)]
 pub enum SafetyError {
     Refused(Refusal),
     Transport(TransportError),
 }
+
+/// Why a typed read did not produce a value.
+#[derive(Debug)]
+pub enum ReadError<R> {
+    Refused(Refusal),
+    Transport(TransportError),
+    /// The device answered and the answer failed typed validation.
+    Rejected(R),
+}
+
+impl<R: std::fmt::Debug> std::fmt::Display for ReadError<R> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ReadError::Refused(refusal) => write!(f, "refused: {refusal:?}"),
+            ReadError::Transport(error) => write!(f, "transport: {error}"),
+            ReadError::Rejected(rejection) => write!(f, "rejected: {rejection:?}"),
+        }
+    }
+}
+
+impl<R: std::fmt::Debug> std::error::Error for ReadError<R> {}
 
 impl std::fmt::Display for SafetyError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -224,7 +287,9 @@ impl<S: CommandSink, J: JournalSink, C: Clock> SafetyGate<S, J, C> {
         let now_ms = self.clock.now_ms();
         let class = id.class();
 
-        if let Err(refusal) = self.authorize(device, id.family(), class, now_ms, confirmation) {
+        if let Err(refusal) =
+            self.authorize(device, id.family(), id.name(), class, now_ms, confirmation)
+        {
             self.write_entry(now_ms, device, id, payload.len(), Outcome::Refused(refusal));
             return Err(SafetyError::Refused(refusal));
         }
@@ -236,7 +301,8 @@ impl<S: CommandSink, J: JournalSink, C: Clock> SafetyGate<S, J, C> {
         // The operation happened, so its quiet period starts, whether or not it
         // succeeded. A write that failed still touched the device.
         let finished_ms = self.clock.now_ms();
-        self.limiter.record(device, id.family(), class, finished_ms);
+        self.limiter
+            .record(device, id.family(), Some(id.name()), class, finished_ms);
 
         match result {
             Ok(answer) => {
@@ -262,11 +328,48 @@ impl<S: CommandSink, J: JournalSink, C: Clock> SafetyGate<S, J, C> {
         }
     }
 
+    /// Runs one approved read and decodes its answer.
+    ///
+    /// Every check [`SafetyGate::execute`] performs, plus typed validation of
+    /// the answer, and no raw bytes in either direction: the payload comes from
+    /// the response type and the answer leaves as that type or as an error.
+    ///
+    /// A rejected answer is journalled as [`Outcome::Rejected`] rather than as
+    /// a completion, because a reply that could not be made sense of is the
+    /// opposite of a successful read and an entry that recorded both the same
+    /// way would be unreadable exactly when it mattered.
+    pub fn read<R: CommandResponse>(
+        &mut self,
+        device: DeviceId,
+        confirmation: Option<UserConfirmation>,
+    ) -> Result<R, ReadError<R::Rejection>> {
+        let id = R::COMMAND;
+        let payload = R::request_payload();
+        let payload_len = payload.len();
+        let key = id.key();
+
+        match self.execute(device, id, payload, confirmation) {
+            Ok(answer) => match R::decode(key, &answer) {
+                Ok(value) => Ok(value),
+                Err(rejection) => {
+                    // `execute` already journalled the completion; this second
+                    // entry records that the bytes did not survive validation.
+                    let at_ms = self.clock.now_ms();
+                    self.write_entry(at_ms, device, id, payload_len, Outcome::Rejected);
+                    Err(ReadError::Rejected(rejection))
+                }
+            },
+            Err(SafetyError::Refused(refusal)) => Err(ReadError::Refused(refusal)),
+            Err(SafetyError::Transport(error)) => Err(ReadError::Transport(error)),
+        }
+    }
+
     /// Every check, in the order that refuses earliest.
     fn authorize(
         &self,
         device: DeviceId,
         command_family: &'static str,
+        command_name: &'static str,
         class: OpcodeClass,
         now_ms: u64,
         confirmation: Option<UserConfirmation>,
@@ -294,10 +397,14 @@ impl<S: CommandSink, J: JournalSink, C: Clock> SafetyGate<S, J, C> {
         if class.needs_backup() && state.backup == BackupState::None {
             return Err(Refusal::NoBackup);
         }
-        match self
-            .limiter
-            .check(device, command_family, class, now_ms, confirmation)
-        {
+        match self.limiter.check(
+            device,
+            command_family,
+            Some(command_name),
+            class,
+            now_ms,
+            confirmation,
+        ) {
             RateDecision::Allow => Ok(()),
             RateDecision::Wait { ms, .. } => Err(Refusal::RateLimited { wait_ms: ms }),
             RateDecision::NeedsConfirmation => Err(Refusal::NeedsConfirmation),
@@ -494,8 +601,14 @@ mod tests {
             );
             h.gate.record_backup(h.device);
             assert_eq!(
-                h.gate
-                    .authorize(h.device, "royuan-gen2", OpcodeClass::SlowFlash, 1_000, None),
+                h.gate.authorize(
+                    h.device,
+                    "royuan-gen2",
+                    "identify",
+                    OpcodeClass::SlowFlash,
+                    1_000,
+                    None
+                ),
                 Err(Refusal::UnverifiedFamily {
                     confidence: FamilyConfidence::established(confidence)
                 }),
@@ -514,8 +627,14 @@ mod tests {
             FamilyConfidence::established(Confidence::Candidate),
         );
         assert_eq!(
-            h.gate
-                .authorize(h.device, "royuan-gen2", OpcodeClass::SafeRead, 1_000, None),
+            h.gate.authorize(
+                h.device,
+                "royuan-gen2",
+                "identify",
+                OpcodeClass::SafeRead,
+                1_000,
+                None
+            ),
             Ok(())
         );
         h.gate
@@ -536,8 +655,14 @@ mod tests {
         );
         h.gate.record_backup(h.device);
         assert!(matches!(
-            h.gate
-                .authorize(h.device, "royuan-gen2", OpcodeClass::SafeWrite, 1_000, None),
+            h.gate.authorize(
+                h.device,
+                "royuan-gen2",
+                "identify",
+                OpcodeClass::SafeWrite,
+                1_000,
+                None
+            ),
             Err(Refusal::UnverifiedFamily { .. })
         ));
         assert_eq!(
@@ -557,8 +682,14 @@ mod tests {
             FamilyConfidence::established(Confidence::High),
         );
         assert!(matches!(
-            h.gate
-                .authorize(h.device, "royuan-gen2", OpcodeClass::SlowFlash, 1_000, None),
+            h.gate.authorize(
+                h.device,
+                "royuan-gen2",
+                "identify",
+                OpcodeClass::SlowFlash,
+                1_000,
+                None
+            ),
             Err(Refusal::UnverifiedFamily { .. })
         ));
     }
@@ -575,15 +706,27 @@ mod tests {
             FamilyConfidence::established(Confidence::Verified),
         );
         assert_eq!(
-            h.gate
-                .authorize(h.device, "royuan-gen2", OpcodeClass::SlowFlash, 1_000, None),
+            h.gate.authorize(
+                h.device,
+                "royuan-gen2",
+                "identify",
+                OpcodeClass::SlowFlash,
+                1_000,
+                None
+            ),
             Err(Refusal::NoBackup)
         );
 
         h.gate.record_backup(h.device);
         assert_ne!(
-            h.gate
-                .authorize(h.device, "royuan-gen2", OpcodeClass::SlowFlash, 1_000, None),
+            h.gate.authorize(
+                h.device,
+                "royuan-gen2",
+                "identify",
+                OpcodeClass::SlowFlash,
+                1_000,
+                None
+            ),
             Err(Refusal::NoBackup),
             "a recorded backup should clear this particular refusal"
         );
@@ -598,8 +741,14 @@ mod tests {
             FamilyConfidence::established(Confidence::Verified),
         );
         assert_eq!(
-            h.gate
-                .authorize(h.device, "royuan-gen2", OpcodeClass::SafeRead, 1_000, None),
+            h.gate.authorize(
+                h.device,
+                "royuan-gen2",
+                "identify",
+                OpcodeClass::SafeRead,
+                1_000,
+                None
+            ),
             Ok(())
         );
     }

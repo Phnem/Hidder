@@ -81,45 +81,53 @@ fn nothing_in_the_registry_writes_yet() {
 }
 
 #[test]
-fn the_board_we_own_has_no_production_command_at_all() {
-    // Two families now, and neither may produce a `SafeCommandId`.
-    // `aula-hero84-he` is the product entry and stays empty. `aula-bytech` is
-    // the protocol family, and everything it knows came from a vendor artifact,
-    // which does not earn a production read -- only a bootstrap probe.
-    for family in ["aula-hero84-he", "aula-bytech"] {
-        let earned: Vec<_> = SafeCommandId::all()
-            .filter(|id| id.family() == family)
-            .map(SafeCommandId::name)
-            .collect();
-        assert!(
-            earned.is_empty(),
-            "unearned production commands for {family}: {earned:?}"
-        );
-    }
+fn the_product_entry_for_our_board_stays_empty() {
+    // `aula-hero84-he` is a *product* entry. The protocol family our board
+    // speaks is `aula-bytech`, and commands live there. This one must never
+    // acquire any: a product is not a protocol.
+    let earned: Vec<_> = SafeCommandId::all()
+        .filter(|id| id.family() == "aula-hero84-he")
+        .map(SafeCommandId::name)
+        .collect();
+    assert!(earned.is_empty(), "commands on a product entry: {earned:?}");
 }
 
 #[test]
-fn the_aula_bootstrap_probe_is_the_only_probe_that_exists() {
+fn the_aula_family_has_exactly_one_earned_command() {
+    // One command, verified on our own hardware, and read-only. This is the
+    // whole of what TICKET-12 earned, and the assertion is here so that the
+    // second one has to be added deliberately.
+    let earned: Vec<_> = SafeCommandId::all()
+        .filter(|id| id.family() == "aula-bytech")
+        .map(|id| (id.name(), id.class()))
+        .collect();
+    assert_eq!(earned, [("read_model_id", OpcodeClass::SafeRead)]);
+}
+
+#[test]
+fn no_command_is_awaiting_a_first_exchange() {
+    // An empty probe surface is the steady state, not an oversight: a
+    // `bootstrap_probe` entry means a command is mid-bootstrap, and none is.
+    // A variant appearing here is a deliberate act that should show in review.
     let probes: Vec<_> = psafety::ProbeCommandId::all()
         .map(|id| (id.family(), id.name()))
         .collect();
-    assert_eq!(
-        probes,
-        [("aula-bytech", "read_model_id")],
-        "the probe surface grew without the plan saying so"
+    assert!(
+        probes.is_empty(),
+        "something is awaiting a first exchange: {probes:?}"
     );
 }
 
 #[test]
-fn a_vendor_artifact_cannot_reach_the_production_path() {
-    // The bootstrap rule, stated as a property rather than as a comment: every
-    // probe command is absent from `SafeCommandId`, so the only door a
-    // vendor-artifact command has is the one that costs a confirmation and
-    // yields exactly one send.
+fn nothing_is_executable_through_both_doors() {
+    // The bootstrap rule as a property: a command mid-bootstrap is absent from
+    // `SafeCommandId`, so its only door is the one that costs a confirmation
+    // and yields exactly one send. Vacuous while nothing is bootstrapping, and
+    // that is fine -- it is here to fail the moment both are true at once.
     for id in psafety::ProbeCommandId::all() {
         assert!(
             SafeCommandId::find(id.family(), id.name()).is_none(),
-            "{}::{} is executable through the production gate",
+            "{}::{} is executable through the production gate as well",
             id.family(),
             id.name()
         );
@@ -132,7 +140,12 @@ fn the_families_we_know_about_are_the_ones_we_documented() {
     families.sort_unstable();
     assert_eq!(
         families,
-        ["aula-bytech", "aula-hero84-he", "royuan-gen2", "royuan-yc500"],
+        [
+            "aula-bytech",
+            "aula-hero84-he",
+            "royuan-gen2",
+            "royuan-yc500"
+        ],
         "a family appeared or vanished without the plan saying so"
     );
 }
@@ -172,28 +185,28 @@ fn a_command_cannot_be_looked_up_by_opcode_from_outside() {
 }
 
 #[test]
-fn a_probe_cannot_be_named_by_its_bytes_from_outside() {
+fn a_command_cannot_be_named_by_its_bytes_from_outside() {
     // What is closed, stated as a test rather than as a comment: there is no
-    // public way to turn `0x82:0x01` into a `ProbeCommandId`, no public
-    // constructor for `AuthorizedProbe`, and `ProbeCommandId::key` is
-    // crate-private. A caller that wants to send this command has to name the
-    // `ProbeResponse` type, which names the command, which came from the table.
-    //
-    // `find` takes a family and a name, and nothing spelled like a byte is one.
-    assert!(psafety::ProbeCommandId::find("aula-bytech", "read_model_id").is_some());
-    for byte_ish in ["0x82", "0x82:0x01", "130", "130,1"] {
+    // public way to turn `0x82:0x01` into a command id, no public constructor
+    // for `AuthorizedCommand` or `AuthorizedProbe`, and both `key` accessors are
+    // crate-private. A caller that wants to send this has to name it.
+    assert!(SafeCommandId::find("aula-bytech", "read_model_id").is_some());
+    for byte_ish in ["0x82", "0x82:0x01", "130", "130,1", "0x82,0x01"] {
         assert!(
-            psafety::ProbeCommandId::find("aula-bytech", byte_ish).is_none(),
-            "{byte_ish} resolved to a probe"
+            SafeCommandId::find("aula-bytech", byte_ish).is_none(),
+            "{byte_ish} resolved to a command"
         );
+        assert!(psafety::ProbeCommandId::find("aula-bytech", byte_ish).is_none());
     }
 }
 
 #[test]
-fn a_probe_belongs_to_one_family_and_refuses_every_other() {
-    // The collision check, on the probe path. The same two bytes mean something
-    // else in another family, and a probe carries its family with it.
-    let probe = psafety::ProbeCommandId::find("aula-bytech", "read_model_id").expect("ships");
-    assert_eq!(probe.family(), "aula-bytech");
-    assert!(psafety::ProbeCommandId::find("royuan-gen2", "read_model_id").is_none());
+fn the_aula_command_belongs_to_one_family_and_no_other() {
+    // The collision check. The same two bytes mean something else in another
+    // family, and a command carries its family with it.
+    let id = SafeCommandId::find("aula-bytech", "read_model_id").expect("ships");
+    assert_eq!(id.family(), "aula-bytech");
+    for other in ["royuan-gen2", "royuan-yc500", "aula-hero84-he"] {
+        assert!(SafeCommandId::find(other, "read_model_id").is_none());
+    }
 }

@@ -44,6 +44,15 @@ pub struct ProtocolEvidence {
     pub family: &'static str,
     pub confidence: Confidence,
     pub source: ProtocolEvidenceSource,
+    /// Which command established this, when one did.
+    ///
+    /// Present so that the evidence names its own scope. "This board speaks
+    /// `aula-bytech`" is a claim earned by one command answering correctly; it
+    /// is not a claim that every command in the family works, and an evidence
+    /// value that could not say which command it came from would invite exactly
+    /// that reading. `None` for evidence that is not from an exchange -- a
+    /// vendor artifact describes a family without any command having been sent.
+    pub command: Option<&'static str>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -775,6 +784,7 @@ mod tests {
                 family: "some-family",
                 confidence: Confidence::Verified,
                 source: ProtocolEvidenceSource::VerifiedExchange,
+                command: Some("some-command"),
             }),
         );
 
@@ -811,6 +821,7 @@ mod tests {
                 family: "some-family",
                 confidence: Confidence::Verified,
                 source: ProtocolEvidenceSource::VerifiedExchange,
+                command: Some("some-command"),
             }),
         );
         assert_eq!(identified.product.confidence, Confidence::Candidate);
@@ -845,6 +856,7 @@ mod tests {
                 family: "guessed-family",
                 confidence: Confidence::Candidate,
                 source: ProtocolEvidenceSource::VendorArtifact,
+                command: None,
             }),
         );
         assert_eq!(identified.family.family, Some("registry-family"));

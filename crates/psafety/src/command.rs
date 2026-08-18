@@ -1,7 +1,7 @@
 //! The closed set of commands that can exist, and the authorisation a dispatch
 //! receives.
 
-use crate::class::{Burst, FamilyTiming, OpcodeClass};
+use crate::class::{Burst, Cadence, CommandTiming, FamilyTiming, OpcodeClass};
 use crate::key::CommandKey;
 
 /// What the generated table knows about one command.
@@ -82,6 +82,34 @@ pub(crate) fn timing_for(family: &str, class: OpcodeClass) -> Option<&'static Fa
         .find(|timing| timing.family == family && timing.class == class)
 }
 
+/// The measured timing for one specific command, if the ACL declares one.
+pub(crate) fn command_timing_for(family: &str, command: &str) -> Option<&'static CommandTiming> {
+    COMMAND_TIMINGS
+        .iter()
+        .find(|timing| timing.family == family && timing.command == command)
+}
+
+/// How often this operation may go, resolved in the one order that exists.
+///
+/// A command's own measurement first, then its class's, then `None`. `None` is
+/// not a permissive default: it means nothing has been measured, and the caller
+/// turns that into a request for a person's confirmation rather than into an
+/// invented interval.
+///
+/// `command` is optional because the limiter is also asked about families that
+/// have no command at all -- an unidentified board, in the default-deny case --
+/// and those have nothing to look up.
+pub(crate) fn cadence_for(
+    family: &str,
+    command: Option<&str>,
+    class: OpcodeClass,
+) -> Option<Cadence> {
+    command
+        .and_then(|command| command_timing_for(family, command))
+        .map(Cadence::from)
+        .or_else(|| timing_for(family, class).map(Cadence::from))
+}
+
 /// A command that has passed every check and may be put on the wire.
 ///
 /// Constructed only by [`SafetyGate`], never `Clone` and never `Copy`, and
@@ -157,14 +185,50 @@ mod tests {
     }
 
     #[test]
-    fn every_command_has_measured_timing_for_its_class() {
+    fn every_command_resolves_to_a_measured_cadence() {
         for id in SafeCommandId::all() {
             assert!(
-                timing_for(id.family(), id.class()).is_some(),
+                cadence_for(id.family(), Some(id.name()), id.class()).is_some(),
                 "{}::{} has no measured timing, so nothing could throttle it",
                 id.family(),
                 id.name()
             );
+        }
+    }
+
+    #[test]
+    fn a_commands_own_timing_outranks_its_classs() {
+        // Resolution order, asserted on whatever the ACL currently ships: if a
+        // command declares its own numbers, they are the ones that come back,
+        // and the class numbers are not consulted.
+        for timing in COMMAND_TIMINGS {
+            let id = SafeCommandId::find(timing.family, timing.command)
+                .expect("command timing names a command that exists");
+            let cadence = cadence_for(id.family(), Some(id.name()), id.class())
+                .expect("a command with its own timing has a cadence");
+            assert_eq!(cadence.source, crate::class::CadenceSource::Command);
+            assert_eq!(cadence.min_gap_before_ms, timing.min_gap_before_ms);
+        }
+    }
+
+    #[test]
+    fn a_command_timing_never_leaks_into_a_sibling() {
+        // The whole reason command timing exists: one measured command must not
+        // speak for the next one in the same class.
+        for timing in COMMAND_TIMINGS {
+            for id in SafeCommandId::all() {
+                if id.family() != timing.family || id.name() == timing.command {
+                    continue;
+                }
+                let cadence = cadence_for(id.family(), Some(id.name()), id.class());
+                assert!(
+                    cadence.is_none_or(|c| c.source == crate::class::CadenceSource::Class),
+                    "{}::{} inherited {}'s own measurement",
+                    id.family(),
+                    id.name(),
+                    timing.command
+                );
+            }
         }
     }
 

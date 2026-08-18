@@ -83,6 +83,42 @@ rewrite.
 
 An opcode that is not listed at all is `unknown`. Absence is never permission.
 
+## Timing: per command first, per class second
+
+Two places a cadence can be declared, and one order in which they resolve:
+
+```toml
+[timing.class.safe_read]              # governs every safe_read in the family
+min_gap_before_ms = 12
+settle_after_ms   = 0
+evidence          = "hardware_third_party"
+note              = "where the number was measured"
+
+[timing.command.read_model_id]        # governs exactly this command
+min_gap_before_ms = 1000
+settle_after_ms   = 0
+evidence          = "hardware"
+note              = "where the number was measured"
+```
+
+Resolution is:
+
+```text
+this command's own measurement
+  -> its class's measurement
+    -> nothing, which means a person is asked, never an invented interval
+```
+
+Command-level timing exists because a measurement is evidence about the thing
+that was measured. When `aula-bytech`'s first command was verified on hardware,
+writing its number into `[timing.class.safe_read]` would have claimed the same
+cadence for every `safe_read` that family ever gains -- including ones nobody has
+sent. So the number goes on the command, and the next command earns its own.
+
+A command that carries its own measurement does not need its class to have one.
+A command that does not carry one is not covered by a sibling's: it needs class
+timing, or the build fails.
+
 ## Rules the build script enforces
 
 These fail the build rather than warn, because each one is a way an unsafe

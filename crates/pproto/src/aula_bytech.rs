@@ -51,7 +51,7 @@
 //! packet size is a coincidence of size; the framing is not shared, and the
 //! mouse stack's arithmetic was not consulted while writing this.
 
-use psafety::{CommandKey, ProbeCommandId, ProbeResponse};
+use psafety::{CommandKey, CommandResponse, SafeCommandId};
 
 /// Total bytes in one frame, excluding the report id the HID write prepends.
 pub const FRAME_LEN: usize = 63;
@@ -285,7 +285,10 @@ impl VendorModelId {
     /// Big-endian over the response's data bytes: the first byte is the most
     /// significant, which is how the vendor accumulates it.
     fn from_be_bytes(data: &[u8]) -> Self {
-        Self(data.iter().fold(0u64, |acc, byte| (acc << 8) | u64::from(*byte)))
+        Self(
+            data.iter()
+                .fold(0u64, |acc, byte| (acc << 8) | u64::from(*byte)),
+        )
     }
 
     pub fn raw(self) -> u64 {
@@ -332,23 +335,26 @@ pub enum ModelIdError {
     WrongDataLength { len: usize },
 }
 
-/// The typed answer to the `aula-bytech` model-id probe.
+/// The typed answer to the `aula-bytech` model-id read.
 ///
 /// The report id is not a parameter of this decoder even though the checksum
 /// depends on it, because the checksum is recorded rather than enforced. The
 /// value carries the checksum verdict; nothing in the decode path branches on
-/// it.
+/// it. Six exchanges have now seen the device compute it our way, which is
+/// enough to record and not yet enough to reject on -- see
+/// `docs/hardware/aula-bytech-exchange-002-timing.md`.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct ModelIdProbe {
+pub struct ModelIdRead {
     pub model_id: VendorModelId,
     /// Whether the answer's checksum matched what we would have computed for
-    /// report id 9. Informational -- the first exchange is what establishes
-    /// whether the device computes it the way the request does.
+    /// report id 9. Informational, deliberately: the vendor's own driver never
+    /// checks an incoming checksum, so enforcing it would be a rule this
+    /// project invented on six samples.
     pub checksum_ok: bool,
 }
 
-impl ProbeResponse for ModelIdProbe {
-    const COMMAND: ProbeCommandId = ProbeCommandId::AulaBytechReadModelId;
+impl CommandResponse for ModelIdRead {
+    const COMMAND: SafeCommandId = SafeCommandId::AulaBytechReadModelId;
     type Rejection = ModelIdError;
 
     /// Six zero bytes. Not padding: the request's length byte is what tells the
@@ -370,7 +376,7 @@ impl ProbeResponse for ModelIdProbe {
                 len: decoded.data.len(),
             });
         }
-        Ok(ModelIdProbe {
+        Ok(ModelIdRead {
             model_id: VendorModelId::from_be_bytes(&decoded.data),
             checksum_ok: decoded.checksum_ok,
         })
@@ -430,7 +436,7 @@ mod tests {
         // The vector that goes on the wire. Written out in full rather than
         // computed, so that a change to the builder has to change this line and
         // be seen in a diff.
-        let frame = encode_request(model_id_key(), &ModelIdProbe::request_payload(), REPORT_ID)
+        let frame = encode_request(model_id_key(), &ModelIdRead::request_payload(), REPORT_ID)
             .expect("a six-byte payload fits in one frame");
         let mut expected = [0u8; FRAME_LEN];
         expected[..6].copy_from_slice(&[0x82, 0x01, 0x00, 0x01, 0x00, 0x06]);
@@ -443,7 +449,7 @@ mod tests {
         // The property that makes a frame valid only for the report id it was
         // built for. If this ever passes with both values equal, the seed has
         // been dropped.
-        let payload = ModelIdProbe::request_payload();
+        let payload = ModelIdRead::request_payload();
         let nine = encode_request(model_id_key(), &payload, 9).expect("valid");
         let one = encode_request(model_id_key(), &payload, 1).expect("valid");
         assert_eq!(nine[CHECKSUM], 0x6C);
@@ -457,8 +463,8 @@ mod tests {
             for data_len in 0..=MAX_DATA_LEN {
                 let payload = vec![0xA5u8; data_len];
                 let frame = encode_request(model_id_key(), &payload, report_id).expect("fits");
-                let total: u32 = frame.iter().map(|b| u32::from(*b)).sum::<u32>()
-                    + u32::from(report_id);
+                let total: u32 =
+                    frame.iter().map(|b| u32::from(*b)).sum::<u32>() + u32::from(report_id);
                 assert_eq!(
                     total & 0xFF,
                     0xFF,
@@ -496,7 +502,7 @@ mod tests {
         for raw in KNOWN_MODEL_IDS {
             let bytes = raw.to_be_bytes();
             let data = &bytes[2..];
-            let decoded = ModelIdProbe::decode(model_id_key(), &response_frame(data))
+            let decoded = ModelIdRead::decode(model_id_key(), &response_frame(data))
                 .expect("a well-formed answer");
             assert_eq!(decoded.model_id.raw(), raw);
             assert_eq!(decoded.model_id.to_be_bytes().as_slice(), data);
@@ -526,7 +532,7 @@ mod tests {
         let mut frame = response_frame(&[0x11, 0, 0, 0, 0, 0x05]);
         frame[GROUP] = 0x84;
         assert!(matches!(
-            ModelIdProbe::decode(model_id_key(), &frame),
+            ModelIdRead::decode(model_id_key(), &frame),
             Err(ModelIdError::Frame(ResponseError::GroupMismatch { .. }))
         ));
     }
@@ -536,8 +542,10 @@ mod tests {
         let mut frame = response_frame(&[0x11, 0, 0, 0, 0, 0x05]);
         frame[SUBCOMMAND] = 0x02;
         assert!(matches!(
-            ModelIdProbe::decode(model_id_key(), &frame),
-            Err(ModelIdError::Frame(ResponseError::SubcommandMismatch { .. }))
+            ModelIdRead::decode(model_id_key(), &frame),
+            Err(ModelIdError::Frame(
+                ResponseError::SubcommandMismatch { .. }
+            ))
         ));
     }
 
@@ -546,15 +554,19 @@ mod tests {
         let mut wrong_count = response_frame(&[0x11, 0, 0, 0, 0, 0x05]);
         wrong_count[TOTAL_PACKETS] = 2;
         assert!(matches!(
-            ModelIdProbe::decode(model_id_key(), &wrong_count),
-            Err(ModelIdError::Frame(ResponseError::PacketCountMismatch { .. }))
+            ModelIdRead::decode(model_id_key(), &wrong_count),
+            Err(ModelIdError::Frame(
+                ResponseError::PacketCountMismatch { .. }
+            ))
         ));
 
         let mut wrong_index = response_frame(&[0x11, 0, 0, 0, 0, 0x05]);
         wrong_index[PACKET_INDEX] = 1;
         assert!(matches!(
-            ModelIdProbe::decode(model_id_key(), &wrong_index),
-            Err(ModelIdError::Frame(ResponseError::PacketIndexMismatch { .. }))
+            ModelIdRead::decode(model_id_key(), &wrong_index),
+            Err(ModelIdError::Frame(
+                ResponseError::PacketIndexMismatch { .. }
+            ))
         ));
     }
 
@@ -567,8 +579,10 @@ mod tests {
         }
         assert!(
             matches!(
-                ModelIdProbe::decode(model_id_key(), &frame),
-                Err(ModelIdError::Frame(ResponseError::DataLengthOutOfRange { .. }))
+                ModelIdRead::decode(model_id_key(), &frame),
+                Err(ModelIdError::Frame(
+                    ResponseError::DataLengthOutOfRange { .. }
+                ))
             ),
             "a length byte must never be trusted to index the frame"
         );
@@ -578,7 +592,7 @@ mod tests {
     fn a_short_answer_is_not_padded_into_a_model_id() {
         let frame = response_frame(&[0x11, 0x00, 0x00]);
         assert_eq!(
-            ModelIdProbe::decode(model_id_key(), &frame),
+            ModelIdRead::decode(model_id_key(), &frame),
             Err(ModelIdError::WrongDataLength { len: 3 })
         );
     }
@@ -587,7 +601,7 @@ mod tests {
     fn a_frame_of_the_wrong_size_is_rejected() {
         for len in [0usize, 62, 64] {
             assert!(matches!(
-                ModelIdProbe::decode(model_id_key(), &vec![0u8; len]),
+                ModelIdRead::decode(model_id_key(), &vec![0u8; len]),
                 Err(ModelIdError::Frame(ResponseError::WrongLength { .. }))
             ));
         }
@@ -601,7 +615,7 @@ mod tests {
         // answer into a failure.
         let mut frame = response_frame(&[0x11, 0, 0, 0, 0, 0x05]);
         frame[CHECKSUM] ^= 0xFF;
-        let decoded = ModelIdProbe::decode(model_id_key(), &frame).expect("still decodable");
+        let decoded = ModelIdRead::decode(model_id_key(), &frame).expect("still decodable");
         assert!(!decoded.checksum_ok);
     }
 

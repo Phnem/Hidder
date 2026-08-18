@@ -11,6 +11,10 @@ dist-web/
 # sharkfin is GPL-3.0 and this project is proprietary (see docs/decisions/0001-license.md):
 # it is read as a source of facts and methods, and must not be vendored here.
 /sharkfin/
+# Same rule, same reason, for every other prior-art clone. These are separate
+# git repositories under their own licences; committing them -- even as
+# gitlinks -- would put someone else's history in this tree.
+/_prior-art/
 
 # Vendor artifacts for the ingestion pipeline. Never committed, never shipped
 # (spec.md FR9): unpack them outside the working tree.
