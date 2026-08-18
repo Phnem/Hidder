@@ -81,6 +81,43 @@ again: each is its read's group with `0x80` cleared.
 
 None of these will be given any command id, sent, or tested by this work.
 
+## The key id is the vendor's own numbering, not a HID usage
+
+Load-bearing, and established after the first hardware read rather than before
+it — see `docs/hardware/aula-bytech-exchange-004-actuation.md` for what it cost.
+
+Every per-key performance command in this family — travel, rapid trigger, dead
+zone, switch type — identifies a key by the number the vendor calls `keyValue`.
+That is a position in the family's own key table, not a HID usage code.
+
+Three independent statements of it in the artifact:
+
+- the family's key table is **indexed** by it: where the keymap lookup misses,
+  the vendor resolves a key as `keyboardMap[Number(entry.keyValue)]`;
+- the keymap read returns records with `id` **and** `keycode` as separate
+  fields, matched against `keyValue` and `browserValue` respectively — two
+  numbers, two comparisons, never interchanged;
+- the travel commands are handed `layout.map(l => l.keyValue)` and no HID usage
+  reaches them in either direction.
+
+| Key | `keyValue` (protocol) | `browserValue` (HID usage) | What the usage names as a `keyValue` |
+|---|---|---|---|
+| W | 30 | 26 | `=` |
+| A | 43 | 4 | F3 |
+| S | 44 | 22 | `8` |
+| D | 45 | 7 | F6 |
+
+The mapping belongs to the **family**: one key table for `bytech`, and one layout
+per model (68, 84 and 101 keys are the three present) selecting which of those
+keys physically exist. So `keyValue` 30 is W on every board in the family, and
+the layout answers whether a given board has it.
+
+**Why this is the dangerous kind of mistake.** Both spaces are small `u16`s, both
+are called "key id" in ordinary speech, and the overlap is total — every wrong id
+is a valid id for a different key. A request built from the wrong space produces
+a well-formed answer, in the right order, with a correct checksum, about keys
+nobody asked about. `KeyId` is a newtype in `pproto` for exactly this reason.
+
 ## The subcommand byte carries layer and system
 
 For the per-key commands the second byte is not a subcommand index but a packed
@@ -96,6 +133,19 @@ For our board in its normal state that byte is `0x00`. Worth noting because it
 means an actuation value is **per key per layer per OS mode**, not simply per
 key — a distinction Ember does not have, and one that a capability model has to
 carry or it will silently read the wrong layer.
+
+**Which of the eight values the official configurator uses, exactly.** Its
+trigger page passes `layer: 0` as a literal on *both* the read and the write, so
+the layer is never a variable there — the other three layers are reachable by the
+protocol and not by that page. The system half comes from the device: the connect
+path calls `getOsMode()` and stores `Win` or `Mac`, and every per-key call then
+sends `0` or `1` accordingly.
+
+Two consequences worth stating. A configurator write and a read of `0x00` address
+the same slot whenever the board is in Win mode, which is what makes a read-back
+comparison meaningful at all. And on a board in Mac mode the same page would read
+and write `0x04` throughout, so a fixed `0x00` in our code would silently address
+a slot the user's own software never touches.
 
 ## Chunking: at most 11 keys per exchange
 
@@ -140,14 +190,30 @@ Two things follow that the model must respect:
 
 ## Not yet established
 
-- **Range and maximum travel.** The vendor's slider bounds come from a
-  per-switch-type table (`maxTravel`), reached through `getSupportedSwitches`
-  and a static list that lives in a chunk this pass did not resolve. The
-  generic component's default of 0.1–3.4 mm is a *component default* for a
-  different SDK module and must not be adopted for HERO 84 HE. Needed for a
-  complete capability descriptor; not needed to read a value.
 - **What our board actually answers** for travel precision. Everything above is
   the shape; the scalar is a number only the device has.
+
+### Resolved 2026-08-18: where the travel bounds come from
+
+Recorded here because the previous version of this note listed it as unresolved
+and warned against adopting the wrong default. The warning stands and the source
+is now identified.
+
+The vendor's trigger page starts from component defaults —
+`travelMin 0.1`, `travelMax 3.4`, `travelStep 0.01`, `defaultTravel 0.5` — and
+then **replaces the maximum** with `maxTravel` for the switch the board actually
+reports, via `getSupportedSwitches` filtered against a static table of 47 switch
+types in the family chunk. Observed `maxTravel` across that table: 2.8 (×1),
+3.0 (×4), 3.3 (×2), 3.4 (×29), 3.5 (×9), 3.7 (×1), 3.8 (×1) mm.
+
+So the maximum is **a property of the switch, read from the device**, and 3.4 is
+merely the most common value and the pre-read placeholder. A capability
+descriptor that hardcodes 3.4 would be wrong on eighteen of the vendor's own
+switch types. The minimum, 0.1 mm, and the step are not switch-dependent in the
+artifact; the step is the travel precision, which is read.
+
+Neither `getSupportedSwitches` nor `getKeySwitchType` has an ACL entry, a
+`SafeCommandId` or a `ProbeCommandId`, and neither has been sent.
 
 ## Proposed next step
 

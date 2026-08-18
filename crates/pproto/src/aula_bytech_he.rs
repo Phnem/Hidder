@@ -130,6 +130,79 @@ impl std::fmt::Display for TravelScale {
     }
 }
 
+/// A key's identifier **in this protocol's own numbering**, which is not a HID
+/// usage.
+///
+/// # The mistake this type exists to make impossible
+///
+/// It has already been made once, on hardware, and nothing about the exchange
+/// looked wrong. The first `read_key_travel` probe asked for W, A, S and D by
+/// their HID keyboard usages -- 0x1A, 0x04, 0x16, 0x07 -- because "key id" was
+/// read as "the number that identifies a key". The board answered without
+/// complaint, in request order, with a well-formed record per id and a matching
+/// checksum. Every check the decoder performs passed. It had simply reported the
+/// actuation of `=`, F3, `8` and F6, which are the keys those four numbers name
+/// in *this* numbering, and which nobody had changed
+/// (docs/hardware/aula-bytech-exchange-003-actuation.md, and -004 for the
+/// correction).
+///
+/// So the two spaces are separate types from here on. They are both `u16`, both
+/// small, both called something like "key id" in casual speech, and confusing
+/// them produces a confident wrong answer rather than an error -- which is the
+/// exact profile of a bug that a newtype is worth the trouble of carrying.
+///
+/// # Where each number lives
+///
+/// | Space | Vendor's name | Which commands carry it |
+/// |---|---|---|
+/// | this one | `keyValue` | every per-key performance command: travel, rapid trigger, dead zone, switch type |
+/// | HID usage | `keycode` / `browserValue` | the keymap command only, as a *value* rather than as an identifier |
+///
+/// The vendor's own layout tables are indexed by this number, and its keymap
+/// read returns records of `{ id, keycode }` -- two distinct fields in one
+/// record, which is the artifact stating outright that they are not the same
+/// thing (docs/prior-art/aula-bytech-actuation.md).
+///
+/// # Scope
+///
+/// The mapping belongs to the `bytech` family, not to a board: the vendor
+/// carries one key table for the family and one layout per model that selects
+/// which of those keys physically exist. So [`KeyId::W`] is W on every board in
+/// the family; whether a given board *has* that key is what the layout answers.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub struct KeyId(u16);
+
+impl KeyId {
+    /// The four keys the actuation read names, from the vendor's key table for
+    /// this family.
+    ///
+    /// Written as named constants rather than as literals in an array so that
+    /// the number and the key it means cannot drift apart silently again.
+    pub const W: KeyId = KeyId(30);
+    pub const A: KeyId = KeyId(43);
+    pub const S: KeyId = KeyId(44);
+    pub const D: KeyId = KeyId(45);
+
+    /// For decoding a record that came off the wire, and for tests.
+    ///
+    /// Deliberately not `From<u16>`: constructing one should look like a
+    /// decision, because a `u16` from the wrong space converts just as happily
+    /// as one from the right space.
+    pub fn from_wire(raw: u16) -> Self {
+        Self(raw)
+    }
+
+    pub fn raw(self) -> u16 {
+        self.0
+    }
+}
+
+impl std::fmt::Display for KeyId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "key {}", self.0)
+    }
+}
+
 /// One key's actuation point, still in device units.
 ///
 /// Kept raw deliberately. A travel value alone is not a distance -- it is a
@@ -137,8 +210,9 @@ impl std::fmt::Display for TravelScale {
 /// [`TravelPrecision`] and cannot happen by accident.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct Travel {
-    /// HID keyboard usage id, which is what this protocol uses as a key id.
-    pub key_id: u16,
+    /// Which key this is, in this protocol's numbering. See [`KeyId`] for why
+    /// that is a type rather than a `u16`.
+    pub key_id: KeyId,
     pub raw: u16,
 }
 
@@ -235,13 +309,16 @@ impl ProbeResponse for TravelPrecisionProbe {
 
 // --- read_key_travel ---------------------------------------------------------
 
-/// The four keys the bootstrap probe reads, as HID keyboard usage ids.
+/// The four keys the actuation read names, in this protocol's numbering.
 ///
-/// Fixed in the type rather than passed in, and that is the point: a bootstrap
-/// probe is a pre-declared operation a person agreed to, not a parameterised
-/// capability. W, A, S and D are the keys a person can most easily check
-/// against the vendor's own configurator.
-pub const WASD_KEY_IDS: [u16; 4] = [0x1A, 0x04, 0x16, 0x07];
+/// Fixed in the type rather than passed in, and that is the point: this is a
+/// pre-declared operation a person agreed to, not a parameterised capability.
+/// W, A, S and D are the keys a person can most easily set to four different
+/// values in the vendor's own configurator and check against.
+pub const WASD_KEY_IDS: [KeyId; 4] = [KeyId::W, KeyId::A, KeyId::S, KeyId::D];
+
+/// Human labels for [`WASD_KEY_IDS`], in the same order, for reports and the UI.
+pub const WASD_KEY_LABELS: [&str; 4] = ["W", "A", "S", "D"];
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, thiserror::Error)]
 pub enum KeyTravelError {
@@ -253,13 +330,11 @@ pub enum KeyTravelError {
     NotWholeRecords { len: usize },
     #[error("asked for {asked} keys, got {got} records back")]
     WrongRecordCount { asked: usize, got: usize },
-    #[error(
-        "record {index} answers for key {found:#06x}, not the {expected:#06x} that was asked for"
-    )]
+    #[error("record {index} answers for {found}, not the {expected} that was asked for")]
     UnexpectedKey {
         index: usize,
-        expected: u16,
-        found: u16,
+        expected: KeyId,
+        found: KeyId,
     },
 }
 
@@ -277,7 +352,7 @@ impl ProbeResponse for WasdTravelProbe {
     fn request_payload() -> Vec<u8> {
         WASD_KEY_IDS
             .iter()
-            .flat_map(|id| id.to_be_bytes())
+            .flat_map(|id| id.raw().to_be_bytes())
             .collect()
     }
 
@@ -298,7 +373,7 @@ impl ProbeResponse for WasdTravelProbe {
 
         let mut travels = Vec::with_capacity(got);
         for (index, chunk) in data.chunks_exact(TRAVEL_RECORD).enumerate() {
-            let key_id = u16::from_be_bytes([chunk[0], chunk[1]]);
+            let key_id = KeyId::from_wire(u16::from_be_bytes([chunk[0], chunk[1]]));
             let expected = WASD_KEY_IDS[index];
             // The device is expected to answer in the order asked. Checking it
             // is what turns "five bytes arrived" into "this is W's setting":
@@ -360,12 +435,12 @@ mod tests {
         }
     }
 
-    fn travel_records(values: &[(u16, u16)]) -> Vec<u8> {
+    fn travel_records(values: &[(KeyId, u16)]) -> Vec<u8> {
         values
             .iter()
             .flat_map(|(id, raw)| {
                 let mut record = Vec::with_capacity(TRAVEL_RECORD);
-                record.extend_from_slice(&id.to_be_bytes());
+                record.extend_from_slice(&id.raw().to_be_bytes());
                 record.extend_from_slice(&raw.to_be_bytes());
                 record.push(0);
                 record
@@ -382,7 +457,7 @@ mod tests {
         // reported or explicitly fallen back to. If `to_millimetres` ever loses
         // its argument, this comment is why it must not.
         let travel = Travel {
-            key_id: 0x1A,
+            key_id: KeyId::W,
             raw: 40,
         };
         let at = |micrometres| {
@@ -452,17 +527,22 @@ mod tests {
 
     #[test]
     fn four_records_decode_in_the_order_asked() {
-        let data = travel_records(&[(0x1A, 40), (0x04, 40), (0x16, 30), (0x07, 25)]);
+        let data = travel_records(&[
+            (KeyId::W, 50),
+            (KeyId::A, 100),
+            (KeyId::S, 150),
+            (KeyId::D, 200),
+        ]);
         let decoded =
             WasdTravelProbe::decode(travel_key(), &frame(0x93, 0x00, &data)).expect("well formed");
         assert_eq!(decoded.travels.len(), 4);
-        assert_eq!(decoded.travels[0].key_id, 0x1A);
-        assert_eq!(decoded.travels[0].raw, 40);
-        assert_eq!(decoded.travels[3].key_id, 0x07);
-        assert_eq!(decoded.travels[3].raw, 25);
+        assert_eq!(decoded.travels[0].key_id, KeyId::W);
+        assert_eq!(decoded.travels[0].raw, 50);
+        assert_eq!(decoded.travels[3].key_id, KeyId::D);
+        assert_eq!(decoded.travels[3].raw, 200);
         assert_eq!(
             decoded.travels[0].to_millimetres(TravelScale::Reported(TravelPrecision(10))),
-            0.40
+            0.50
         );
     }
 
@@ -471,20 +551,25 @@ mod tests {
         // The failure this prevents: the device answers in a different order,
         // the values get zipped against our own list, and one key's setting is
         // reported as another's. Nothing about the frame would look wrong.
-        let data = travel_records(&[(0x04, 40), (0x1A, 40), (0x16, 30), (0x07, 25)]);
+        let data = travel_records(&[
+            (KeyId::A, 40),
+            (KeyId::W, 40),
+            (KeyId::S, 30),
+            (KeyId::D, 25),
+        ]);
         assert!(matches!(
             WasdTravelProbe::decode(travel_key(), &frame(0x93, 0x00, &data)),
             Err(KeyTravelError::UnexpectedKey {
                 index: 0,
-                expected: 0x1A,
-                found: 0x04
+                expected: KeyId::W,
+                found: KeyId::A
             })
         ));
     }
 
     #[test]
     fn a_short_answer_is_refused_rather_than_padded() {
-        let data = travel_records(&[(0x1A, 40), (0x04, 40)]);
+        let data = travel_records(&[(KeyId::W, 40), (KeyId::A, 40)]);
         assert_eq!(
             WasdTravelProbe::decode(travel_key(), &frame(0x93, 0x00, &data)),
             Err(KeyTravelError::WrongRecordCount { asked: 4, got: 2 })
@@ -493,7 +578,12 @@ mod tests {
 
     #[test]
     fn a_ragged_answer_is_refused() {
-        let mut data = travel_records(&[(0x1A, 40), (0x04, 40), (0x16, 30), (0x07, 25)]);
+        let mut data = travel_records(&[
+            (KeyId::W, 40),
+            (KeyId::A, 40),
+            (KeyId::S, 30),
+            (KeyId::D, 25),
+        ]);
         data.push(0);
         assert_eq!(
             WasdTravelProbe::decode(travel_key(), &frame(0x93, 0x00, &data)),
@@ -503,10 +593,45 @@ mod tests {
 
     #[test]
     fn the_request_names_exactly_the_four_keys() {
+        // The literal bytes, spelled out, because this is the assertion that
+        // would have caught the exchange-003 defect: 30, 43, 44, 45 are W A S D
+        // in this protocol's numbering, and 26, 4, 22, 7 -- their HID usages --
+        // are `=`, F3, `8` and F6 on the very same board.
         assert_eq!(
             WasdTravelProbe::request_payload(),
-            vec![0x00, 0x1A, 0x00, 0x04, 0x00, 0x16, 0x00, 0x07]
+            vec![0x00, 30, 0x00, 43, 0x00, 44, 0x00, 45]
         );
+    }
+
+    #[test]
+    fn a_key_id_is_not_a_hid_usage() {
+        // The four HID usages that were sent by mistake, and what they name in
+        // the space this command actually uses. If someone "fixes" KeyId back to
+        // the usage values, every one of these becomes an equality and this test
+        // fails, which is the point.
+        for (usage, key) in [
+            (0x1Au16, KeyId::W),
+            (0x04, KeyId::A),
+            (0x16, KeyId::S),
+            (0x07, KeyId::D),
+        ] {
+            assert_ne!(
+                usage,
+                key.raw(),
+                "{key} was given its HID usage as its protocol key id"
+            );
+        }
+        assert_eq!(
+            [KeyId::W, KeyId::A, KeyId::S, KeyId::D].map(KeyId::raw),
+            [30, 43, 44, 45],
+            "the vendor's own key table for the bytech family"
+        );
+    }
+
+    #[test]
+    fn the_labels_line_up_with_the_ids() {
+        assert_eq!(WASD_KEY_IDS.len(), WASD_KEY_LABELS.len());
+        assert_eq!(WASD_KEY_LABELS, ["W", "A", "S", "D"]);
     }
 
     #[test]

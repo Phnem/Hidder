@@ -21,7 +21,9 @@ use std::time::Duration;
 
 use pcaps::{Confidence, FamilyConfidence};
 use pproto::aula_bytech_engine::AulaBytechEngine;
-use pproto::aula_bytech_he::{TravelPrecisionProbe, TravelScale, WASD_KEY_IDS, WasdTravelProbe};
+use pproto::aula_bytech_he::{
+    TravelPrecisionProbe, TravelScale, WASD_KEY_IDS, WASD_KEY_LABELS, WasdTravelProbe,
+};
 use pproto::aula_bytech_io::{Exchange, Verdict};
 use psafety::MonotonicClock;
 use psafety::journal::{JournalEntry, JournalSink};
@@ -119,10 +121,11 @@ fn run(which: Option<Which>) -> Result<(), String> {
         Which::KeyTravel => {
             println!("\n== probe: read_key_travel (0x93:0x00, layer Normal, system Windows) ==");
             println!(
-                "  keys          W A S D  (HID usages {})",
+                "  keys          {}  (protocol key ids {}, NOT HID usages)",
+                WASD_KEY_LABELS.join(" "),
                 WASD_KEY_IDS
                     .iter()
-                    .map(|id| format!("{id:#04x}"))
+                    .map(|id| id.raw().to_string())
                     .collect::<Vec<_>>()
                     .join(" ")
             );
@@ -180,7 +183,7 @@ fn describe_precision(probe: TravelPrecisionProbe) -> String {
 fn describe_travel(probe: WasdTravelProbe) -> String {
     let mut out = String::new();
     out.push_str("  key   raw     mm (vendor fallback scale, 0.01 mm/step)\n");
-    for (travel, name) in probe.travels.iter().zip(["W", "A", "S", "D"]) {
+    for (travel, name) in probe.travels.iter().zip(WASD_KEY_LABELS) {
         out.push_str(&format!(
             "  {name:<5} {:<7} {:.2}\n",
             travel.raw,

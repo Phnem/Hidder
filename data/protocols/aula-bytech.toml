@@ -102,6 +102,14 @@ Per-key actuation point. Records of five bytes: key id u16 big-endian, travel \
 u16 big-endian, one pad byte. Travel is in units of read_travel_precision \
 micrometres.
 
+The key id is the VENDOR'S OWN key numbering and is NOT a HID usage. The \
+vendor calls it `keyValue`, indexes its layout tables by it, and carries the \
+HID usage as a separate `keycode` field on a different command. W A S D are \
+30 43 44 45 here; their HID usages 26 4 22 7 are `=`, F3, `8` and F6 on the \
+same board. Confusing the two produces a well-formed answer about the wrong \
+keys, which is what happened on 2026-08-18 and is written up in \
+docs/hardware/aula-bytech-exchange-004-actuation.md.
+
 The second byte is NOT a subcommand index. It packs the layer and the OS mode \
 as (layer & 3) | ((system & 7) << 2), and 0x00 is layer Normal with system \
 Windows. This entry therefore authorises reading that layer and that mode and \
