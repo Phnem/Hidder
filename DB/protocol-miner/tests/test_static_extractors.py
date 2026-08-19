@@ -68,3 +68,12 @@ def test_nested_blocks_do_not_break_function_data_flow_boundaries(tmp_path: Path
     source.write_text("function setDpi(value) { if (value) { log(value); } const packet = new Uint8Array(2); packet[0] = 1; device.sendReport(2, packet); }")
     observations = scan_file("2" * 64, "unpacked/nested.js", source)
     assert any(item.kind == "protocol.buffer_builder" for item in observations)
+
+
+def test_inf_preserves_interface_and_driver_version_context(tmp_path: Path) -> None:
+    source = tmp_path / "device.inf"
+    source.write_text("DriverVer=01/01/2026,2.3.4\nUSB\\VID_372E&PID_103E&MI_02")
+    observations = scan_file("3" * 64, "unpacked/device.inf", source)
+    identity = next(item for item in observations if item.kind == "identity.vid_pid")
+    assert identity.value["interface_number"] == 2
+    assert any(item.kind == "driver.version" and item.value["driver_version"].endswith("2.3.4") for item in observations)

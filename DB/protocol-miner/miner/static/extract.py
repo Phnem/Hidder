@@ -17,7 +17,8 @@ _VID_PID = re.compile(r"vendorId\s*[:=]\s*(0x[0-9a-fA-F]+|\d+).{0,260}?productId
 _VID_PID_REVERSE = re.compile(r"productId\s*[:=]\s*(0x[0-9a-fA-F]+|\d+).{0,260}?vendorId\s*[:=]\s*(0x[0-9a-fA-F]+|\d+)", re.DOTALL)
 _HID_SINK = re.compile(r"\b(?:sendReport|sendFeatureReport)\s*\(\s*(0x[0-9a-fA-F]+|\d+)")
 _USB_SINK = re.compile(r"\b(?:transferIn|transferOut|controlTransferIn|controlTransferOut)\s*\(")
-_INF_ID = re.compile(r"\bVID_([0-9A-Fa-f]{4})&PID_([0-9A-Fa-f]{4})\b")
+_INF_ID = re.compile(r"\bVID_([0-9A-Fa-f]{4})&PID_([0-9A-Fa-f]{4})(?:&MI_([0-9A-Fa-f]{2}))?\b")
+_INF_DRIVER_VERSION = re.compile(r"^\s*DriverVer\s*=\s*([^\r\n]+)", re.MULTILINE | re.IGNORECASE)
 _DIRECT_PACKET = re.compile(r"\b(sendReport|sendFeatureReport)\s*\(\s*(0x[0-9a-fA-F]+|\d+)\s*,\s*new\s+Uint8Array\s*\(\s*\[([^\]]{1,2048})\]", re.DOTALL)
 _DANGEROUS = re.compile(r"\b(firmware|flash|bootloader|erase|factory\s*reset|calibrat(?:e|ion)|\bdfu\b)\b", re.IGNORECASE)
 _ASCII_STRING = re.compile(rb"[\x20-\x7e]{4,}")
@@ -119,9 +120,12 @@ def scan_javascript(sha256: str, source_path: str, text: str) -> list[Observatio
 
 
 def scan_inf(sha256: str, source_path: str, text: str) -> list[Observation]:
-    return [_make(sha256, f"{source_path}:byte={match.start()}", "identity.vid_pid", {
-        "vid": int(match.group(1), 16), "pid": int(match.group(2), 16), "context": "INF hardware ID; not product-wide mapping",
+    results = [_make(sha256, f"{source_path}:byte={match.start()}", "identity.vid_pid", {
+        "vid": int(match.group(1), 16), "pid": int(match.group(2), 16), "interface_number": int(match.group(3), 16) if match.group(3) else None,
+        "context": "INF hardware ID; not product-wide mapping",
     }, ConfidenceClass.VERIFIED_VENDOR_ARTIFACT) for match in _INF_ID.finditer(text)]
+    results.extend(_make(sha256, f"{source_path}:byte={match.start()}", "driver.version", {"driver_version": match.group(1).strip()}, ConfidenceClass.VERIFIED_VENDOR_ARTIFACT) for match in _INF_DRIVER_VERSION.finditer(text))
+    return results
 
 
 def scan_sourcemap(sha256: str, source_path: str, text: str) -> list[Observation]:
