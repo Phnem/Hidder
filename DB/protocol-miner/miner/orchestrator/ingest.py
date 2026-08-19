@@ -49,7 +49,7 @@ def ingest_file(settings: Settings, input_path: Path, vendor: str | None = None,
     )
     artifact_dir = settings.workspace_dir / "artifacts" / sha256
     _write_json(artifact_dir / "provenance.json", {**artifact.json(), **(provenance_extra or {})})
-    unpacked = SafeUnpacker(settings).unpack(cas_path, sha256)
+    unpacked = SafeUnpacker(settings).unpack(cas_path, sha256, artifact.original_filename)
     nested_children = SafeUnpacker(settings).unpack_nested(unpacked, sha256)
     _write_json(artifact_dir / "artifact_tree.json", {
         "schema": "peripheral.artifact-tree/1", "root": sha256, "children": nested_children,

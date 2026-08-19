@@ -8,11 +8,13 @@ import stat
 import tarfile
 import zipfile
 from dataclasses import dataclass
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 
 from miner.config import Settings
 from miner.detect.file_type import detect
 from miner.storage.cas import sha256_file
+from miner.unpack.asar import extract as extract_asar
+from miner.unpack.safe_paths import safe_relative as _safe_relative
 
 try:
     import py7zr
@@ -29,15 +31,6 @@ class UnpackResult:
     error: str | None = None
 
 
-def _safe_relative(name: str) -> Path | None:
-    normalized = PurePosixPath(name.replace("\\", "/"))
-    if not name or normalized.is_absolute() or ".." in normalized.parts:
-        return None
-    if normalized.parts and normalized.parts[0].endswith(":"):
-        return None
-    return Path(*normalized.parts)
-
-
 def _is_zip_symlink(info: zipfile.ZipInfo) -> bool:
     return stat.S_ISLNK(info.external_attr >> 16)
 
@@ -48,19 +41,29 @@ class SafeUnpacker:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
 
-    def unpack(self, archive: Path, sha256: str) -> UnpackResult:
+    def unpack(self, archive: Path, sha256: str, original_filename: str | None = None) -> UnpackResult:
         destination = self.settings.workspace_dir / "unpacked" / sha256
         if destination.exists() and any(destination.iterdir()):
             files = [path for path in destination.rglob("*") if path.is_file()]
             return UnpackResult("already_unpacked", destination, len(files), sum(path.stat().st_size for path in files))
-        kind = detect(archive)
+        kind = detect(archive, original_filename)
         if kind == "zip":
             return self._zip(archive, destination)
         if kind == "7z":
             return self._seven_zip(archive, destination)
+        if kind == "asar":
+            return self._asar(archive, destination)
         if tarfile.is_tarfile(archive):
             return self._tar(archive, destination)
         return UnpackResult("not_archive", None, 0, 0, f"Static unpack unavailable for {kind}")
+
+    def _asar(self, archive: Path, destination: Path) -> UnpackResult:
+        try:
+            self._prepare(destination)
+            count, total = extract_asar(archive, destination, self.settings.max_file_count, self.settings.max_expanded_size)
+            return UnpackResult("success", destination, count, total)
+        except (OSError, ValueError) as error:
+            return UnpackResult("error", None, 0, 0, str(error))
 
     def unpack_nested(self, root_result: UnpackResult, root_sha256: str) -> list[dict[str, object]]:
         """Recursively unpack nested containers within configured depth; never execute them."""

@@ -1,4 +1,5 @@
 import zipfile
+import json
 from pathlib import Path
 
 from miner.config import default_settings
@@ -56,3 +57,16 @@ def test_nested_archives_are_bounded_and_record_parent_relation(tmp_path: Path) 
     children = unpacker.unpack_nested(unpacker.unpack(outer, outer_sha256), outer_sha256)
     assert children[0]["parent_artifact"] == outer_sha256
     assert children[0]["status"] == "success"
+
+
+def test_asar_extracts_indexed_files_without_running_electron(tmp_path: Path) -> None:
+    content = b"device.sendReport(9, new Uint8Array([1]));"
+    header_json = json.dumps({"files": {"app.js": {"size": len(content), "offset": "0"}}}, separators=(",", ":")).encode()
+    header_pickle = len(header_json).to_bytes(4, "little") + header_json
+    header_pickle += b"\0" * ((4 - len(header_pickle) % 4) % 4)
+    archive = tmp_path / "app.asar"
+    archive.write_bytes((4).to_bytes(4, "little") + len(header_pickle).to_bytes(4, "little") + header_pickle + content)
+    settings = default_settings(root=tmp_path / "miner", cas_root=tmp_path / "cas")
+    result = SafeUnpacker(settings).unpack(archive, sha256_file(archive), "app.asar")
+    assert result.status == "success"
+    assert (result.output_dir / "app.js").read_bytes() == content
