@@ -12,6 +12,7 @@ from miner.config import Settings
 from miner.orchestrator.ingest import _now, _write_json
 from miner.static.extract import scan_file
 from miner.synthesize.candidate import synthesize
+from miner.synthesize.graph import build as build_evidence_graph
 
 
 def _load_json(path: Path) -> dict:
@@ -47,10 +48,12 @@ def analyze_artifact(settings: Settings, artifact_ref: str) -> dict[str, str]:
         observations.extend(scan_file(sha256, source_path, path))
     observations = sorted({item.observation_id: item for item in observations}.values(), key=lambda item: item.observation_id)
     candidate, conflicts, validation_plan, status = synthesize(observations)
+    graph = build_evidence_graph(sha256, observations, candidate)
     run_id = f"run-{datetime.now(UTC):%Y%m%dT%H%M%SZ}-{uuid.uuid4().hex[:8]}"
     run_dir, report_dir = settings.workspace_dir / "runs" / run_id, settings.reports_dir / run_id
     _write_json(run_dir / "run.json", {"schema": "peripheral.run/1", "run_id": run_id, "status": status, "started_at": _now(), "tool_version": __version__, "input_sha256": sha256, "mode": "static"})
     _write_json(run_dir / "evidence.json", {"schema": "peripheral.evidence/1", "observations": [item.json() for item in observations]})
+    _write_json(run_dir / "evidence_graph.json", graph)
     _write_json(run_dir / "protocol_candidate.json", candidate.json())
     _write_json(report_dir / "artifact_tree.json", artifact_tree)
     _write_json(report_dir / "identity.json", {"schema": "peripheral.identity/1", "identity": candidate.identity})
@@ -59,6 +62,7 @@ def analyze_artifact(settings: Settings, artifact_ref: str) -> dict[str, str]:
     _write_json(report_dir / "commands.json", {"schema": "peripheral.commands/1", "commands": candidate.commands})
     _write_json(report_dir / "protocol_candidate.json", candidate.json())
     _write_json(report_dir / "evidence.json", {"schema": "peripheral.evidence/1", "observations": [item.json() for item in observations]})
+    _write_json(report_dir / "evidence_graph.json", graph)
     _write_json(report_dir / "contradictions.json", {"schema": "peripheral.contradictions/1", "contradictions": conflicts})
     _write_json(report_dir / "dangerous_commands.json", {"schema": "peripheral.dangerous-commands/1", "commands": candidate.dangerous_commands})
     _write_json(report_dir / "registry_patch.json", {"schema": "peripheral.registry-staging-patch/1", "artifact_sha256": sha256, "identity_candidates": candidate.identity, "family_candidate": candidate.family_candidate, "capability_candidates": candidate.capabilities, "status": "review_required"})
