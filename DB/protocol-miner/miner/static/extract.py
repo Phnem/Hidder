@@ -17,6 +17,10 @@ _VID_PID_REVERSE = re.compile(r"productId\s*[:=]\s*(0x[0-9a-fA-F]+|\d+).{0,260}?
 _HID_SINK = re.compile(r"\b(?:sendReport|sendFeatureReport)\s*\(\s*(0x[0-9a-fA-F]+|\d+)")
 _USB_SINK = re.compile(r"\b(?:transferIn|transferOut|controlTransferIn|controlTransferOut)\s*\(")
 _INF_ID = re.compile(r"\bVID_([0-9A-Fa-f]{4})&PID_([0-9A-Fa-f]{4})\b")
+_DIRECT_PACKET = re.compile(r"\b(sendReport|sendFeatureReport)\s*\(\s*(0x[0-9a-fA-F]+|\d+)\s*,\s*new\s+Uint8Array\s*\(\s*\[([^\]]{1,2048})\]", re.DOTALL)
+_DANGEROUS = re.compile(r"\b(firmware|flash|bootloader|erase|factory\s*reset|calibrat(?:e|ion)|\bdfu\b)\b", re.IGNORECASE)
+_ASCII_STRING = re.compile(rb"[\x20-\x7e]{4,}")
+_TRANSPORT_TOKENS = {b"HidD_SetFeature", b"HidD_GetFeature", b"HidD_GetInputReport", b"WriteFile", b"ReadFile", b"hid_write", b"hid_send_feature_report", b"node-hid", b"hidapi", b"libusb", b"WinUSB"}
 
 
 def _number(value: Any) -> int | None:
@@ -87,6 +91,17 @@ def scan_javascript(sha256: str, source_path: str, text: str) -> list[Observatio
             results.append(_make(sha256, f"{source_path}:byte={match.start()}", "topology.hid_sink", {"method": match.group(0).split("(")[0], "report_id": report_id}, ConfidenceClass.VERIFIED_SOURCE_CODE))
     for match in _USB_SINK.finditer(text):
         results.append(_make(sha256, f"{source_path}:byte={match.start()}", "topology.usb_sink", {"method": match.group(0).split("(")[0]}, ConfidenceClass.VERIFIED_SOURCE_CODE))
+    for match in _DIRECT_PACKET.finditer(text):
+        try:
+            payload = [_number(part.strip()) for part in match.group(3).split(",")]
+        except ValueError:
+            payload = []
+        if payload and all(item is not None and 0 <= item <= 255 for item in payload):
+            results.append(_make(sha256, f"{source_path}:byte={match.start()}", "protocol.direct_packet_literal", {
+                "method": match.group(1), "report_id": _number(match.group(2)), "bytes": payload,
+            }, ConfidenceClass.VERIFIED_SOURCE_CODE))
+    for match in _DANGEROUS.finditer(text):
+        results.append(_make(sha256, f"{source_path}:byte={match.start()}", "protocol.dangerous_hint", {"keyword": match.group(1)}, ConfidenceClass.VERIFIED_SOURCE_CODE))
     return results
 
 
@@ -96,18 +111,49 @@ def scan_inf(sha256: str, source_path: str, text: str) -> list[Observation]:
     }, ConfidenceClass.VERIFIED_VENDOR_ARTIFACT) for match in _INF_ID.finditer(text)]
 
 
+def scan_sourcemap(sha256: str, source_path: str, text: str) -> list[Observation]:
+    try:
+        source_map = json.loads(text)
+    except json.JSONDecodeError:
+        return []
+    sources = source_map.get("sources", [])
+    contents = source_map.get("sourcesContent", [])
+    if not isinstance(sources, list) or not isinstance(contents, list):
+        return []
+    results: list[Observation] = []
+    for name, content in zip(sources, contents):
+        if isinstance(name, str) and isinstance(content, str):
+            results.extend(scan_javascript(sha256, f"{source_path}::sourcesContent/{name}", content))
+    return results
+
+
+def scan_binary(sha256: str, source_path: str, path: Path) -> list[Observation]:
+    if path.stat().st_size > MAX_TEXT_BYTES:
+        return []
+    raw = path.read_bytes()
+    found = sorted(token.decode("ascii") for token in _TRANSPORT_TOKENS if token in raw)
+    results = [_make(sha256, source_path, "native.transport_hint", {"token": token}, ConfidenceClass.VERIFIED_VENDOR_ARTIFACT) for token in found]
+    for match in _DANGEROUS.finditer("\n".join(item.decode("ascii", errors="ignore") for item in _ASCII_STRING.findall(raw))):
+        results.append(_make(sha256, f"{source_path}:string", "protocol.dangerous_hint", {"keyword": match.group(1)}, ConfidenceClass.VERIFIED_VENDOR_ARTIFACT))
+    return results
+
+
 def scan_file(sha256: str, source_path: str, path: Path) -> list[Observation]:
     if path.stat().st_size > MAX_TEXT_BYTES:
         return []
+    suffix = Path(source_path).suffix.lower()
+    if suffix in {".exe", ".dll", ".sys", ".node"}:
+        return scan_binary(sha256, source_path, path)
     try:
         text = path.read_text(encoding="utf-8")
     except UnicodeDecodeError:
         return []
-    suffix = Path(source_path).suffix.lower()
     if suffix in {".json", ".json5"}:
         return scan_json(sha256, source_path, text)
     if suffix in {".js", ".mjs", ".cjs", ".ts"}:
         return scan_javascript(sha256, source_path, text)
     if suffix == ".inf":
         return scan_inf(sha256, source_path, text)
+    if suffix == ".map":
+        return scan_sourcemap(sha256, source_path, text)
     return []

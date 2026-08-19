@@ -25,7 +25,7 @@ def test_ingest_creates_provenance_and_review_outputs(tmp_path: Path) -> None:
 
 def test_webhid_static_analysis_emits_traceable_identity_and_topology(tmp_path: Path) -> None:
     source = tmp_path / "configurator.js"
-    source.write_text("navigator.hid.requestDevice({filters:[{vendorId: 0x372E, productId: 0x103E}]}); device.sendReport(9, bytes);")
+    source.write_text("navigator.hid.requestDevice({filters:[{vendorId: 0x372E, productId: 0x103E}]}); device.sendReport(9, new Uint8Array([0x13, 0x00]));")
     settings = default_settings(root=tmp_path / "miner", cas_root=tmp_path / "shared-cas")
     ingested = ingest_file(settings, source)
     analyzed = analyze_artifact(settings, ingested["sha256"])
@@ -34,3 +34,4 @@ def test_webhid_static_analysis_emits_traceable_identity_and_topology(tmp_path: 
     assert any(item["kind"] == "identity.vid_pid" for item in evidence["observations"])
     assert candidate["identity"][0]["vid"] == 0x372E
     assert candidate["topology"][0]["report_id"] == 9
+    assert candidate["commands"]["packet_1"]["bytes"] == [19, 0]

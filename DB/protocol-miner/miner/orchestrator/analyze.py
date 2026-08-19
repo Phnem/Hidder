@@ -48,7 +48,10 @@ def analyze_artifact(settings: Settings, artifact_ref: str) -> dict[str, str]:
     observations = sorted({item.observation_id: item for item in observations}.values(), key=lambda item: item.observation_id)
     identity = [{**item.value, "evidence_refs": [item.observation_id], "confidence": item.confidence.value} for item in observations if item.kind == "identity.vid_pid"]
     topology = [{**item.value, "evidence_refs": [item.observation_id], "confidence": item.confidence.value} for item in observations if item.kind.startswith("topology.")]
-    candidate = ProtocolCandidate(identity=identity, topology=topology, evidence_refs=[item.observation_id for item in observations])
+    packets = [item for item in observations if item.kind == "protocol.direct_packet_literal"]
+    dangerous = [{**item.value, "evidence_refs": [item.observation_id], "dangerous_candidate": True} for item in observations if item.kind == "protocol.dangerous_hint"]
+    commands = {f"packet_{index + 1}": {**item.value, "evidence_refs": [item.observation_id], "safe_for_production": False} for index, item in enumerate(packets)}
+    candidate = ProtocolCandidate(identity=identity, topology=topology, commands=commands, dangerous_commands=dangerous, evidence_refs=[item.observation_id for item in observations])
     candidate.unknowns = [
         "Command framing, value encoding, persistence semantics, cadence, and safe write behavior are unknown.",
         "No observation is hardware-verified; Protocol Miner does not access real HID devices.",
@@ -63,16 +66,16 @@ def analyze_artifact(settings: Settings, artifact_ref: str) -> dict[str, str]:
     _write_json(report_dir / "identity.json", {"schema": "peripheral.identity/1", "identity": identity})
     _write_json(report_dir / "topology.json", {"schema": "peripheral.topology/1", "topology": topology})
     _write_json(report_dir / "capabilities.json", {"schema": "peripheral.capabilities/1", "capabilities": {}})
-    _write_json(report_dir / "commands.json", {"schema": "peripheral.commands/1", "commands": {}})
+    _write_json(report_dir / "commands.json", {"schema": "peripheral.commands/1", "commands": commands})
     _write_json(report_dir / "protocol_candidate.json", candidate.json())
     _write_json(report_dir / "evidence.json", {"schema": "peripheral.evidence/1", "observations": [item.json() for item in observations]})
     _write_json(report_dir / "contradictions.json", {"schema": "peripheral.contradictions/1", "contradictions": []})
-    _write_json(report_dir / "dangerous_commands.json", {"schema": "peripheral.dangerous-commands/1", "commands": []})
+    _write_json(report_dir / "dangerous_commands.json", {"schema": "peripheral.dangerous-commands/1", "commands": dangerous})
     _write_json(report_dir / "registry_patch.json", {"schema": "peripheral.registry-staging-patch/1", "artifact_sha256": sha256, "identity_candidates": identity, "status": "review_required"})
     _write_json(report_dir / "run.json", _load_json(run_dir / "run.json"))
     (report_dir / "unknowns.md").write_text("# Unknowns\n\n" + "\n".join(f"- {item}" for item in candidate.unknowns) + "\n", encoding="utf-8")
     (report_dir / "summary.md").write_text(
-        f"# Protocol Miner summary\n\nStatus: `{_status(identity, topology)}`\n\n- Artifact: `{sha256}`\n- Identity candidates: {len(identity)}\n- Topology observations: {len(topology)}\n- Commands: 0 (not inferred)\n\nNo real HID device was accessed.\n", encoding="utf-8",
+        f"# Protocol Miner summary\n\nStatus: `{_status(identity, topology)}`\n\n- Artifact: `{sha256}`\n- Identity candidates: {len(identity)}\n- Topology observations: {len(topology)}\n- Literal packet candidates: {len(commands)}\n- Dangerous command hints: {len(dangerous)}\n\nNo real HID device was accessed.\n", encoding="utf-8",
     )
     _write_json(settings.candidates_dir / f"{run_id}.json", candidate.json())
     return {"run_id": run_id, "sha256": sha256, "report": str(report_dir / "summary.md")}
