@@ -17,3 +17,10 @@ def test_pe_transport_hints_are_not_promoted_to_packet_commands(tmp_path: Path) 
     binary.write_bytes(b"MZ...HidD_SetFeature...WriteFile...")
     observations = scan_file("b" * 64, "unpacked/driver.dll", binary)
     assert {item.kind for item in observations} == {"native.transport_hint"}
+
+
+def test_via_definition_is_detected_only_with_structured_identity(tmp_path: Path) -> None:
+    definition = tmp_path / "keyboard.json"
+    definition.write_text(json.dumps({"vendorId": "0xFEED", "productId": "0x6060", "layouts": {"keymap": []}}))
+    observations = scan_file("c" * 64, "unpacked/keyboard.json", definition)
+    assert any(item.kind == "ecosystem.via_qmk" for item in observations)

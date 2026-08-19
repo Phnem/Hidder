@@ -74,6 +74,11 @@ def scan_json(sha256: str, source_path: str, text: str) -> list[Observation]:
         usage = _number(node.get("usage"))
         if usage_page is not None and usage is not None:
             results.append(_make(sha256, f"{source_path}:{location}", "topology.usage", {"usage_page": usage_page, "usage": usage}, ConfidenceClass.VERIFIED_STRUCTURED_MAPPING))
+        if vid is not None and pid is not None and isinstance(node.get("layouts"), dict):
+            results.append(_make(sha256, f"{source_path}:{location}", "ecosystem.via_qmk", {"kind": "via_definition"}, ConfidenceClass.VERIFIED_STRUCTURED_MAPPING))
+        dependencies = node.get("dependencies")
+        if isinstance(dependencies, dict) and "electron" in dependencies:
+            results.append(_make(sha256, f"{source_path}:{location}.dependencies.electron", "artifact.electron", {"package": "electron"}, ConfidenceClass.VERIFIED_STRUCTURED_MAPPING))
     return results
 
 

@@ -51,7 +51,12 @@ def analyze_artifact(settings: Settings, artifact_ref: str) -> dict[str, str]:
     packets = [item for item in observations if item.kind == "protocol.direct_packet_literal"]
     dangerous = [{**item.value, "evidence_refs": [item.observation_id], "dangerous_candidate": True} for item in observations if item.kind == "protocol.dangerous_hint"]
     commands = {f"packet_{index + 1}": {**item.value, "evidence_refs": [item.observation_id], "safe_for_production": False} for index, item in enumerate(packets)}
-    candidate = ProtocolCandidate(identity=identity, topology=topology, commands=commands, dangerous_commands=dangerous, evidence_refs=[item.observation_id for item in observations])
+    ecosystem = next((item for item in observations if item.kind == "ecosystem.via_qmk"), None)
+    candidate = ProtocolCandidate(
+        family_candidate="via-qmk" if ecosystem else None,
+        identity=identity, topology=topology, commands=commands, dangerous_commands=dangerous,
+        evidence_refs=[item.observation_id for item in observations],
+    )
     candidate.unknowns = [
         "Command framing, value encoding, persistence semantics, cadence, and safe write behavior are unknown.",
         "No observation is hardware-verified; Protocol Miner does not access real HID devices.",

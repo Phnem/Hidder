@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 import platform
 import sys
+import tempfile
+import urllib.request
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
@@ -26,7 +28,7 @@ def _write_json(path: Path, value: object) -> None:
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
-def ingest_file(settings: Settings, input_path: Path, vendor: str | None = None) -> dict[str, str]:
+def ingest_file(settings: Settings, input_path: Path, vendor: str | None = None, *, source_type: str = "user_supplied_vendor_artifact", source_url: str | None = None, provenance_extra: dict | None = None, original_filename: str | None = None) -> dict[str, str]:
     settings.ensure_directories()
     source = input_path.resolve()
     if not source.is_file():
@@ -38,15 +40,15 @@ def ingest_file(settings: Settings, input_path: Path, vendor: str | None = None)
     artifact_id = f"sha256:{sha256}"
     artifact = ArtifactRecord(
         artifact_id=artifact_id,
-        original_filename=source.name,
-        source_type="user_supplied_vendor_artifact",
+        original_filename=original_filename or source.name,
+        source_type=source_type,
         sha256=sha256,
         size=source.stat().st_size,
-        detected_type=detect(source, source.name),
-        retrieved_at=_now(),
+        detected_type=detect(source, original_filename or source.name),
+        retrieved_at=_now(), source_url=source_url,
     )
     artifact_dir = settings.workspace_dir / "artifacts" / sha256
-    _write_json(artifact_dir / "provenance.json", artifact.json())
+    _write_json(artifact_dir / "provenance.json", {**artifact.json(), **(provenance_extra or {})})
     unpacked = SafeUnpacker(settings).unpack(cas_path, sha256)
     _write_json(artifact_dir / "artifact_tree.json", {
         "schema": "peripheral.artifact-tree/1", "root": sha256, "children": [],
@@ -79,3 +81,37 @@ def ingest_file(settings: Settings, input_path: Path, vendor: str | None = None)
         encoding="utf-8",
     )
     return {"run_id": run_id, "sha256": sha256, "report": str(settings.reports_dir / run_id / "summary.md")}
+
+
+def ingest_url(settings: Settings, url: str, vendor: str | None = None, max_size: int | None = None) -> dict[str, str]:
+    """Download exact bytes with redirect/header provenance; never execute the response."""
+    limit = max_size or settings.max_artifact_size
+    request = urllib.request.Request(url, headers={"User-Agent": "Peripheral-Protocol-Miner/0.1 static-only"})
+    with urllib.request.urlopen(request, timeout=30) as response:
+        content_length = response.headers.get("Content-Length")
+        if content_length and int(content_length) > limit:
+            raise ValueError(f"URL artifact exceeds configured size limit: {limit} bytes")
+        name = Path(urllib.request.url2pathname(response.geturl()).split("?")[0]).name or "downloaded-artifact"
+        total = 0
+        with tempfile.NamedTemporaryFile(prefix="protocol-miner-", suffix="-" + name, delete=False) as temporary:
+            temporary_path = Path(temporary.name)
+            while chunk := response.read(1024 * 1024):
+                total += len(chunk)
+                if total > limit:
+                    temporary.close()
+                    temporary_path.unlink(missing_ok=True)
+                    raise ValueError(f"URL artifact exceeds configured size limit: {limit} bytes")
+                temporary.write(chunk)
+        try:
+            return ingest_file(settings, temporary_path, vendor, source_type="url_supplied_vendor_artifact", source_url=url, original_filename=name, provenance_extra={
+                "http": {"requested_url": url, "final_url": response.geturl(), "status": getattr(response, "status", 200), "headers": dict(response.headers.items())},
+                "original_download_filename": name,
+            })
+        finally:
+            temporary_path.unlink(missing_ok=True)
+
+
+def ingest_all(settings: Settings, vendor: str | None = None) -> list[dict[str, str]]:
+    inbox = settings.root / "inbox"
+    inbox.mkdir(parents=True, exist_ok=True)
+    return [ingest_file(settings, path, vendor) for path in sorted(inbox.iterdir()) if path.is_file()]

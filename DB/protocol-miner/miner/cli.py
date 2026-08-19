@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 from miner.config import default_settings
-from miner.orchestrator.ingest import ingest_file
+from miner.orchestrator.ingest import ingest_all, ingest_file, ingest_url
 from miner.orchestrator.analyze import analyze_artifact
 
 
@@ -21,8 +21,17 @@ def _parser() -> argparse.ArgumentParser:
     ingest = commands.add_parser("ingest", help="Ingest a local artifact into CAS")
     ingest.add_argument("path", type=Path)
     ingest.add_argument("--vendor")
+    ingest_url = commands.add_parser("ingest-url", help="Download and ingest an artifact without execution")
+    ingest_url.add_argument("url")
+    ingest_url.add_argument("--vendor")
+    ingest_all_parser = commands.add_parser("ingest-all", help="Ingest every file in inbox/")
+    ingest_all_parser.add_argument("--vendor")
     analyze = commands.add_parser("analyze", help="Run static extractors for an ingested SHA-256")
     analyze.add_argument("artifact_id", help="SHA-256 or sha256:<digest>")
+    report = commands.add_parser("report", help="Print the previously generated summary")
+    report.add_argument("run_id")
+    export = commands.add_parser("export", help="Print the review-only registry staging patch")
+    export.add_argument("run_id")
     return parser
 
 
@@ -54,5 +63,30 @@ def main(argv: list[str] | None = None) -> int:
             print(f"error: {error}", file=sys.stderr)
             return 2
         print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0
+    if args.command == "ingest-url":
+        try:
+            result = ingest_url(default_settings(cas_root=args.cas_root), args.url, args.vendor)
+        except (OSError, ValueError) as error:
+            print(f"error: {error}", file=sys.stderr)
+            return 2
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0
+    if args.command == "ingest-all":
+        try:
+            result = ingest_all(default_settings(cas_root=args.cas_root), args.vendor)
+        except (OSError, ValueError) as error:
+            print(f"error: {error}", file=sys.stderr)
+            return 2
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0
+    if args.command in {"report", "export"}:
+        settings = default_settings(cas_root=args.cas_root)
+        filename = "summary.md" if args.command == "report" else "registry_patch.json"
+        target = settings.reports_dir / args.run_id / filename
+        if not target.is_file():
+            print(f"error: unknown run or missing {filename}: {args.run_id}", file=sys.stderr)
+            return 2
+        print(target.read_text(encoding="utf-8"))
         return 0
     return 2
