@@ -12,6 +12,7 @@ from pathlib import Path
 from miner.config import default_settings
 from miner.orchestrator.ingest import ingest_all, ingest_file, ingest_url
 from miner.orchestrator.analyze import analyze_artifact
+from miner.storage.cleanup import clean_workspace
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -33,6 +34,8 @@ def _parser() -> argparse.ArgumentParser:
     report.add_argument("run_id")
     export = commands.add_parser("export", help="Print the review-only registry staging patch")
     export.add_argument("run_id")
+    clean = commands.add_parser("clean-workspace", help="Remove derived workspace/reports only")
+    clean.add_argument("--yes", action="store_true", help="Required acknowledgement; shared CAS is never removed")
     return parser
 
 
@@ -90,5 +93,11 @@ def main(argv: list[str] | None = None) -> int:
             print(f"error: unknown run or missing {filename}: {args.run_id}", file=sys.stderr)
             return 2
         print(target.read_text(encoding="utf-8"))
+        return 0
+    if args.command == "clean-workspace":
+        if not args.yes:
+            print("error: clean-workspace requires --yes; shared CAS artifacts are retained", file=sys.stderr)
+            return 2
+        print(json.dumps({"removed": clean_workspace(default_settings(cas_root=args.cas_root))}, ensure_ascii=False, indent=2))
         return 0
     return 2
