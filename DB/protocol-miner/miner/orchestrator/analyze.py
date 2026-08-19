@@ -39,9 +39,17 @@ def analyze_artifact(settings: Settings, artifact_ref: str) -> dict[str, str]:
         raise ValueError(f"CAS blob is missing for {sha256}")
     provenance = _load_json(provenance_path)
     files: list[tuple[str, Path]] = [("cas/" + provenance["original_filename"], cas_path)]
+    artifact_tree = _load_json(settings.workspace_dir / "artifacts" / sha256 / "artifact_tree.json")
     unpacked = settings.workspace_dir / "unpacked" / sha256
     if unpacked.is_dir():
         files.extend((f"unpacked/{path.relative_to(unpacked).as_posix()}", path) for path in sorted(unpacked.rglob("*")) if path.is_file())
+    for child in artifact_tree.get("children", []):
+        child_sha256 = child.get("sha256")
+        if child.get("status") not in {"success", "already_unpacked"} or not isinstance(child_sha256, str):
+            continue
+        child_dir = settings.workspace_dir / "unpacked" / child_sha256
+        if child_dir.is_dir():
+            files.extend((f"nested/{child_sha256}/{path.relative_to(child_dir).as_posix()}", path) for path in sorted(child_dir.rglob("*")) if path.is_file())
     observations = []
     for source_path, path in files:
         observations.extend(scan_file(sha256, source_path, path))
@@ -63,7 +71,6 @@ def analyze_artifact(settings: Settings, artifact_ref: str) -> dict[str, str]:
     ]
     run_id = f"run-{datetime.now(UTC):%Y%m%dT%H%M%SZ}-{uuid.uuid4().hex[:8]}"
     run_dir, report_dir = settings.workspace_dir / "runs" / run_id, settings.reports_dir / run_id
-    artifact_tree = _load_json(settings.workspace_dir / "artifacts" / sha256 / "artifact_tree.json")
     _write_json(run_dir / "run.json", {"schema": "peripheral.run/1", "run_id": run_id, "status": _status(identity, topology), "started_at": _now(), "tool_version": __version__, "input_sha256": sha256, "mode": "static"})
     _write_json(run_dir / "evidence.json", {"schema": "peripheral.evidence/1", "observations": [item.json() for item in observations]})
     _write_json(run_dir / "protocol_candidate.json", candidate.json())

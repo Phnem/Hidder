@@ -12,6 +12,7 @@ from pathlib import Path, PurePosixPath
 
 from miner.config import Settings
 from miner.detect.file_type import detect
+from miner.storage.cas import sha256_file
 
 try:
     import py7zr
@@ -60,6 +61,32 @@ class SafeUnpacker:
         if tarfile.is_tarfile(archive):
             return self._tar(archive, destination)
         return UnpackResult("not_archive", None, 0, 0, f"Static unpack unavailable for {kind}")
+
+    def unpack_nested(self, root_result: UnpackResult, root_sha256: str) -> list[dict[str, object]]:
+        """Recursively unpack nested containers within configured depth; never execute them."""
+        if root_result.output_dir is None or root_result.status not in {"success", "already_unpacked"}:
+            return []
+        known = {root_sha256}
+        queue: list[tuple[Path, str, int, str]] = [(path, root_sha256, 1, path.relative_to(root_result.output_dir).as_posix()) for path in root_result.output_dir.rglob("*") if path.is_file()]
+        children: list[dict[str, object]] = []
+        while queue:
+            path, parent_sha256, depth, relative_path = queue.pop(0)
+            kind = detect(path, path.name)
+            if kind not in {"zip", "7z"} and not tarfile.is_tarfile(path):
+                continue
+            child_sha256 = sha256_file(path)
+            if child_sha256 in known:
+                continue
+            known.add(child_sha256)
+            if depth > self.settings.max_recursion:
+                children.append({"sha256": child_sha256, "parent_artifact": parent_sha256, "relative_path": relative_path, "detected_type": kind, "status": "recursion_limit"})
+                continue
+            result = self.unpack(path, child_sha256)
+            child = {"sha256": child_sha256, "parent_artifact": parent_sha256, "relative_path": relative_path, "detected_type": kind, "status": result.status, "file_count": result.file_count, "error": result.error}
+            children.append(child)
+            if result.output_dir is not None and result.status in {"success", "already_unpacked"}:
+                queue.extend((nested, child_sha256, depth + 1, nested.relative_to(result.output_dir).as_posix()) for nested in result.output_dir.rglob("*") if nested.is_file())
+        return children
 
     def _seven_zip(self, archive: Path, destination: Path) -> UnpackResult:
         if py7zr is None:

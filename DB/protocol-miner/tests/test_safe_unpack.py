@@ -41,3 +41,18 @@ def test_seven_zip_extracts_when_optional_adapter_is_available(tmp_path: Path) -
     result = SafeUnpacker(settings).unpack(archive, sha256_file(archive))
     assert result.status == "success"
     assert (result.output_dir / "app" / "device.json").read_text() == "{}"
+
+
+def test_nested_archives_are_bounded_and_record_parent_relation(tmp_path: Path) -> None:
+    inner = tmp_path / "inner.zip"
+    with zipfile.ZipFile(inner, "w") as bundle:
+        bundle.writestr("device.json", "{}")
+    outer = tmp_path / "outer.zip"
+    with zipfile.ZipFile(outer, "w") as bundle:
+        bundle.write(inner, "inner.zip")
+    settings = default_settings(root=tmp_path / "miner", cas_root=tmp_path / "cas")
+    unpacker = SafeUnpacker(settings)
+    outer_sha256 = sha256_file(outer)
+    children = unpacker.unpack_nested(unpacker.unpack(outer, outer_sha256), outer_sha256)
+    assert children[0]["parent_artifact"] == outer_sha256
+    assert children[0]["status"] == "success"
