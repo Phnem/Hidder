@@ -47,3 +47,17 @@ def test_dangerous_word_is_not_a_command_without_a_proven_buffer_builder(tmp_pat
     source.write_text("const copy = 'firmware update available';")
     observations = scan_file("e" * 64, "unpacked/copy.js", source)
     assert {item.kind for item in observations} == {"protocol.dangerous_keyword"}
+
+
+def test_pe_import_table_is_parsed_without_relying_on_strings(tmp_path: Path) -> None:
+    raw = bytearray(0x400)
+    raw[:2], raw[0x3C:0x40], raw[0x80:0x84] = b"MZ", (0x80).to_bytes(4, "little"), b"PE\0\0"
+    raw[0x84:0x86], raw[0x86:0x88], raw[0x94:0x96], raw[0x98:0x9A] = (0x14C).to_bytes(2, "little"), (1).to_bytes(2, "little"), (0xE0).to_bytes(2, "little"), (0x10B).to_bytes(2, "little")
+    raw[0x100:0x108] = (0x1000).to_bytes(4, "little") + (40).to_bytes(4, "little")
+    raw[0x178 + 8:0x178 + 24] = (0x200).to_bytes(4, "little") + (0x1000).to_bytes(4, "little") + (0x200).to_bytes(4, "little") + (0x200).to_bytes(4, "little")
+    raw[0x200 + 12:0x200 + 16] = (0x1050).to_bytes(4, "little")
+    raw[0x250:0x258] = b"hid.dll\0"
+    binary = tmp_path / "valid.dll"
+    binary.write_bytes(raw)
+    observations = scan_file("1" * 64, "unpacked/valid.dll", binary)
+    assert any(item.kind == "native.pe_import" and item.value["library"] == "hid.dll" for item in observations)

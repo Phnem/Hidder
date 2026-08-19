@@ -10,6 +10,7 @@ from typing import Any, Iterable
 
 from miner import __version__
 from miner.schemas.models import ConfidenceClass, Observation
+from miner.static.pe import imports as pe_imports
 
 MAX_TEXT_BYTES = 25 * 1024 * 1024
 _VID_PID = re.compile(r"vendorId\s*[:=]\s*(0x[0-9a-fA-F]+|\d+).{0,260}?productId\s*[:=]\s*(0x[0-9a-fA-F]+|\d+)", re.DOTALL)
@@ -145,6 +146,7 @@ def scan_binary(sha256: str, source_path: str, path: Path) -> list[Observation]:
     raw = path.read_bytes()
     found = sorted(token.decode("ascii") for token in _TRANSPORT_TOKENS if token in raw)
     results = [_make(sha256, source_path, "native.transport_hint", {"token": token}, ConfidenceClass.VERIFIED_VENDOR_ARTIFACT) for token in found]
+    results.extend(_make(sha256, source_path, "native.pe_import", {"library": library}, ConfidenceClass.VERIFIED_VENDOR_ARTIFACT) for library in pe_imports(raw))
     for match in _DANGEROUS.finditer("\n".join(item.decode("ascii", errors="ignore") for item in _ASCII_STRING.findall(raw))):
         results.append(_make(sha256, f"{source_path}:string", "protocol.dangerous_keyword", {"keyword": match.group(1)}, ConfidenceClass.VERIFIED_VENDOR_ARTIFACT))
     return results
