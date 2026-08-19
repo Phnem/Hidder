@@ -82,3 +82,15 @@ def test_cab_extracts_with_pure_python_adapter(tmp_path: Path) -> None:
     result = SafeUnpacker(settings).unpack(archive, sha256_file(archive), "driver.cab")
     assert result.status == "success"
     assert (result.output_dir / "app" / "device.json").read_bytes() == b"{}"
+
+
+def test_self_extracting_zip_is_unpacked_without_executing_exe(tmp_path: Path) -> None:
+    ordinary_zip = tmp_path / "payload.zip"
+    with zipfile.ZipFile(ordinary_zip, "w") as archive:
+        archive.writestr("devices.json", "{}")
+    sfx = tmp_path / "setup.exe"
+    sfx.write_bytes(b"MZfake-sfx-stub" + ordinary_zip.read_bytes())
+    settings = default_settings(root=tmp_path / "miner", cas_root=tmp_path / "cas")
+    result = SafeUnpacker(settings).unpack(sfx, sha256_file(sfx), "setup.exe")
+    assert result.status == "success"
+    assert (result.output_dir / "devices.json").read_text() == "{}"

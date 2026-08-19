@@ -47,7 +47,7 @@ class SafeUnpacker:
         if destination.exists() and any(destination.iterdir()):
             files = [path for path in destination.rglob("*") if path.is_file()]
             return UnpackResult("already_unpacked", destination, len(files), sum(path.stat().st_size for path in files))
-        kind = detect(archive, original_filename)
+        kind = "zip" if zipfile.is_zipfile(archive) else detect(archive, original_filename)
         if kind == "zip":
             return self._zip(archive, destination)
         if kind == "7z":
