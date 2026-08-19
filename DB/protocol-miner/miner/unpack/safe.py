@@ -1,0 +1,124 @@
+"""Safe archive extraction without calling installer executables or archive shell helpers."""
+
+from __future__ import annotations
+
+import os
+import shutil
+import stat
+import tarfile
+import zipfile
+from dataclasses import dataclass
+from pathlib import Path, PurePosixPath
+
+from miner.config import Settings
+from miner.detect.file_type import detect
+
+
+@dataclass(frozen=True)
+class UnpackResult:
+    status: str
+    output_dir: Path | None
+    file_count: int
+    total_bytes: int
+    error: str | None = None
+
+
+def _safe_relative(name: str) -> Path | None:
+    normalized = PurePosixPath(name.replace("\\", "/"))
+    if not name or normalized.is_absolute() or ".." in normalized.parts:
+        return None
+    if normalized.parts and normalized.parts[0].endswith(":"):
+        return None
+    return Path(*normalized.parts)
+
+
+def _is_zip_symlink(info: zipfile.ZipInfo) -> bool:
+    return stat.S_ISLNK(info.external_attr >> 16)
+
+
+class SafeUnpacker:
+    """Extract only known archives with strict size, path, and link constraints."""
+
+    def __init__(self, settings: Settings) -> None:
+        self.settings = settings
+
+    def unpack(self, archive: Path, sha256: str) -> UnpackResult:
+        destination = self.settings.workspace_dir / "unpacked" / sha256
+        if destination.exists() and any(destination.iterdir()):
+            files = [path for path in destination.rglob("*") if path.is_file()]
+            return UnpackResult("already_unpacked", destination, len(files), sum(path.stat().st_size for path in files))
+        kind = detect(archive)
+        if kind == "zip":
+            return self._zip(archive, destination)
+        if tarfile.is_tarfile(archive):
+            return self._tar(archive, destination)
+        return UnpackResult("not_archive", None, 0, 0, f"Static unpack unavailable for {kind}")
+
+    def _prepare(self, destination: Path) -> None:
+        destination.mkdir(parents=True, exist_ok=True)
+
+    def _zip(self, archive: Path, destination: Path) -> UnpackResult:
+        try:
+            with zipfile.ZipFile(archive) as bundle:
+                entries = bundle.infolist()
+                if len(entries) > self.settings.max_file_count:
+                    return UnpackResult("safety_violation", None, 0, 0, "archive file count exceeds limit")
+                total = sum(entry.file_size for entry in entries)
+                compressed = max(archive.stat().st_size, 1)
+                if total > self.settings.max_expanded_size:
+                    return UnpackResult("safety_violation", None, 0, 0, "expanded size exceeds limit")
+                if total / compressed > 100:
+                    return UnpackResult("safety_violation", None, 0, 0, "compression ratio exceeds limit")
+                validated: list[tuple[zipfile.ZipInfo, Path]] = []
+                for entry in entries:
+                    relative = _safe_relative(entry.filename)
+                    if relative is None or _is_zip_symlink(entry):
+                        return UnpackResult("safety_violation", None, 0, 0, f"unsafe archive entry: {entry.filename}")
+                    validated.append((entry, relative))
+                self._prepare(destination)
+                count = written = 0
+                for entry, relative in validated:
+                    target = destination / relative
+                    if entry.is_dir():
+                        target.mkdir(parents=True, exist_ok=True)
+                        continue
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    with bundle.open(entry) as source, target.open("wb") as sink:
+                        written += shutil.copyfileobj(source, sink, length=1024 * 1024) or entry.file_size
+                    count += 1
+                return UnpackResult("success", destination, count, total)
+        except (OSError, zipfile.BadZipFile) as error:
+            return UnpackResult("error", None, 0, 0, str(error))
+
+    def _tar(self, archive: Path, destination: Path) -> UnpackResult:
+        try:
+            with tarfile.open(archive, "r:*") as bundle:
+                entries = bundle.getmembers()
+                if len(entries) > self.settings.max_file_count:
+                    return UnpackResult("safety_violation", None, 0, 0, "archive file count exceeds limit")
+                total = sum(entry.size for entry in entries if entry.isfile())
+                if total > self.settings.max_expanded_size:
+                    return UnpackResult("safety_violation", None, 0, 0, "expanded size exceeds limit")
+                validated: list[tuple[tarfile.TarInfo, Path]] = []
+                for entry in entries:
+                    relative = _safe_relative(entry.name)
+                    if relative is None or entry.issym() or entry.islnk() or entry.isdev() or entry.isfifo():
+                        return UnpackResult("safety_violation", None, 0, 0, f"unsafe archive entry: {entry.name}")
+                    validated.append((entry, relative))
+                self._prepare(destination)
+                count = 0
+                for entry, relative in validated:
+                    target = destination / relative
+                    if entry.isdir():
+                        target.mkdir(parents=True, exist_ok=True)
+                    elif entry.isfile():
+                        target.parent.mkdir(parents=True, exist_ok=True)
+                        source = bundle.extractfile(entry)
+                        if source is None:
+                            return UnpackResult("error", None, 0, 0, f"unable to read {entry.name}")
+                        with source, target.open("wb") as sink:
+                            shutil.copyfileobj(source, sink, length=1024 * 1024)
+                        count += 1
+                return UnpackResult("success", destination, count, total)
+        except (OSError, tarfile.TarError) as error:
+            return UnpackResult("error", None, 0, 0, str(error))

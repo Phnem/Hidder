@@ -14,6 +14,7 @@ from miner.config import Settings
 from miner.detect.file_type import detect
 from miner.schemas.models import ArtifactRecord, ProtocolCandidate
 from miner.storage.cas import ContentAddressedStore
+from miner.unpack.safe import SafeUnpacker
 
 
 def _now() -> str:
@@ -46,7 +47,11 @@ def ingest_file(settings: Settings, input_path: Path, vendor: str | None = None)
     )
     artifact_dir = settings.workspace_dir / "artifacts" / sha256
     _write_json(artifact_dir / "provenance.json", artifact.json())
-    _write_json(artifact_dir / "artifact_tree.json", {"schema": "peripheral.artifact-tree/1", "root": sha256, "children": []})
+    unpacked = SafeUnpacker(settings).unpack(cas_path, sha256)
+    _write_json(artifact_dir / "artifact_tree.json", {
+        "schema": "peripheral.artifact-tree/1", "root": sha256, "children": [],
+        "unpack": {"status": unpacked.status, "file_count": unpacked.file_count, "total_bytes": unpacked.total_bytes, "error": unpacked.error},
+    })
 
     run_id = f"run-{datetime.now(UTC):%Y%m%dT%H%M%SZ}-{uuid.uuid4().hex[:8]}"
     candidate = ProtocolCandidate(unknowns=["Static analyzers have not run yet."])
@@ -54,7 +59,8 @@ def ingest_file(settings: Settings, input_path: Path, vendor: str | None = None)
         "schema": "peripheral.run/1", "run_id": run_id, "status": "INGESTED",
         "started_at": _now(), "tool_version": __version__, "python": sys.version.split()[0],
         "platform": platform.platform(), "vendor": vendor, "input_sha256": sha256,
-        "cas_path": str(cas_path), "cas_added": was_added, "config": {"max_artifact_size": settings.max_artifact_size},
+        "cas_path": str(cas_path), "cas_added": was_added, "unpack_status": unpacked.status,
+        "config": {"max_artifact_size": settings.max_artifact_size, "max_expanded_size": settings.max_expanded_size},
     }
     run_dir = settings.workspace_dir / "runs" / run_id
     _write_json(run_dir / "run.json", run)
