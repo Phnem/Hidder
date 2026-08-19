@@ -18,6 +18,7 @@ _FUNCTION = re.compile(r"(?:function\s+([A-Za-z_$][\w$]*)\s*\(([^)]*)\)|(?:const
 _BUFFER = re.compile(r"(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*new\s+Uint8Array\s*\(\s*(\d+)\s*\)")
 _WRITE = re.compile(r"\b([A-Za-z_$][\w$]*)\s*\[\s*(\d+)\s*\]\s*=\s*([^;\n]+)")
 _SINK = re.compile(r"\b(sendReport|sendFeatureReport)\s*\(\s*(0x[0-9a-fA-F]+|\d+)\s*,\s*([A-Za-z_$][\w$]*)\s*\)")
+_DANGEROUS_NAME = re.compile(r"firmware|flash|bootloader|erase|factory.?reset|calibrat|dfu", re.IGNORECASE)
 
 _SEMANTICS = {
     "actuation": "he.actuation.write", "rapidtrigger": "he.rapid_trigger.write", "rapid_trigger": "he.rapid_trigger.write",
@@ -35,7 +36,7 @@ def scan_simple_buffer_flows(sha256: str, source_path: str, text: str) -> list[O
     observations: list[Observation] = []
     for function_match in _FUNCTION.finditer(text):
         name = function_match.group(1) or function_match.group(3)
-        params = (function_match.group(2) or function_match.group(4)).strip()
+        params = (function_match.group(2) or function_match.group(4) or "").strip()
         body = function_match.group(5)
         buffers = {match.group(1): int(match.group(2)) for match in _BUFFER.finditer(body)}
         for sink in _SINK.finditer(body):
@@ -57,4 +58,8 @@ def scan_simple_buffer_flows(sha256: str, source_path: str, text: str) -> list[O
             if semantic:
                 value["semantic_candidate"] = semantic
             observations.append(_make(sha256, f"{source_path}:byte={function_match.start()}", "protocol.buffer_builder", value, ConfidenceClass.VERIFIED_SOURCE_CODE))
+            if _DANGEROUS_NAME.search(name):
+                observations.append(_make(sha256, f"{source_path}:byte={function_match.start()}", "protocol.dangerous_command_candidate", {
+                    "function": name, "report_id": value["report_id"], "reason": "dangerous operation named in proven HID buffer builder",
+                }, ConfidenceClass.VERIFIED_SOURCE_CODE))
     return observations

@@ -33,3 +33,10 @@ def test_simple_function_buffer_flow_preserves_field_encoding_evidence(tmp_path:
     builder = next(item for item in observations if item.kind == "protocol.buffer_builder")
     assert builder.value["semantic_candidate"] == "he.actuation.write"
     assert builder.value["field_writes"][1] == {"offset": 1, "expression": "value * 100"}
+
+
+def test_dangerous_word_is_not_a_command_without_a_proven_buffer_builder(tmp_path: Path) -> None:
+    source = tmp_path / "copy.js"
+    source.write_text("const copy = 'firmware update available';")
+    observations = scan_file("e" * 64, "unpacked/copy.js", source)
+    assert {item.kind for item in observations} == {"protocol.dangerous_keyword"}

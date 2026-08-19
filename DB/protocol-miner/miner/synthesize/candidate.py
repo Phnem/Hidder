@@ -36,7 +36,7 @@ def synthesize(observations: list[Observation]) -> tuple[ProtocolCandidate, list
         item.value["semantic_candidate"]: {"evidence_refs": [item.observation_id], "raw_function": item.value["function"], "confidence": item.confidence.value}
         for item in builders if "semantic_candidate" in item.value
     }
-    dangerous = [{**_entry(item), "dangerous_candidate": True} for item in observations if item.kind == "protocol.dangerous_hint"]
+    dangerous = [{**_entry(item), "dangerous_candidate": True} for item in observations if item.kind == "protocol.dangerous_command_candidate"]
 
     conflicts: list[dict] = []
     grouped: dict[tuple[str, str], list[Observation]] = defaultdict(list)

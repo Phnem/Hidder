@@ -108,7 +108,7 @@ def scan_javascript(sha256: str, source_path: str, text: str) -> list[Observatio
                 "method": match.group(1), "report_id": _number(match.group(2)), "bytes": payload,
             }, ConfidenceClass.VERIFIED_SOURCE_CODE))
     for match in _DANGEROUS.finditer(text):
-        results.append(_make(sha256, f"{source_path}:byte={match.start()}", "protocol.dangerous_hint", {"keyword": match.group(1)}, ConfidenceClass.VERIFIED_SOURCE_CODE))
+        results.append(_make(sha256, f"{source_path}:byte={match.start()}", "protocol.dangerous_keyword", {"keyword": match.group(1)}, ConfidenceClass.VERIFIED_SOURCE_CODE))
     results.extend(scan_simple_buffer_flows(sha256, source_path, text))
     return results
 
@@ -142,7 +142,7 @@ def scan_binary(sha256: str, source_path: str, path: Path) -> list[Observation]:
     found = sorted(token.decode("ascii") for token in _TRANSPORT_TOKENS if token in raw)
     results = [_make(sha256, source_path, "native.transport_hint", {"token": token}, ConfidenceClass.VERIFIED_VENDOR_ARTIFACT) for token in found]
     for match in _DANGEROUS.finditer("\n".join(item.decode("ascii", errors="ignore") for item in _ASCII_STRING.findall(raw))):
-        results.append(_make(sha256, f"{source_path}:string", "protocol.dangerous_hint", {"keyword": match.group(1)}, ConfidenceClass.VERIFIED_VENDOR_ARTIFACT))
+        results.append(_make(sha256, f"{source_path}:string", "protocol.dangerous_keyword", {"keyword": match.group(1)}, ConfidenceClass.VERIFIED_VENDOR_ARTIFACT))
     return results
 
 
