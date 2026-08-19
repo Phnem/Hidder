@@ -7,6 +7,7 @@ import importlib.util
 import json
 import shutil
 import sys
+from dataclasses import replace
 from pathlib import Path
 
 from miner.config import default_settings
@@ -18,6 +19,11 @@ from miner.storage.cleanup import clean_workspace
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="miner.py", description="Peripheral Protocol Miner (static-only)")
     parser.add_argument("--cas-root", type=Path, help="Compatible content-addressed artifact store")
+    parser.add_argument("--static-only", action="store_true", help="Force static analysis (the default and only active mode)")
+    parser.add_argument("--allow-dynamic", action="store_true", help="Reserved for future isolated adapters; real HID remains forbidden")
+    parser.add_argument("--sandbox", action="store_true", help="Reserved for future fake-device sandbox adapters")
+    parser.add_argument("--no-network", action="store_true", help="Reject URL ingestion for this invocation")
+    parser.add_argument("--max-size", type=int, help="Maximum input size in bytes for this invocation")
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("doctor", help="Check core and optional tooling")
     ingest = commands.add_parser("ingest", help="Ingest a local artifact into CAS")
@@ -51,11 +57,19 @@ def _doctor() -> int:
 
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
+    settings = default_settings(cas_root=args.cas_root)
+    if args.max_size is not None:
+        if args.max_size <= 0:
+            print("error: --max-size must be positive", file=sys.stderr)
+            return 2
+        settings = replace(settings, max_artifact_size=args.max_size)
+    if args.allow_dynamic or args.sandbox:
+        print("note: dynamic adapters are unavailable; continuing in static-only mode", file=sys.stderr)
     if args.command == "doctor":
         return _doctor()
     if args.command == "ingest":
         try:
-            result = ingest_file(default_settings(cas_root=args.cas_root), args.path, args.vendor)
+            result = ingest_file(settings, args.path, args.vendor)
         except (OSError, ValueError) as error:
             print(f"error: {error}", file=sys.stderr)
             return 2
@@ -63,15 +77,18 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "analyze":
         try:
-            result = analyze_artifact(default_settings(cas_root=args.cas_root), args.artifact_id)
+            result = analyze_artifact(settings, args.artifact_id)
         except (OSError, ValueError, json.JSONDecodeError) as error:
             print(f"error: {error}", file=sys.stderr)
             return 2
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0
     if args.command == "ingest-url":
+        if args.no_network:
+            print("error: --no-network rejects ingest-url", file=sys.stderr)
+            return 2
         try:
-            result = ingest_url(default_settings(cas_root=args.cas_root), args.url, args.vendor)
+            result = ingest_url(settings, args.url, args.vendor)
         except (OSError, ValueError) as error:
             print(f"error: {error}", file=sys.stderr)
             return 2
@@ -79,14 +96,13 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "ingest-all":
         try:
-            result = ingest_all(default_settings(cas_root=args.cas_root), args.vendor)
+            result = ingest_all(settings, args.vendor)
         except (OSError, ValueError) as error:
             print(f"error: {error}", file=sys.stderr)
             return 2
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0
     if args.command in {"report", "export"}:
-        settings = default_settings(cas_root=args.cas_root)
         filename = "summary.md" if args.command == "report" else "registry_patch.json"
         target = settings.reports_dir / args.run_id / filename
         if not target.is_file():
@@ -98,6 +114,6 @@ def main(argv: list[str] | None = None) -> int:
         if not args.yes:
             print("error: clean-workspace requires --yes; shared CAS artifacts are retained", file=sys.stderr)
             return 2
-        print(json.dumps({"removed": clean_workspace(default_settings(cas_root=args.cas_root))}, ensure_ascii=False, indent=2))
+        print(json.dumps({"removed": clean_workspace(settings)}, ensure_ascii=False, indent=2))
         return 0
     return 2
