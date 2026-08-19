@@ -15,3 +15,11 @@ def test_conflicting_semantic_layouts_are_reported_not_silently_selected() -> No
     assert candidate.contradictions == conflicts
     assert conflicts[0]["field"] == "command_layout.he.actuation.write"
     assert plan
+
+
+def test_fake_webhid_trace_can_confirm_static_candidate_but_not_promote_it() -> None:
+    dynamic = Observation("obs-trace", "a" * 64, "trace", "1", "dynamic.webhid_call", {"method": "sendReport", "report_id": 9, "bytes_hex": "1300"}, "trace", ConfidenceClass.VERIFIED_DYNAMIC_VENDOR_SOFTWARE)
+    candidate, _, _, _ = synthesize([_builder("obs-static", 9), dynamic])
+    command = next(value for value in candidate.commands.values() if value["report_id"] == 9)
+    assert command["dynamic_evidence_refs"] == ["obs-trace"]
+    assert command["safe_for_production"] is False

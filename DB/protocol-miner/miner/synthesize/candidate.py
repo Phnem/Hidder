@@ -32,6 +32,11 @@ def synthesize(observations: list[Observation]) -> tuple[ProtocolCandidate, list
     builders = [item for item in observations if item.kind == "protocol.buffer_builder"]
     commands = {f"packet_{index + 1}": {**_entry(item), "safe_for_production": False} for index, item in enumerate(packets)}
     commands.update({f"builder_{index + 1}": {**_entry(item), "safe_for_production": False} for index, item in enumerate(builders)})
+    dynamic_calls = [item for item in observations if item.kind == "dynamic.webhid_call" and item.value.get("method") in {"sendReport", "sendFeatureReport"}]
+    for command in commands.values():
+        matched = [item.observation_id for item in dynamic_calls if item.value.get("report_id") == command.get("report_id")]
+        if matched:
+            command["dynamic_evidence_refs"] = matched
     capabilities = {
         item.value["semantic_candidate"]: {"evidence_refs": [item.observation_id], "raw_function": item.value["function"], "confidence": item.confidence.value}
         for item in builders if "semantic_candidate" in item.value
