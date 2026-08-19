@@ -13,6 +13,11 @@ from pathlib import Path, PurePosixPath
 from miner.config import Settings
 from miner.detect.file_type import detect
 
+try:
+    import py7zr
+except ImportError:  # pragma: no cover - optional dependency is surfaced as capability state
+    py7zr = None
+
 
 @dataclass(frozen=True)
 class UnpackResult:
@@ -50,9 +55,34 @@ class SafeUnpacker:
         kind = detect(archive)
         if kind == "zip":
             return self._zip(archive, destination)
+        if kind == "7z":
+            return self._seven_zip(archive, destination)
         if tarfile.is_tarfile(archive):
             return self._tar(archive, destination)
         return UnpackResult("not_archive", None, 0, 0, f"Static unpack unavailable for {kind}")
+
+    def _seven_zip(self, archive: Path, destination: Path) -> UnpackResult:
+        if py7zr is None:
+            return UnpackResult("unavailable", None, 0, 0, "py7zr is not installed")
+        try:
+            with py7zr.SevenZipFile(archive, mode="r") as bundle:
+                entries = bundle.list()
+                if len(entries) > self.settings.max_file_count:
+                    return UnpackResult("safety_violation", None, 0, 0, "archive file count exceeds limit")
+                total = sum(entry.uncompressed for entry in entries if entry.is_file)
+                if total > self.settings.max_expanded_size:
+                    return UnpackResult("safety_violation", None, 0, 0, "expanded size exceeds limit")
+                for entry in entries:
+                    if _safe_relative(entry.filename) is None or entry.is_symlink or not (entry.is_file or entry.is_directory):
+                        return UnpackResult("safety_violation", None, 0, 0, f"unsafe archive entry: {entry.filename}")
+                self._prepare(destination)
+                bundle.extract(path=destination)
+            files = [path for path in destination.rglob("*") if path.is_file()]
+            if any(path.is_symlink() for path in destination.rglob("*")):
+                return UnpackResult("safety_violation", None, 0, 0, "symlink was produced by archive")
+            return UnpackResult("success", destination, len(files), sum(path.stat().st_size for path in files))
+        except (OSError, py7zr.Bad7zFile) as error:
+            return UnpackResult("error", None, 0, 0, str(error))
 
     def _prepare(self, destination: Path) -> None:
         destination.mkdir(parents=True, exist_ok=True)

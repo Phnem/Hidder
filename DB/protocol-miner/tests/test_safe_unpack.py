@@ -27,3 +27,17 @@ def test_zip_path_traversal_is_rejected_before_writes(tmp_path: Path) -> None:
     assert result.status == "safety_violation"
     assert not (tmp_path / "escape.txt").exists()
     assert not (settings.workspace_dir / "unpacked" / sha256_file(archive)).exists()
+
+
+def test_seven_zip_extracts_when_optional_adapter_is_available(tmp_path: Path) -> None:
+    import py7zr
+
+    source = tmp_path / "device.json"
+    source.write_text("{}")
+    archive = tmp_path / "utility.7z"
+    with py7zr.SevenZipFile(archive, "w") as bundle:
+        bundle.write(source, "app/device.json")
+    settings = default_settings(root=tmp_path / "miner", cas_root=tmp_path / "cas")
+    result = SafeUnpacker(settings).unpack(archive, sha256_file(archive))
+    assert result.status == "success"
+    assert (result.output_dir / "app" / "device.json").read_text() == "{}"

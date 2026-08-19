@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import shutil
 import sys
@@ -40,6 +41,7 @@ def _doctor() -> int:
     print(f"Python {sys.version.split()[0]} available")
     for tool in ("node", "playwright", "frida", "analyzeHeadless", "7z", "asar"):
         print(f"{tool}: {'available' if shutil.which(tool) else 'unavailable'}")
+    print(f"py7zr: {'available' if importlib.util.find_spec('py7zr') else 'unavailable'}")
     print("Static foundation available. Dynamic native pipeline disabled.")
     return 0
 
