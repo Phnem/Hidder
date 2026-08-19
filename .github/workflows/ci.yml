@@ -40,6 +40,11 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
 
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libudev-dev
+
       # `tools/ingest` reads decompiled vendor artifacts and must never be
       # reachable from a release build (spec.md FR9). Two independent checks,
       # because the comment in its Cargo.toml is not enforcement:
