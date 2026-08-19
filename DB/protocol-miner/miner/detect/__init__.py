@@ -1,0 +1,1 @@
+"""Multi-signal artifact detection."""

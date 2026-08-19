@@ -1,0 +1,10 @@
+# Derived runtime data. Source bytes belong in a shared external CAS.
+/workspace/
+/reports/
+/candidates/
+/inbox/
+/captures/
+/quarantine/
+/cache/
+__pycache__/
+.pytest_cache/

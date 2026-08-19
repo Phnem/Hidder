@@ -1,0 +1,12 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "peripheral-protocol-miner"
+version = "0.1.0"
+description = "Evidence-first static protocol mining for peripheral vendor artifacts"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
