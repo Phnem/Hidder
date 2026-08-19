@@ -57,12 +57,15 @@ def analyze_artifact(settings: Settings, artifact_ref: str) -> dict[str, str]:
     identity = [{**item.value, "evidence_refs": [item.observation_id], "confidence": item.confidence.value} for item in observations if item.kind == "identity.vid_pid"]
     topology = [{**item.value, "evidence_refs": [item.observation_id], "confidence": item.confidence.value} for item in observations if item.kind.startswith("topology.")]
     packets = [item for item in observations if item.kind == "protocol.direct_packet_literal"]
+    builders = [item for item in observations if item.kind == "protocol.buffer_builder"]
     dangerous = [{**item.value, "evidence_refs": [item.observation_id], "dangerous_candidate": True} for item in observations if item.kind == "protocol.dangerous_hint"]
     commands = {f"packet_{index + 1}": {**item.value, "evidence_refs": [item.observation_id], "safe_for_production": False} for index, item in enumerate(packets)}
+    commands.update({f"builder_{index + 1}": {**item.value, "evidence_refs": [item.observation_id], "safe_for_production": False} for index, item in enumerate(builders)})
+    capabilities = {item.value["semantic_candidate"]: {"evidence_refs": [item.observation_id], "raw_function": item.value["function"], "confidence": item.confidence.value} for item in builders if "semantic_candidate" in item.value}
     ecosystem = next((item for item in observations if item.kind == "ecosystem.via_qmk"), None)
     candidate = ProtocolCandidate(
         family_candidate="via-qmk" if ecosystem else None,
-        identity=identity, topology=topology, commands=commands, dangerous_commands=dangerous,
+        identity=identity, topology=topology, capabilities=capabilities, commands=commands, dangerous_commands=dangerous,
         evidence_refs=[item.observation_id for item in observations],
     )
     candidate.unknowns = [
@@ -77,7 +80,7 @@ def analyze_artifact(settings: Settings, artifact_ref: str) -> dict[str, str]:
     _write_json(report_dir / "artifact_tree.json", artifact_tree)
     _write_json(report_dir / "identity.json", {"schema": "peripheral.identity/1", "identity": identity})
     _write_json(report_dir / "topology.json", {"schema": "peripheral.topology/1", "topology": topology})
-    _write_json(report_dir / "capabilities.json", {"schema": "peripheral.capabilities/1", "capabilities": {}})
+    _write_json(report_dir / "capabilities.json", {"schema": "peripheral.capabilities/1", "capabilities": capabilities})
     _write_json(report_dir / "commands.json", {"schema": "peripheral.commands/1", "commands": commands})
     _write_json(report_dir / "protocol_candidate.json", candidate.json())
     _write_json(report_dir / "evidence.json", {"schema": "peripheral.evidence/1", "observations": [item.json() for item in observations]})

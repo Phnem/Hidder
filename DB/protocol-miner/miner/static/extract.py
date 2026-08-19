@@ -83,6 +83,8 @@ def scan_json(sha256: str, source_path: str, text: str) -> list[Observation]:
 
 
 def scan_javascript(sha256: str, source_path: str, text: str) -> list[Observation]:
+    from miner.static.js_flow import scan_simple_buffer_flows
+
     results: list[Observation] = []
     pairs = [(match.group(1), match.group(2)) for match in _VID_PID.finditer(text)]
     pairs.extend((match.group(2), match.group(1)) for match in _VID_PID_REVERSE.finditer(text))
@@ -107,6 +109,7 @@ def scan_javascript(sha256: str, source_path: str, text: str) -> list[Observatio
             }, ConfidenceClass.VERIFIED_SOURCE_CODE))
     for match in _DANGEROUS.finditer(text):
         results.append(_make(sha256, f"{source_path}:byte={match.start()}", "protocol.dangerous_hint", {"keyword": match.group(1)}, ConfidenceClass.VERIFIED_SOURCE_CODE))
+    results.extend(scan_simple_buffer_flows(sha256, source_path, text))
     return results
 
 

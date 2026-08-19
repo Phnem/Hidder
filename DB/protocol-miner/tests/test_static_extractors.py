@@ -24,3 +24,12 @@ def test_via_definition_is_detected_only_with_structured_identity(tmp_path: Path
     definition.write_text(json.dumps({"vendorId": "0xFEED", "productId": "0x6060", "layouts": {"keymap": []}}))
     observations = scan_file("c" * 64, "unpacked/keyboard.json", definition)
     assert any(item.kind == "ecosystem.via_qmk" for item in observations)
+
+
+def test_simple_function_buffer_flow_preserves_field_encoding_evidence(tmp_path: Path) -> None:
+    source = tmp_path / "protocol.js"
+    source.write_text("function setActuation(value) { const packet = new Uint8Array(3); packet[0] = 0x13; packet[1] = value * 100; device.sendReport(9, packet); }")
+    observations = scan_file("d" * 64, "unpacked/protocol.js", source)
+    builder = next(item for item in observations if item.kind == "protocol.buffer_builder")
+    assert builder.value["semantic_candidate"] == "he.actuation.write"
+    assert builder.value["field_writes"][1] == {"offset": 1, "expression": "value * 100"}
