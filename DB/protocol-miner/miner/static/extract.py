@@ -11,6 +11,7 @@ from typing import Any, Iterable
 from miner import __version__
 from miner.schemas.models import ConfidenceClass, Observation
 from miner.static.pe import imports as pe_imports
+from miner.static.firmware import usb_device_descriptors
 
 MAX_TEXT_BYTES = 25 * 1024 * 1024
 _VID_PID = re.compile(r"vendorId\s*[:=]\s*(0x[0-9a-fA-F]+|\d+).{0,260}?productId\s*[:=]\s*(0x[0-9a-fA-F]+|\d+)", re.DOTALL)
@@ -151,6 +152,7 @@ def scan_binary(sha256: str, source_path: str, path: Path) -> list[Observation]:
     found = sorted(token.decode("ascii") for token in _TRANSPORT_TOKENS if token in raw)
     results = [_make(sha256, source_path, "native.transport_hint", {"token": token}, ConfidenceClass.VERIFIED_VENDOR_ARTIFACT) for token in found]
     results.extend(_make(sha256, source_path, "native.pe_import", {"library": library}, ConfidenceClass.VERIFIED_VENDOR_ARTIFACT) for library in pe_imports(raw))
+    results.extend(_make(sha256, f"{source_path}:offset={item['offset']}", "firmware.usb_device_descriptor", item, ConfidenceClass.VERIFIED_VENDOR_ARTIFACT) for item in usb_device_descriptors(raw))
     for match in _DANGEROUS.finditer("\n".join(item.decode("ascii", errors="ignore") for item in _ASCII_STRING.findall(raw))):
         results.append(_make(sha256, f"{source_path}:string", "protocol.dangerous_keyword", {"keyword": match.group(1)}, ConfidenceClass.VERIFIED_VENDOR_ARTIFACT))
     return results
@@ -160,7 +162,7 @@ def scan_file(sha256: str, source_path: str, path: Path) -> list[Observation]:
     if path.stat().st_size > MAX_TEXT_BYTES:
         return []
     suffix = Path(source_path).suffix.lower()
-    if suffix in {".exe", ".dll", ".sys", ".node"}:
+    if suffix in {".exe", ".dll", ".sys", ".node", ".bin", ".uf2", ".hex"}:
         return scan_binary(sha256, source_path, path)
     try:
         text = path.read_text(encoding="utf-8")

@@ -77,3 +77,12 @@ def test_inf_preserves_interface_and_driver_version_context(tmp_path: Path) -> N
     identity = next(item for item in observations if item.kind == "identity.vid_pid")
     assert identity.value["interface_number"] == 2
     assert any(item.kind == "driver.version" and item.value["driver_version"].endswith("2.3.4") for item in observations)
+
+
+def test_firmware_usb_descriptor_is_extracted_without_flashing(tmp_path: Path) -> None:
+    descriptor = bytes([18, 1, 0x10, 0x02, 0, 0, 0, 64, 0x2E, 0x37, 0x3E, 0x10, 0, 1, 1, 2, 3, 1])
+    source = tmp_path / "firmware.bin"
+    source.write_bytes(b"noise" + descriptor)
+    observations = scan_file("4" * 64, "unpacked/firmware.bin", source)
+    item = next(item for item in observations if item.kind == "firmware.usb_device_descriptor")
+    assert (item.value["vid"], item.value["pid"]) == (0x372E, 0x103E)
