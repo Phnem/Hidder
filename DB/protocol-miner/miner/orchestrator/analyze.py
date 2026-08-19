@@ -13,13 +13,14 @@ from miner.orchestrator.ingest import _now, _write_json
 from miner.static.extract import scan_file
 from miner.synthesize.candidate import synthesize
 from miner.synthesize.graph import build as build_evidence_graph
+from miner.dynamic.webhid_trace import load as load_webhid_trace
 
 
 def _load_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def analyze_artifact(settings: Settings, artifact_ref: str) -> dict[str, str]:
+def analyze_artifact(settings: Settings, artifact_ref: str, trace_path: Path | None = None) -> dict[str, str]:
     settings.ensure_directories()
     sha256 = artifact_ref.removeprefix("sha256:").lower()
     if len(sha256) != 64 or any(char not in "0123456789abcdef" for char in sha256):
@@ -46,6 +47,8 @@ def analyze_artifact(settings: Settings, artifact_ref: str) -> dict[str, str]:
     observations = []
     for source_path, path in files:
         observations.extend(scan_file(sha256, source_path, path))
+    if trace_path is not None:
+        observations.extend(load_webhid_trace(trace_path, sha256))
     observations = sorted({item.observation_id: item for item in observations}.values(), key=lambda item: item.observation_id)
     candidate, conflicts, validation_plan, status = synthesize(observations)
     graph = build_evidence_graph(sha256, observations, candidate)

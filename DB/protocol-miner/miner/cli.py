@@ -40,6 +40,7 @@ def _parser() -> argparse.ArgumentParser:
     ingest_cas_parser.add_argument("--vendor")
     analyze = commands.add_parser("analyze", help="Run static extractors for an ingested SHA-256")
     analyze.add_argument("artifact_id", help="SHA-256 or sha256:<digest>")
+    analyze.add_argument("--fake-webhid-trace", type=Path, help="Immutable JSONL trace from a fake WebHID sandbox; never real HID")
     report = commands.add_parser("report", help="Print the previously generated summary")
     report.add_argument("run_id")
     export = commands.add_parser("export", help="Print the review-only registry staging patch")
@@ -67,7 +68,7 @@ def main(argv: list[str] | None = None) -> int:
             print("error: --max-size must be positive", file=sys.stderr)
             return 2
         settings = replace(settings, max_artifact_size=args.max_size)
-    if args.allow_dynamic or args.sandbox:
+    if (args.allow_dynamic and not getattr(args, "fake_webhid_trace", None)) or args.sandbox:
         print("note: dynamic adapters are unavailable; continuing in static-only mode", file=sys.stderr)
     if args.command == "doctor":
         return _doctor()
@@ -81,7 +82,10 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "analyze":
         try:
-            result = analyze_artifact(settings, args.artifact_id)
+            if args.fake_webhid_trace and not args.allow_dynamic:
+                print("error: --fake-webhid-trace requires explicit --allow-dynamic", file=sys.stderr)
+                return 2
+            result = analyze_artifact(settings, args.artifact_id, args.fake_webhid_trace)
         except (OSError, ValueError, json.JSONDecodeError) as error:
             print(f"error: {error}", file=sys.stderr)
             return 2
