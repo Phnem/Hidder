@@ -14,7 +14,6 @@ import sys
 from dataclasses import dataclass
 from typing import Any
 
-# Known Peripheral Vendor Names (USB-IF registered)
 VENDOR_MAP: dict[str, str] = {
     "0x046D": "Logitech",
     "0x1532": "Razer",
@@ -52,6 +51,21 @@ IGNORE_KEYWORDS = [
     "xiaomi", "phone", "storage", "disk", "drive", "host controller",
     "realtek", "intel", "amd", "qualcomm", "mediatek", "radio", "virtual"
 ]
+
+GENERIC_DRIVER_NAMES = [
+    "hid-совместим", "hid-compliant", "usb-устройство", "usb input device",
+    "клавиатура hid", "hid keyboard", "мышь hid", "hid-совместимая мышь",
+    "standard keyboard", "системный контроллер", "system controller",
+    "vendor-defined", "определенное поставщиком", "устройство ввода",
+    "control"
+]
+
+
+def is_generic_driver_string(name: str) -> bool:
+    if not name:
+        return True
+    name_l = name.lower().strip()
+    return any(g in name_l for g in GENERIC_DRIVER_NAMES)
 
 
 @dataclass
@@ -138,6 +152,9 @@ def enumerate_hid_devices(category_filter: str | None = None) -> list[Discovered
                 type_label = "Keyboard" if cat == "keyboard" else ("Mouse" if cat == "mouse" else "Gaming Controller / Device")
                 
                 display_title = f"{vendor_label} — {type_label}"
+                if friendly and not is_generic_driver_string(friendly):
+                    display_title = f"{vendor_label} ({friendly})"
+
                 seen_vid_pids.add(key)
 
                 candidates.append(DiscoveredHidCandidate(
@@ -149,7 +166,7 @@ def enumerate_hid_devices(category_filter: str | None = None) -> list[Discovered
                     usage_page=0x01,
                     usage=0x06 if cat == "keyboard" else 0x02,
                     device_path=inst_id,
-                    product_string=friendly,
+                    product_string="" if is_generic_driver_string(friendly) else friendly,
                 ))
     except Exception:
         pass
@@ -176,7 +193,7 @@ def _mock_hid_candidates(category_filter: str | None = None) -> list[DiscoveredH
             usage_page=0x01,
             usage=0x06,
             device_path="HID\\VID_372E&PID_103E",
-            product_string="AULA HERO 84 HE",
+            product_string="",
         ),
         DiscoveredHidCandidate(
             display_name="Attack Shark — Wireless Mouse",
@@ -187,7 +204,7 @@ def _mock_hid_candidates(category_filter: str | None = None) -> list[DiscoveredH
             usage_page=0x01,
             usage=0x02,
             device_path="HID\\VID_2F24&PID_0113",
-            product_string="Attack Shark Mouse",
+            product_string="",
         ),
     ]
     if category_filter:

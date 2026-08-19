@@ -14,17 +14,17 @@ from typing import Any
 
 
 SCHEMA_VERSION = "peripheral.community-observation/1"
-TOOL_VERSION = "0.2.0"
+TOOL_VERSION = "0.3.0"
 
 
 @dataclass
 class DeviceIdentity:
     category: str  # "keyboard" | "mouse"
-    user_reported_model: str = ""  # What user typed (e.g. "AULA F75")
-    detected_product_string: str = ""  # Product string from USB descriptor / PnP (e.g. "HERO 84 HE")
+    user_reported_model: str = ""  # What user typed (e.g. "AULA HERO 84 HE")
+    detected_product_string: str = ""  # Product string if genuine commercial name
     detected_manufacturer_string: str = ""  # Manufacturer string (e.g. "AULA")
-    resolved_model: str | None = None  # Resolved model name if verified
-    resolved_model_confidence: str = "unverified"  # "unverified" | "registry_verified" | "user_reported"
+    resolved_model: str | None = None  # Resolved model name (None if only generic driver strings exist)
+    resolved_model_confidence: str = "unresolved"  # "unresolved" | "registry_verified" | "user_reported"
     keyboard_type: str | None = None  # "mechanical" | "hall_effect" | "unknown" | None
     vid: str = ""  # Hex string "0x372E"
     pid: str = ""  # Hex string "0x103E"
@@ -46,7 +46,7 @@ class DeviceIdentity:
 
 @dataclass
 class VendorSoftwareInfo:
-    process_basename: str = ""  # e.g. "AULA.exe" - NEVER full path
+    process_basename: str = ""  # e.g. "msedge.exe", "AULA.exe" - NEVER full path
     file_version: str | None = None
     publisher: str | None = None
     architecture: str = "x64"
@@ -80,7 +80,7 @@ class GuidedAction:
 class TransportObservation:
     timestamp: float
     process_basename: str
-    api: str  # e.g. "HidD_SetFeature", "WriteFile", "sendReport"
+    api: str  # "sendReport" | "sendFeatureReport" | "receiveFeatureReport" | "HidD_SetFeature" | "WriteFile"
     direction: str  # "out" | "in" | "feature_out" | "feature_in"
     report_id: int
     bytes_hex: str
@@ -88,7 +88,7 @@ class TransportObservation:
     action_id: str | None = None
     device_id: str | None = None
     repeat_count: int = 1
-    capture_source: str = "win32_api_hook"
+    capture_source: str = "webhid_api_observer"  # "webhid_api_observer" | "win32_api_hook"
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -112,7 +112,7 @@ class CorrelationCandidate:
 @dataclass
 class QualityScore:
     score: int  # 0..100
-    rating: str  # "Excellent capture" | "Good capture" | "Partial capture" | "Low signal"
+    rating: str  # "Excellent protocol evidence" | "Guided actions only — no protocol traffic"
     device_bound: bool = True
     vendor_process_bound: bool = True
     traffic_observed: bool = True
@@ -128,14 +128,14 @@ class QualityScore:
 
 @dataclass
 class CaptureMetadata:
-    mechanism: str = "win32_user_mode_api_hook"
+    mechanism: str = "browser_webhid_api_observer"  # "browser_webhid_api_observer" | "win32_user_mode_api_hook"
     observer_attached: bool = False
     target_process: str = ""
-    target_pid: int | None = None
-    target_architecture: str = "x64"
-    hooks_installed: list[str] = field(default_factory=lambda: [
-        "WriteFile", "HidD_SetFeature", "HidD_GetFeature", "HidD_SetOutputReport", "HidD_GetInputReport"
-    ])
+    browser: str | None = None
+    page_origin: str | None = None
+    hooks_requested: list[str] = field(default_factory=list)
+    hooks_installed: list[str] = field(default_factory=list)
+    real_device_session_observed: bool = True
     device_handle_bound: bool = False
     started_at: str = ""
     ended_at: str = ""
@@ -143,7 +143,6 @@ class CaptureMetadata:
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
-        d.pop("target_pid", None)  # Scrub PID from export
         return d
 
 

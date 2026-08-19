@@ -1,7 +1,8 @@
 """Interactive guided research wizard for community users (English edition).
 
 Designed for non-technical users with clear English UI, 5-minute workflows,
-real user-mode API observation, proper action duration windows, and zero-hardware-writing safety invariants.
+support for WebHID browser configurators and Native desktop software,
+proper action duration windows, and zero-hardware-writing safety invariants.
 """
 
 from __future__ import annotations
@@ -18,7 +19,7 @@ from pathlib import Path
 from typing import Any
 
 try:
-    from probe.hid_discovery import DiscoveredHidCandidate, enumerate_hid_devices
+    from probe.hid_discovery import DiscoveredHidCandidate, enumerate_hid_devices, is_generic_driver_string
     from probe.observer import PassiveTransportObserver
     from probe.privacy import PrivacyScrubber
     from probe.schema import (
@@ -30,7 +31,7 @@ try:
         VendorSoftwareInfo,
     )
 except ImportError:
-    from community.en.probe.hid_discovery import DiscoveredHidCandidate, enumerate_hid_devices
+    from community.en.probe.hid_discovery import DiscoveredHidCandidate, enumerate_hid_devices, is_generic_driver_string
     from community.en.probe.observer import PassiveTransportObserver
     from community.en.probe.privacy import PrivacyScrubber
     from community.en.probe.schema import (
@@ -56,7 +57,6 @@ class CommunityResearchWizard:
         self.user_reported_model: str = ""
         self.selected_device: DiscoveredHidCandidate | None = None
         self.vendor_process_name: str = ""
-        self.vendor_pid: int | None = None
         self.guided_actions: list[GuidedAction] = []
         self.completed: bool = False
         self.started_at: str = ""
@@ -271,36 +271,74 @@ class CommunityResearchWizard:
 
     def _step_vendor_software_detection(self) -> None:
         print("\n----------------------------------------------------")
-        print("Step 2 — Launch Official Device Software")
+        print("Step 2 — Device Configurator Type")
         print("----------------------------------------------------")
-        print("1. Open the official software/app for your device")
-        print("   (e.g., AULA Hub, HERO 84 HE App, ATK Hub, Keychron Launcher, Bloody, etc.)")
+        print("How do you configure your device?")
+        
+        sw_choice = self._prompt_choice(
+            "",
+            [
+                "Web Configurator (in browser — AULA WebHub, Keychron Launcher, DrunkDeer, Wooting, etc.)",
+                "Installed Windows App (desktop app — Bloody, Armoury Crate, iCUE, Hub.exe, etc.)",
+                "Skip software observation"
+            ],
+            default=1
+        )
+
+        if sw_choice == 1:
+            self._setup_webhid_browser()
+        elif sw_choice == 2:
+            self._setup_native_desktop()
+        else:
+            print("[-] Software observation skipped. Action script only will be saved.")
+
+    def _setup_webhid_browser(self) -> None:
+        print("\n[i] Launching isolated browser with WebHID instrumentation...")
+        if self.is_demo:
+            self.vendor_process_name = "msedge.exe"
+            self.observer.attach_webhid("https://example.com")
+            return
+
+        target_url = "about:blank"
+        raw_url = input("> Enter web configurator URL (or press Enter to open browser): ").strip()
+        if raw_url:
+            if not raw_url.startswith("http://") and not raw_url.startswith("https://"):
+                raw_url = f"https://{raw_url}"
+            target_url = raw_url
+
+        print(f"[i] Launching browser (Edge / Chrome) with clean temporary profile...")
+        ok = self.observer.attach_webhid(target_url)
+        if ok:
+            b_name = self.observer.capture_metadata.browser or "browser"
+            self.vendor_process_name = f"{b_name}.exe"
+            print(f"[✓] Browser launched ({b_name}). WebHID observer active!")
+            print("    In the browser window, open your configurator and connect your device.")
+            input("\n> Press [Enter] once device is connected in the browser: ")
+        else:
+            print("[!] Could not launch browser with CDP instrumentation.")
+
+    def _setup_native_desktop(self) -> None:
+        print("\n1. Open the official device software on your PC.")
         print("2. Do not change any settings yet.")
         print("3. Return here and press Enter.")
-        
         if not self.is_demo:
-            input("\n> Press [Enter] once the software is running: ")
-        
+            input("\n> Press [Enter] once software is open: ")
+
         detected_proc, detected_pid = self._find_and_select_vendor_process()
         if detected_proc and detected_pid:
             self.vendor_process_name = detected_proc
-            self.vendor_pid = detected_pid
-            print(f"[+] Selected process: {self.vendor_process_name} (PID: {self.vendor_pid})")
-            
+            print(f"[+] Selected process: {self.vendor_process_name} (PID: {detected_pid})")
             try:
-                print(f"[i] Attaching observer to {self.vendor_process_name}...")
-                ok = self.observer.attach_to_process(self.vendor_pid, self.vendor_process_name)
+                ok = self.observer.attach_native(detected_pid, self.vendor_process_name)
                 if ok:
-                    print("[✓] Observer successfully attached to vendor software.")
+                    print("[✓] Observer attached to vendor software.")
                 else:
-                    print("[!] Could not attach automatically. Observation may be partial.")
+                    print("[!] Could not attach to process.")
             except PermissionError:
-                print("\n[!] WARNING: Vendor software is running with Administrator privileges.")
-                print("    Please restart PeripheralResearch as Administrator to observe it.")
+                print("\n[!] WARNING: Software is running as Administrator.")
+                print("    Please restart PeripheralResearch as Administrator.")
             except Exception as e:
                 print(f"[!] Attach error: {e}")
-        else:
-            print("[-] No vendor software selected. Only action script will be recorded.")
 
     def _find_and_select_vendor_process(self) -> tuple[str, int | None]:
         if self.is_demo:
@@ -351,8 +389,8 @@ class CommunityResearchWizard:
         print("\n[i] Capturing idle baseline traffic (3 seconds, do not touch settings)...")
         self.observer.start_idle_baseline()
         if self.is_demo:
-            for _ in range(5):
-                self.observer.record_event("HidD_GetFeature", "feature_in", 0, "000000000000", self.vendor_process_name or "OfficialVendorHub.exe")
+            for _ in range(3):
+                self.observer.record_event("sendFeatureReport", "feature_out", 0, "000000000000", self.vendor_process_name or "browser.exe")
         time.sleep(1.0 if self.is_demo else 3.0)
         self.observer.stop_idle_baseline()
         if len(self.observer.idle_baseline_events) > 0:
@@ -399,13 +437,15 @@ class CommunityResearchWizard:
         )
 
     def _guided_he_keyboard_tests(self) -> None:
+        # HE1: Actuation
         self._test_setting_with_restore(
             action_id="he_actuation",
             title="Test HE1 — Actuation Point",
-            instruction_change="For key W, change the actuation point (e.g., 0.5 mm → 1.5 mm).",
-            instruction_restore="Restore the original actuation point for key W.",
+            instruction_change="For key W, change the actuation point (e.g., from 0.51 mm to 0.75 mm).",
+            instruction_restore="Restore the original actuation point for key W (0.51 mm).",
             semantic={"setting": "he.actuation"}
         )
+        # HE2: Rapid Trigger Toggle
         self._test_setting_with_restore(
             action_id="he_rt_toggle",
             title="Test HE2 — Rapid Trigger Toggle",
@@ -413,6 +453,7 @@ class CommunityResearchWizard:
             instruction_restore="Restore the Rapid Trigger switch to its original state.",
             semantic={"setting": "he.rt.enabled"}
         )
+        # HE3: RT Press
         self._test_setting_with_restore(
             action_id="he_rt_press",
             title="Test HE3 — Rapid Trigger Press Sensitivity",
@@ -420,6 +461,7 @@ class CommunityResearchWizard:
             instruction_restore="Restore the RT Press sensitivity.",
             semantic={"setting": "he.rt.press"}
         )
+        # HE4: RT Release
         self._test_setting_with_restore(
             action_id="he_rt_release",
             title="Test HE4 — Rapid Trigger Release Sensitivity",
@@ -427,6 +469,7 @@ class CommunityResearchWizard:
             instruction_restore="Restore the RT Release sensitivity.",
             semantic={"setting": "he.rt.release"}
         )
+        # HE5: RGB Effect
         self._test_setting_with_restore(
             action_id="light_effect",
             title="Test HE5 — RGB Lighting Effect",
@@ -540,18 +583,18 @@ class CommunityResearchWizard:
         self.observer.set_active_action(action_id)
         
         print("\n[● RECORDING ACTIVE...]")
-        print("1. Switch to the vendor application and perform the change.")
+        print("1. Switch to the vendor application/web-configurator and perform the change.")
         print("2. Wait about 2 seconds.")
         print("3. Return here and press [ENTER] to finish the step.")
         
         if self.is_demo:
             time.sleep(0.1)
             self.observer.record_event(
-                api="HidD_SetFeature",
+                api="sendFeatureReport",
                 direction="feature_out",
                 report_id=9 if "he" in action_id else 5,
                 bytes_hex="0913001e004b00740000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000" if "change" in action_id else "0913001e0033008c0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-                process_basename=self.vendor_process_name or "OfficialVendorHub.exe"
+                process_basename=self.vendor_process_name or "browser.exe"
             )
         else:
             try:
@@ -590,7 +633,7 @@ class CommunityResearchWizard:
         traffic_seen = len(self.observer.observations) > 0
         idle_seen = len(self.observer.idle_baseline_events) > 0
         device_bound = self.selected_device is not None
-        vendor_bound = bool(self.vendor_process_name and self.observer.capture_metadata.observer_attached)
+        vendor_bound = self.observer.capture_metadata.observer_attached
         
         if not traffic_seen:
             score = 15 if completed_actions else 5
@@ -636,13 +679,21 @@ class CommunityResearchWizard:
         quality = self._calculate_quality()
         
         dev_id = self.selected_device
+        raw_product = dev_id.product_string if dev_id else ""
+        if raw_product and not is_generic_driver_string(raw_product):
+            resolved_model = raw_product
+            resolved_confidence = "registry_verified"
+        else:
+            resolved_model = None
+            resolved_confidence = "unresolved"
+
         device_data = DeviceIdentity(
             category=self.category,
             user_reported_model=self.user_reported_model,
-            detected_product_string=dev_id.product_string if dev_id else "",
+            detected_product_string=raw_product if not is_generic_driver_string(raw_product) else "",
             detected_manufacturer_string=dev_id.manufacturer if dev_id else "",
-            resolved_model=dev_id.product_string or self.user_reported_model if dev_id else None,
-            resolved_model_confidence="registry_verified" if (dev_id and dev_id.product_string) else "user_reported",
+            resolved_model=resolved_model,
+            resolved_model_confidence=resolved_confidence,
             keyboard_type=self.keyboard_type,
             vid=dev_id.vid if dev_id else "0x0000",
             pid=dev_id.pid if dev_id else "0x0000",
@@ -705,9 +756,7 @@ class CommunityResearchWizard:
             print("Thank you very much! You are helping Peripheral support more devices ❤️\n")
         else:
             print("[!] Warning: Technical protocol traffic could not be captured.")
-            print("    The log was saved with your action script only.")
-            print("    If the vendor software was run as Administrator,")
-            print("    please restart PeripheralResearch as Administrator as well.\n")
+            print("    The log was saved with your action script only.\n")
 
         print("You can send the resulting JSON file to the developer:")
         print(" Telegram:")

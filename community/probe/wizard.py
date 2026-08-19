@@ -1,7 +1,8 @@
 """Interactive guided research wizard for community users.
 
 Designed for non-technical users with clear Russian UI, 5-minute workflows,
-real user-mode API observation, proper action duration windows, and zero-hardware-writing safety invariants.
+support for WebHID browser configurators and Native desktop software,
+proper action duration windows, and zero-hardware-writing safety invariants.
 """
 
 from __future__ import annotations
@@ -18,7 +19,7 @@ from pathlib import Path
 from typing import Any
 
 try:
-    from probe.hid_discovery import DiscoveredHidCandidate, enumerate_hid_devices
+    from probe.hid_discovery import DiscoveredHidCandidate, enumerate_hid_devices, is_generic_driver_string
     from probe.observer import PassiveTransportObserver
     from probe.privacy import PrivacyScrubber
     from probe.schema import (
@@ -30,7 +31,7 @@ try:
         VendorSoftwareInfo,
     )
 except ImportError:
-    from community.probe.hid_discovery import DiscoveredHidCandidate, enumerate_hid_devices
+    from community.probe.hid_discovery import DiscoveredHidCandidate, enumerate_hid_devices, is_generic_driver_string
     from community.probe.observer import PassiveTransportObserver
     from community.probe.privacy import PrivacyScrubber
     from community.probe.schema import (
@@ -56,7 +57,6 @@ class CommunityResearchWizard:
         self.user_reported_model: str = ""
         self.selected_device: DiscoveredHidCandidate | None = None
         self.vendor_process_name: str = ""
-        self.vendor_pid: int | None = None
         self.guided_actions: list[GuidedAction] = []
         self.completed: bool = False
         self.started_at: str = ""
@@ -271,44 +271,80 @@ class CommunityResearchWizard:
 
     def _step_vendor_software_detection(self) -> None:
         print("\n----------------------------------------------------")
-        print("Шаг 2 — Запуск официальной программы устройства")
+        print("Шаг 2 — Тип программы для настройки устройства")
         print("----------------------------------------------------")
-        print("1. Откройте официальную программу для вашего устройства")
-        print("   (например: AULA Hub, HERO 84 HE App, ATK Hub, Keychron Launcher, Bloody и т.д.)")
+        print("Как настраивается ваше устройство?")
+        
+        sw_choice = self._prompt_choice(
+            "",
+            [
+                "Веб-конфигуратор (в браузере — AULA WebHub, Keychron Launcher, DrunkDeer, Wooting и др.)",
+                "Установленная программа Windows (десктопная программа — Bloody, Armoury Crate, iCUE, Hub.exe и др.)",
+                "Пропустить привязку программы"
+            ],
+            default=1
+        )
+
+        if sw_choice == 1:
+            self._setup_webhid_browser()
+        elif sw_choice == 2:
+            self._setup_native_desktop()
+        else:
+            print("[-] Наблюдение за софтом пропущено. Будет сохранен только сценарий действий.")
+
+    def _setup_webhid_browser(self) -> None:
+        print("\n[i] Настройка изолированного браузера с перехватом WebHID...")
+        if self.is_demo:
+            self.vendor_process_name = "msedge.exe"
+            self.observer.attach_webhid("https://example.com")
+            return
+
+        target_url = "about:blank"
+        raw_url = input("> Введите адрес веб-конфигуратора (или нажмите Enter для открытия браузера): ").strip()
+        if raw_url:
+            if not raw_url.startswith("http://") and not raw_url.startswith("https://"):
+                raw_url = f"https://{raw_url}"
+            target_url = raw_url
+
+        print(f"[i] Запуск браузера (Edge / Chrome) с чистым временным профилем...")
+        ok = self.observer.attach_webhid(target_url)
+        if ok:
+            b_name = self.observer.capture_metadata.browser or "browser"
+            self.vendor_process_name = f"{b_name}.exe"
+            print(f"[✓] Браузер успешно запущен ({b_name}). Перехватчик WebHID активирован!")
+            print("    В открывшемся окне браузера откройте конфигуратор и подключите устройство.")
+            input("\n> Нажмите [Enter], когда устройство подключено в браузере: ")
+        else:
+            print("[!] Не удалось запустить браузер с инструментарием CDP.")
+
+    def _setup_native_desktop(self) -> None:
+        print("\n1. Откройте официальную программу устройства на ПК.")
         print("2. Пока ничего не меняйте в настройках.")
         print("3. Вернитесь сюда и нажмите Enter.")
-        
         if not self.is_demo:
             input("\n> Нажмите [Enter], когда программа открыта: ")
-        
+
         detected_proc, detected_pid = self._find_and_select_vendor_process()
         if detected_proc and detected_pid:
             self.vendor_process_name = detected_proc
-            self.vendor_pid = detected_pid
-            print(f"[+] Выбран процесс: {self.vendor_process_name} (PID: {self.vendor_pid})")
-            
-            # Real user-mode attach
+            print(f"[+] Выбран процесс: {self.vendor_process_name} (PID: {detected_pid})")
             try:
-                print(f"[i] Подключение к процессу {self.vendor_process_name}...")
-                ok = self.observer.attach_to_process(self.vendor_pid, self.vendor_process_name)
+                ok = self.observer.attach_native(detected_pid, self.vendor_process_name)
                 if ok:
-                    print("[✓] Наблюдатель успешно подключен к программе устройства.")
+                    print("[✓] Перехватчик успешно подключен к программе устройства.")
                 else:
-                    print("[!] Не удалось автоматически подключиться к процессу. Перехват может быть неполным.")
+                    print("[!] Не удалось подключиться к процессу.")
             except PermissionError:
-                print("\n[!] ВНИМАНИЕ: Программа устройства запущена от имени Администратора.")
-                print("    Для наблюдения за ней перезапустите PeripheralResearch от имени Администратора.")
+                print("\n[!] ВНИМАНИЕ: Программа запущена от имени Администратора.")
+                print("    Перезапустите PeripheralResearch от имени Администратора.")
             except Exception as e:
                 print(f"[!] Ошибка подключения: {e}")
-        else:
-            print("[-] Программа устройства не была выбрана. Будет записан только сценарий действий.")
 
     def _find_and_select_vendor_process(self) -> tuple[str, int | None]:
         if self.is_demo:
             return "OfficialVendorHub.exe", 1234
             
         try:
-            # Query active user processes with windows or known keywords
             cmd = [
                 "powershell", "-NoProfile", "-NonInteractive", "-Command",
                 "Get-Process | Where-Object { $_.MainWindowTitle -ne '' -or $_.Name -match 'aula|atk|hero|vgn|bloody|keychron|akko|attackshark|epomaker|darkproject|corsair|logitech|razer|hyperx|cougar|drunkdeer' } | "
@@ -353,8 +389,8 @@ class CommunityResearchWizard:
         print("\n[i] Снятие фонового трафика (3 секунды, не трогайте настройки)...")
         self.observer.start_idle_baseline()
         if self.is_demo:
-            for _ in range(5):
-                self.observer.record_event("HidD_GetFeature", "feature_in", 0, "000000000000", self.vendor_process_name or "OfficialVendorHub.exe")
+            for _ in range(3):
+                self.observer.record_event("sendFeatureReport", "feature_out", 0, "000000000000", self.vendor_process_name or "browser.exe")
         time.sleep(1.0 if self.is_demo else 3.0)
         self.observer.stop_idle_baseline()
         if len(self.observer.idle_baseline_events) > 0:
@@ -371,7 +407,6 @@ class CommunityResearchWizard:
             self._guided_mouse_tests()
 
     def _guided_mechanical_keyboard_tests(self) -> None:
-        # K1: RGB Effect
         self._test_setting_with_restore(
             action_id="light_effect",
             title="Тест K1 — Эффект подсветки",
@@ -379,7 +414,6 @@ class CommunityResearchWizard:
             instruction_restore="Теперь верните предыдущий эффект подсветки обратно.",
             semantic={"setting": "light.effect"}
         )
-        # K2: RGB Brightness
         self._test_setting_with_restore(
             action_id="light_brightness",
             title="Тест K2 — Яркость подсветки",
@@ -387,7 +421,6 @@ class CommunityResearchWizard:
             instruction_restore="Верните яркость в исходное положение.",
             semantic={"setting": "light.brightness"}
         )
-        # K3: Polling Rate
         self._test_setting_with_restore(
             action_id="kb_polling",
             title="Тест K3 — Частота опроса (Polling Rate)",
@@ -395,7 +428,6 @@ class CommunityResearchWizard:
             instruction_restore="Верните исходную частоту опроса.",
             semantic={"setting": "kb.polling"}
         )
-        # K4: Key Remap
         self._test_setting_with_restore(
             action_id="kb_keymap",
             title="Тест K4 — Переназначение клавиши",
@@ -409,8 +441,8 @@ class CommunityResearchWizard:
         self._test_setting_with_restore(
             action_id="he_actuation",
             title="Тест HE1 — Точка срабатывания (Actuation Point)",
-            instruction_change="Для клавиши W измените точку срабатывания (например, 0.5 мм → 1.5 мм).",
-            instruction_restore="Верните исходную точку срабатывания для клавиши W.",
+            instruction_change="Для клавиши W измените точку срабатывания (например, с 0.51 мм на 0.75 мм).",
+            instruction_restore="Верните исходную точку срабатывания для клавиши W (0.51 мм).",
             semantic={"setting": "he.actuation"}
         )
         # HE2: Rapid Trigger Toggle
@@ -447,7 +479,6 @@ class CommunityResearchWizard:
         )
 
     def _guided_mouse_tests(self) -> None:
-        # M1: DPI
         self._test_setting_with_restore(
             action_id="mouse_dpi",
             title="Тест M1 — Разрешение сенсора (DPI)",
@@ -455,7 +486,6 @@ class CommunityResearchWizard:
             instruction_restore="Верните исходное значение DPI.",
             semantic={"setting": "mouse.dpi"}
         )
-        # M2: Polling Rate
         self._test_setting_with_restore(
             action_id="mouse_polling",
             title="Тест M2 — Частота опроса мыши",
@@ -463,7 +493,6 @@ class CommunityResearchWizard:
             instruction_restore="Верните исходную частоту опроса.",
             semantic={"setting": "mouse.polling"}
         )
-        # M3: LOD
         self._test_setting_with_restore(
             action_id="mouse_lod",
             title="Тест M3 — Высота отрыва (LOD)",
@@ -471,7 +500,6 @@ class CommunityResearchWizard:
             instruction_restore="Верните исходную высоту отрыва.",
             semantic={"setting": "mouse.lod"}
         )
-        # M4: Debounce
         self._test_setting_with_restore(
             action_id="mouse_debounce",
             title="Тест M4 — Задержка дребезга (Debounce)",
@@ -479,7 +507,6 @@ class CommunityResearchWizard:
             instruction_restore="Верните исходное значение debounce.",
             semantic={"setting": "mouse.debounce"}
         )
-        # M5: RGB
         self._test_setting_with_restore(
             action_id="mouse_rgb",
             title="Тест M5 — Подсветка мыши",
@@ -496,7 +523,6 @@ class CommunityResearchWizard:
         instruction_restore: str,
         semantic: dict[str, Any],
     ) -> None:
-        # Phase 1: Change
         res = self._guided_action(
             action_id=f"{action_id}_change",
             category="vendor_experiment",
@@ -507,7 +533,6 @@ class CommunityResearchWizard:
         if res == "skip":
             return
 
-        # Phase 2: Mandatory Immediate Restore
         self._guided_action(
             action_id=f"{action_id}_restore",
             category="vendor_restore",
@@ -558,18 +583,18 @@ class CommunityResearchWizard:
         self.observer.set_active_action(action_id)
         
         print("\n[● ИДЁТ ЗАПИСЬ...]")
-        print("1. Перейдите в программу устройства и выполните действие.")
+        print("1. Перейдите в программу/веб-конфигуратор и выполните действие.")
         print("2. Подождите около 2 секунд.")
         print("3. Вернитесь сюда и нажмите [ENTER] для завершения шага.")
         
         if self.is_demo:
             time.sleep(0.1)
             self.observer.record_event(
-                api="HidD_SetFeature",
+                api="sendFeatureReport",
                 direction="feature_out",
                 report_id=9 if "he" in action_id else 5,
                 bytes_hex="0913001e004b00740000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000" if "change" in action_id else "0913001e0033008c0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-                process_basename=self.vendor_process_name or "OfficialVendorHub.exe"
+                process_basename=self.vendor_process_name or "browser.exe"
             )
         else:
             try:
@@ -608,15 +633,13 @@ class CommunityResearchWizard:
         traffic_seen = len(self.observer.observations) > 0
         idle_seen = len(self.observer.idle_baseline_events) > 0
         device_bound = self.selected_device is not None
-        vendor_bound = bool(self.vendor_process_name and self.observer.capture_metadata.observer_attached)
+        vendor_bound = self.observer.capture_metadata.observer_attached
         
-        # Hard Caps per Specification
         if not traffic_seen:
-            # Maximum 20 score if zero protocol traffic was captured
             score = 15 if completed_actions else 5
             rating = "Guided actions only — no protocol traffic"
         else:
-            score = 30  # Base for captured traffic
+            score = 30
             if device_bound:
                 score += 20
             if vendor_bound:
@@ -656,13 +679,23 @@ class CommunityResearchWizard:
         quality = self._calculate_quality()
         
         dev_id = self.selected_device
+        
+        # Resolve model identity safely (never generic strings)
+        raw_product = dev_id.product_string if dev_id else ""
+        if raw_product and not is_generic_driver_string(raw_product):
+            resolved_model = raw_product
+            resolved_confidence = "registry_verified"
+        else:
+            resolved_model = None
+            resolved_confidence = "unresolved"
+
         device_data = DeviceIdentity(
             category=self.category,
             user_reported_model=self.user_reported_model,
-            detected_product_string=dev_id.product_string if dev_id else "",
+            detected_product_string=raw_product if not is_generic_driver_string(raw_product) else "",
             detected_manufacturer_string=dev_id.manufacturer if dev_id else "",
-            resolved_model=dev_id.product_string or self.user_reported_model if dev_id else None,
-            resolved_model_confidence="registry_verified" if (dev_id and dev_id.product_string) else "user_reported",
+            resolved_model=resolved_model,
+            resolved_model_confidence=resolved_confidence,
             keyboard_type=self.keyboard_type,
             vid=dev_id.vid if dev_id else "0x0000",
             pid=dev_id.pid if dev_id else "0x0000",
@@ -726,8 +759,6 @@ class CommunityResearchWizard:
         else:
             print("[!] Внимание: технический трафик программы устройства не был зафиксирован.")
             print("    Лог сохранён, но содержит только сценарий ваших действий.")
-            print("    Если программа вендора была запущена от имени Администратора,")
-            print("    перезапустите PeripheralResearch также от Администратора.\n")
 
         print("Отправить полученный JSON-файл можно автору:")
         print(" Telegram:")

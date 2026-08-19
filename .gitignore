@@ -1,30 +1,40 @@
-# Rust
-/target/
-**/target/
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.spec
 
-# Node
+# C/Rust build artifacts
+target/
+*.pdb
+*.exp
+*.lib
+
+# PyInstaller build folders
+build/
+community/build/
+community/dist/*.json
+community/*.json
+*.json
+
+# Downloaded vendor packages & databases
+DB/keyboard/
+DB/data/*.sqlite*
+DB/data/*.db
+DB/data/extracted_test/
+inbox/
+*.zip
+*.tar.*
+*.7z
+*.rar
+
+# Node / JS artifacts
 node_modules/
-dist/
-dist-web/
+app/node_modules/
+app/dist/
 
-# Prior-art checkouts kept locally for study, never part of this repository.
-# sharkfin is GPL-3.0 and this project is proprietary (see docs/decisions/0001-license.md):
-# it is read as a source of facts and methods, and must not be vendored here.
-/sharkfin/
-# Same rule, same reason, for every other prior-art clone. These are separate
-# git repositories under their own licences; committing them -- even as
-# gitlinks -- would put someone else's history in this tree.
-/_prior-art/
-
-# Vendor artifacts for the ingestion pipeline. Never committed, never shipped
-# (spec.md FR9): unpack them outside the working tree.
-/tools/ingest/input/
-
-# Local orchestration state that is not part of the product
-CURRENT_HANDOFF.local.md
-
-# Editors / OS
-.DS_Store
+# OS artifacts
 Thumbs.db
-.idea/
-*.swp
+desktop.ini
+$RECYCLE.BIN/
+.DS_Store

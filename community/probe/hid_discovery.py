@@ -53,6 +53,22 @@ IGNORE_KEYWORDS = [
     "realtek", "intel", "amd", "qualcomm", "mediatek", "radio", "virtual"
 ]
 
+GENERIC_DRIVER_NAMES = [
+    "hid-совместим", "hid-compliant", "usb-устройство", "usb input device",
+    "клавиатура hid", "hid keyboard", "мышь hid", "hid-совместимая мышь",
+    "standard keyboard", "системный контроллер", "system controller",
+    "vendor-defined", "определенное поставщиком", "устройство ввода",
+    "управление", "control"
+]
+
+
+def is_generic_driver_string(name: str) -> bool:
+    """Return True if name is a generic Windows driver description rather than a model."""
+    if not name:
+        return True
+    name_l = name.lower().strip()
+    return any(g in name_l for g in GENERIC_DRIVER_NAMES)
+
 
 @dataclass
 class DiscoveredHidCandidate:
@@ -88,7 +104,6 @@ def enumerate_hid_devices(category_filter: str | None = None) -> list[Discovered
     seen_vid_pids: set[tuple[str, str]] = set()
 
     try:
-        # Query ONLY currently connected (PresentOnly) devices via PowerShell with UTF-8
         cmd = [
             "powershell", "-NoProfile", "-NonInteractive", "-Command",
             "$OutputEncoding = [System.Text.Encoding]::UTF8; "
@@ -125,12 +140,10 @@ def enumerate_hid_devices(category_filter: str | None = None) -> list[Discovered
                 if key in seen_vid_pids:
                     continue
 
-                # Filter out obvious non-peripherals
                 combined = f"{friendly} {inst_id} {pnp_class}".lower()
                 if any(kw in combined for kw in IGNORE_KEYWORDS):
                     continue
 
-                # Detect category
                 cat = "generic_hid"
                 if pnp_class == "Keyboard" or "клавиатура" in friendly.lower() or "keyboard" in friendly.lower():
                     cat = "keyboard"
@@ -141,6 +154,9 @@ def enumerate_hid_devices(category_filter: str | None = None) -> list[Discovered
                 type_label = "Клавиатура (Keyboard)" if cat == "keyboard" else ("Мышь (Mouse)" if cat == "mouse" else "Игровой контроллер / Устройство")
                 
                 display_title = f"{vendor_label} — {type_label}"
+                if friendly and not is_generic_driver_string(friendly):
+                    display_title = f"{vendor_label} ({friendly})"
+
                 seen_vid_pids.add(key)
 
                 candidates.append(DiscoveredHidCandidate(
@@ -152,7 +168,7 @@ def enumerate_hid_devices(category_filter: str | None = None) -> list[Discovered
                     usage_page=0x01,
                     usage=0x06 if cat == "keyboard" else 0x02,
                     device_path=inst_id,
-                    product_string=friendly,
+                    product_string="" if is_generic_driver_string(friendly) else friendly,
                 ))
     except Exception:
         pass
@@ -160,7 +176,6 @@ def enumerate_hid_devices(category_filter: str | None = None) -> list[Discovered
     if not candidates:
         return _mock_hid_candidates(category_filter)
 
-    # Sort: matching category first
     if category_filter:
         matching = [c for c in candidates if c.category == category_filter or c.category == "generic_hid"]
         others = [c for c in candidates if c.category != category_filter and c.category != "generic_hid"]
@@ -180,7 +195,7 @@ def _mock_hid_candidates(category_filter: str | None = None) -> list[DiscoveredH
             usage_page=0x01,
             usage=0x06,
             device_path="HID\\VID_372E&PID_103E",
-            product_string="AULA HERO 84 HE",
+            product_string="",
         ),
         DiscoveredHidCandidate(
             display_name="Attack Shark — Беспроводная мышь (Mouse)",
@@ -191,7 +206,7 @@ def _mock_hid_candidates(category_filter: str | None = None) -> list[DiscoveredH
             usage_page=0x01,
             usage=0x02,
             device_path="HID\\VID_2F24&PID_0113",
-            product_string="Attack Shark Mouse",
+            product_string="",
         ),
     ]
     if category_filter:

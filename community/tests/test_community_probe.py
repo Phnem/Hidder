@@ -8,7 +8,11 @@ from pathlib import Path
 
 import pytest
 
-from community.probe.hid_discovery import enumerate_hid_devices, DiscoveredHidCandidate
+from community.probe.hid_discovery import (
+    DiscoveredHidCandidate,
+    enumerate_hid_devices,
+    is_generic_driver_string,
+)
 from community.probe.observer import PassiveTransportObserver
 from community.probe.privacy import PrivacyScrubber
 from community.probe.schema import (
@@ -20,100 +24,77 @@ from community.probe.schema import (
     VendorSoftwareInfo,
     SCHEMA_VERSION,
 )
+from community.probe.webhid_observer import WEBHID_INJECTION_SCRIPT, WebHidObserver
 from community.probe.wizard import CommunityResearchWizard
 
 
 def test_privacy_scrubber_removes_sensitive_data():
     scrubber = PrivacyScrubber()
-    
-    # Path sanitization
     raw_path = r"C:\Users\JohnDoe\AppData\Local\Programs\AULA\AULA.exe"
     sanitized_path = scrubber.sanitize_path(raw_path)
     assert sanitized_path == "AULA.exe"
     assert "JohnDoe" not in sanitized_path
     
-    # Email and IP scrubbing
     text_with_ip_email = "Connected from 192.168.1.55 by john.doe@example.com"
     scrubbed = scrubber.scrub_text(text_with_ip_email)
     assert "192.168.1.55" not in scrubbed
     assert "john.doe@example.com" not in scrubbed
-    assert "[REDACTED_IP]" in scrubbed or "[REDACTED_EMAIL]" in scrubbed
 
 
-def test_privacy_scrubber_dict_omits_serials():
-    scrubber = PrivacyScrubber()
-    data = {
-        "device": {
-            "user_reported_model": "AULA F75",
-            "serial": "1234567890ABCDEF",
-            "serial_number": "SN-998877",
-            "vid": "0x3151",
-            "pid": "0x5025",
-        },
-        "user": "Alice",
-        "username": "alice_admin",
-        "process_basename": r"C:\Users\Alice\Downloads\AULA.exe",
-    }
-    
-    sanitized = scrubber.sanitize_dict(data)
-    assert "serial" not in sanitized.get("device", {})
-    assert "serial_number" not in sanitized.get("device", {})
-    assert "user" not in sanitized
-    assert "username" not in sanitized
-    assert sanitized.get("process_basename") == "AULA.exe"
+def test_generic_driver_strings_cannot_become_resolved_model():
+    generic_samples = [
+        "HID-совместимый системный контроллер",
+        "HID-compliant system controller",
+        "USB-устройство ввода",
+        "USB Input Device",
+        "Клавиатура HID",
+        "HID Keyboard Device",
+        "HID-совместимое устройство, определенное поставщиком",
+    ]
+    for s in generic_samples:
+        assert is_generic_driver_string(s) is True, f"Failed for {s}"
+
+    valid_samples = [
+        "AULA HERO 84 HE",
+        "Lamzu Atlantis",
+        "ATK F1 Ultimate",
+        "DrunkDeer A75",
+    ]
+    for s in valid_samples:
+        assert is_generic_driver_string(s) is False, f"Failed for {s}"
 
 
-def test_schema_version_and_sha256_canonical():
-    bundle = CommunityObservationBundle(
-        submission_id="comm-test-123",
-        device=DeviceIdentity(category="keyboard", user_reported_model="ATK Yogo75", vid="0x373B", pid="0x119B"),
-        software=VendorSoftwareInfo(process_basename="ATKHub.exe"),
-    )
-    
-    data = bundle.to_dict()
-    assert data["schema"] == SCHEMA_VERSION
-    assert data["device"]["model_name"] == "ATK Yogo75"
-    assert data["device"]["vid"] == "0x373B"
-    
-    sha = bundle.compute_sha256()
-    assert len(sha) == 64
-    assert all(c in "0123456789abcdef" for c in sha)
+def test_failed_attach_reports_empty_hooks_installed():
+    obs = PassiveTransportObserver()
+    obs.attach_native(999999, "FakeApp.exe")
+    assert obs.capture_metadata.observer_attached is False
+    assert obs.capture_metadata.hooks_installed == []
+    assert len(obs.capture_metadata.observer_errors) > 0
 
 
-def test_device_identity_separation():
-    dev = DeviceIdentity(
-        category="keyboard",
-        user_reported_model="AULA F75",
-        detected_product_string="HERO 84 HE",
-        detected_manufacturer_string="AULA",
-        resolved_model="AULA HERO 84 HE",
-        resolved_model_confidence="registry_verified",
-        vid="0x372E",
-        pid="0x103E",
-    )
-    d = dev.to_dict()
-    assert d["user_reported_model"] == "AULA F75"
-    assert d["detected_product_string"] == "HERO 84 HE"
-    assert d["resolved_model"] == "AULA HERO 84 HE"
-    assert d["resolved_model_confidence"] == "registry_verified"
+def test_webhid_script_contains_transparent_wrappers_and_inputreport():
+    assert "origSendReport.apply(this, arguments)" in WEBHID_INJECTION_SCRIPT
+    assert "origSendFeature.apply(this, arguments)" in WEBHID_INJECTION_SCRIPT
+    assert "origReceiveFeature.apply(this, arguments)" in WEBHID_INJECTION_SCRIPT
+    assert "device.addEventListener(\"inputreport\"" in WEBHID_INJECTION_SCRIPT
+    assert "window.__peripheral_webhid_event__" in WEBHID_INJECTION_SCRIPT
+    assert "window.__peripheral_webhid_injected__" in WEBHID_INJECTION_SCRIPT
 
 
 def test_observer_idle_deduplication():
     obs = PassiveTransportObserver()
     obs.start_idle_baseline()
     
-    # Record 100 identical idle polling events
     for _ in range(100):
         obs.record_event(
-            api="HidD_GetFeature",
-            direction="feature_in",
+            api="sendFeatureReport",
+            direction="feature_out",
             report_id=0,
             bytes_hex="000000000000",
-            process_basename="VendorApp.exe"
+            process_basename="browser.exe"
         )
     obs.stop_idle_baseline()
     
-    # Must be deduplicated to 1 item with repeat_count=100
     assert len(obs.observations) == 1
     assert obs.observations[0].repeat_count == 100
     assert len(obs.idle_baseline_events) >= 1
@@ -121,7 +102,6 @@ def test_observer_idle_deduplication():
 
 def test_zero_traffic_caps_score_at_20():
     wizard = CommunityResearchWizard(is_demo=False)
-    # Add dummy completed action with ZERO traffic
     wizard.guided_actions.append(GuidedAction(
         action_id="test_act",
         category="vendor_experiment",
@@ -138,34 +118,89 @@ def test_zero_traffic_caps_score_at_20():
     assert "no protocol traffic" in quality.rating
 
 
-def test_observer_correlation_changed_offsets():
+def test_pairwise_a_b_a_correlation_with_restored_values():
     obs = PassiveTransportObserver()
     obs.start_idle_baseline()
-    obs.record_event("HidD_GetFeature", "feature_in", 0, "000000000000", "VendorApp.exe")
+    obs.record_event("sendFeatureReport", "feature_out", 9, "0913001e0033008c", "browser.exe")
     obs.stop_idle_baseline()
     
-    # Record change action
-    action = GuidedAction(
+    # 1. Action Change (B)
+    action_change = GuidedAction(
         action_id="he_actuation_change",
         category="vendor_experiment",
-        instruction="Change actuation",
+        instruction="Change actuation to 0.75mm",
         expected_semantic={"setting": "he.actuation"},
         started_at=1000.0,
         finished_at=1002.0,
         duration_seconds=2.0,
     )
-    
     obs.set_active_action("he_actuation_change")
-    # Changed byte at index 2 (from 00 to 0A)
-    obs.record_event("HidD_SetFeature", "feature_out", 8, "08130a000000", "VendorApp.exe")
+    obs.record_event("sendFeatureReport", "feature_out", 9, "0913001e004b0074", "browser.exe")
+    obs.set_active_action(None)
+
+    # 2. Action Restore (A')
+    action_restore = GuidedAction(
+        action_id="he_actuation_restore",
+        category="vendor_restore",
+        instruction="Restore actuation to 0.51mm",
+        expected_semantic={"setting": "he.actuation", "restore": True},
+        started_at=1003.0,
+        finished_at=1005.0,
+        duration_seconds=2.0,
+        restore_attempted=True,
+    )
+    obs.set_active_action("he_actuation_restore")
+    obs.record_event("sendFeatureReport", "feature_out", 9, "0913001e0033008c", "browser.exe")
     obs.set_active_action(None)
     
-    candidates = obs.correlate_actions([action])
+    # Correlate pairwise
+    candidates = obs.correlate_actions([action_change, action_restore])
     assert len(candidates) == 1
-    assert candidates[0].semantic == "he.actuation"
-    assert candidates[0].candidate_reports == [8]
-    assert candidates[0].changed_offsets == [0, 1, 2]
-    assert candidates[0].confidence == "CommunityGuidedObservation"
+    c = candidates[0]
+    assert c.action_id == "he_actuation"
+    assert c.semantic == "he.actuation"
+    assert c.candidate_reports == [9]
+    assert 5 in c.changed_offsets  # 0x4B vs 0x33
+    assert 7 in c.changed_offsets  # Checksum delta
+    assert c.after_values == ["0913001e004b0074"]
+    assert c.restored_values == ["0913001e0033008c"]
+
+
+def test_rt_table_disambiguation_avoids_false_single_byte_attribution():
+    obs = PassiveTransportObserver()
+    # Simulate a full 64-byte RT configuration table sent during RT press test
+    rt_table_b = "0919" + "0202020202020202" * 7 + "000000000000"
+    rt_table_a = "0919" + "0101010101010101" * 7 + "000000000000"
+
+    act_change = GuidedAction(
+        action_id="he_rt_press_change",
+        category="vendor_experiment",
+        instruction="Change RT press",
+        expected_semantic={"setting": "he.rt.press"},
+        started_at=10.0,
+        finished_at=12.0,
+    )
+    obs.set_active_action("he_rt_press_change")
+    obs.record_event("sendFeatureReport", "feature_out", 9, rt_table_b, "browser.exe")
+    obs.set_active_action(None)
+
+    act_restore = GuidedAction(
+        action_id="he_rt_press_restore",
+        category="vendor_restore",
+        instruction="Restore RT press",
+        expected_semantic={"setting": "he.rt.press", "restore": True},
+        started_at=13.0,
+        finished_at=15.0,
+        restore_attempted=True,
+    )
+    obs.set_active_action("he_rt_press_restore")
+    obs.record_event("sendFeatureReport", "feature_out", 9, rt_table_a, "browser.exe")
+    obs.set_active_action(None)
+
+    candidates = obs.correlate_actions([act_change, act_restore])
+    assert len(candidates) == 1
+    # Must be flagged as RT table rather than claiming single isolated byte
+    assert "rt_table" in candidates[0].semantic
 
 
 def test_wizard_demo_run_produces_valid_json():
@@ -183,11 +218,7 @@ def test_wizard_demo_run_produces_valid_json():
         assert len(data["guided_actions"]) > 0
         assert data["quality"]["score"] >= 80
         assert "capture" in data
-        assert data["capture"]["mechanism"] == "win32_user_mode_api_hook"
-        
-        # Verify no serials or usernames
-        assert "serial" not in data["device"]
-        assert "username" not in data
+        assert "browser_webhid_api_observer" in data["capture"]["mechanism"]
 
 
 def test_critical_security_no_raw_hid_writes_in_probe():

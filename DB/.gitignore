@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Data & Runtime
+extracted/
+logs/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Keep data structure but ignore large local dumps if needed
+data/reports/*.json
+data/reports/*.txt
+data/registry.sqlite-journal
+
+# Artifacts CAS storage
+artifacts/*
+!artifacts/.gitkeep
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
