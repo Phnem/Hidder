@@ -42,12 +42,26 @@ class SafeUnpacker:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
 
+    def _is_sfx_7z(self, path: Path) -> bool:
+        if py7zr is None or not path.is_file():
+            return False
+        try:
+            with path.open("rb") as f:
+                head = f.read(2 * 1024 * 1024)
+            return b"7z\xbc\xaf\x27\x1c" in head
+        except OSError:
+            return False
+
     def unpack(self, archive: Path, sha256: str, original_filename: str | None = None) -> UnpackResult:
         destination = self.settings.workspace_dir / "unpacked" / sha256
         if destination.exists() and any(destination.iterdir()):
             files = [path for path in destination.rglob("*") if path.is_file()]
             return UnpackResult("already_unpacked", destination, len(files), sum(path.stat().st_size for path in files))
-        kind = "zip" if zipfile.is_zipfile(archive) else detect(archive, original_filename)
+        if zipfile.is_zipfile(archive):
+            return self._zip(archive, destination)
+        if py7zr is not None and self._is_sfx_7z(archive):
+            return self._seven_zip(archive, destination)
+        kind = detect(archive, original_filename)
         if kind == "zip":
             return self._zip(archive, destination)
         if kind == "7z":
@@ -86,7 +100,8 @@ class SafeUnpacker:
         while queue:
             path, parent_sha256, depth, relative_path = queue.pop(0)
             kind = detect(path, path.name)
-            if kind not in {"zip", "7z"} and not tarfile.is_tarfile(path):
+            is_sfx = self._is_sfx_7z(path) or zipfile.is_zipfile(path)
+            if kind not in {"zip", "7z"} and not tarfile.is_tarfile(path) and not is_sfx:
                 continue
             child_sha256 = sha256_file(path)
             if child_sha256 in known:
@@ -106,7 +121,19 @@ class SafeUnpacker:
         if py7zr is None:
             return UnpackResult("unavailable", None, 0, 0, "py7zr is not installed")
         try:
-            with py7zr.SevenZipFile(archive, mode="r") as bundle:
+            with archive.open("rb") as f:
+                head = f.read(2 * 1024 * 1024)
+            idx = head.find(b"7z\xbc\xaf\x27\x1c")
+            if idx == -1:
+                return UnpackResult("error", None, 0, 0, "7z magic not found")
+            if idx == 0:
+                target_input = archive
+            else:
+                import io
+                with archive.open("rb") as f:
+                    f.seek(idx)
+                    target_input = io.BytesIO(f.read())
+            with py7zr.SevenZipFile(target_input, mode="r") as bundle:
                 entries = bundle.list()
                 if len(entries) > self.settings.max_file_count:
                     return UnpackResult("safety_violation", None, 0, 0, "archive file count exceeds limit")

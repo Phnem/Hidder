@@ -13,6 +13,7 @@ class ConfidenceClass(StrEnum):
     VERIFIED_SOURCE_CODE = "VerifiedSourceCode"
     VERIFIED_DYNAMIC_VENDOR_SOFTWARE = "VerifiedDynamicVendorSoftware"
     HARDWARE_VERIFIED_EXCHANGE = "HardwareVerifiedExchange"
+    COMMUNITY_GUIDED_OBSERVATION = "CommunityGuidedObservation"
     INFERRED_STRONG = "InferredStrong"
     INFERRED_WEAK = "InferredWeak"
     ASSUMED = "Assumed"

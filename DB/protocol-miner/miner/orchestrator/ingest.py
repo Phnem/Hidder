@@ -115,7 +115,14 @@ def ingest_url(settings: Settings, url: str, vendor: str | None = None, max_size
 def ingest_all(settings: Settings, vendor: str | None = None) -> list[dict[str, str]]:
     inbox = settings.root / "inbox"
     inbox.mkdir(parents=True, exist_ok=True)
-    return [ingest_file(settings, path, vendor) for path in sorted(inbox.iterdir()) if path.is_file()]
+    results = []
+    for path in sorted(inbox.rglob("*")):
+        if path.is_file():
+            inferred_vendor = vendor
+            if inferred_vendor is None and path.parent != inbox:
+                inferred_vendor = path.parent.name
+            results.append(ingest_file(settings, path, inferred_vendor))
+    return results
 
 
 def ingest_cas(settings: Settings, sha256: str, filename: str, vendor: str | None = None) -> dict[str, str]:
