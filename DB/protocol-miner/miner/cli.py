@@ -24,6 +24,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--sandbox", action="store_true", help="Reserved for future fake-device sandbox adapters")
     parser.add_argument("--no-network", action="store_true", help="Reject URL ingestion for this invocation")
     parser.add_argument("--max-size", type=int, help="Maximum input size in bytes for this invocation")
+    parser.add_argument("--json", action="store_true", help="Emit machine-readable output where supported")
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("doctor", help="Check core and optional tooling")
     ingest = commands.add_parser("ingest", help="Ingest a local artifact into CAS")
@@ -50,12 +51,16 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _doctor() -> int:
+def _doctor(as_json: bool = False) -> int:
+    availability = {tool: bool(shutil.which(tool)) for tool in ("node", "playwright", "frida", "analyzeHeadless", "7z", "asar")}
+    availability["py7zr"] = bool(importlib.util.find_spec("py7zr"))
+    if as_json:
+        print(json.dumps({"schema": "peripheral.doctor/1", "core": "ready", "tools": availability, "dynamic_native": "disabled"}, indent=2))
+        return 0
     print("CORE READY")
     print(f"Python {sys.version.split()[0]} available")
-    for tool in ("node", "playwright", "frida", "analyzeHeadless", "7z", "asar"):
-        print(f"{tool}: {'available' if shutil.which(tool) else 'unavailable'}")
-    print(f"py7zr: {'available' if importlib.util.find_spec('py7zr') else 'unavailable'}")
+    for tool, available in availability.items():
+        print(f"{tool}: {'available' if available else 'unavailable'}")
     print("Static pipeline available. Dynamic native pipeline disabled.")
     return 0
 
@@ -71,7 +76,7 @@ def main(argv: list[str] | None = None) -> int:
     if (args.allow_dynamic and not getattr(args, "fake_webhid_trace", None)) or args.sandbox:
         print("note: dynamic adapters are unavailable; continuing in static-only mode", file=sys.stderr)
     if args.command == "doctor":
-        return _doctor()
+        return _doctor(args.json)
     if args.command == "ingest":
         try:
             result = ingest_file(settings, args.path, args.vendor)

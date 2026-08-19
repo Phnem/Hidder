@@ -10,3 +10,7 @@ def test_cli_declares_required_static_workflow_commands() -> None:
 
 def test_no_network_rejects_url_ingest() -> None:
     assert main(["--no-network", "ingest-url", "https://example.invalid/utility.zip"]) == 2
+
+
+def test_doctor_accepts_machine_readable_output() -> None:
+    assert main(["--json", "doctor"]) == 0
