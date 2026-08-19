@@ -21,4 +21,4 @@
 
 pub mod log;
 
-pub use log::JournalLog;
+pub use log::{JournalLog, render_entry};

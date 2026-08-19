@@ -123,6 +123,13 @@ jobs:
         working-directory: app
         run: npm run typecheck
 
+      # The IPC contract has two halves and only one of them is Rust. These
+      # cover the half a type checker cannot: the command and event *names*, and
+      # the state rules that decide whether a control may be enabled.
+      - name: Frontend tests
+        working-directory: app
+        run: npm test
+
       - name: Frontend build
         working-directory: app
         run: npx vite build

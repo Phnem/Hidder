@@ -17,6 +17,7 @@
 
 use pcaps::{CapId, CapValue};
 use pcore::{CoreError, Peripheral};
+use pjournal::JournalLog;
 
 fn main() {
     if let Err(error) = run() {
@@ -27,15 +28,23 @@ fn main() {
 
 fn run() -> Result<(), CoreError> {
     let peripheral = Peripheral::open()?;
+    // The journal belongs to the caller, not to the session: a connection that
+    // fails is exactly what a person opens the journal to read, and a journal
+    // owned by the session would be dropped along with it.
+    let mut journal = JournalLog::new();
 
     println!("== discovered ==");
     let devices = peripheral.discover();
     for device in &devices {
         println!(
             "  {:04X}:{:04X}  {:<28} product {:<10} family {:<10} {}",
-            device.vendor_id,
-            device.product_id,
-            device.product.as_deref().unwrap_or("(no product string)"),
+            device.present.vendor_id,
+            device.present.product_id,
+            device
+                .present
+                .product
+                .as_deref()
+                .unwrap_or("(no product string)"),
             device.identification.product.confidence.as_str(),
             device.identification.family.confidence.as_str(),
             if device.is_connectable() {
@@ -52,9 +61,9 @@ fn run() -> Result<(), CoreError> {
 
     println!(
         "\n== connecting to {} ==",
-        target.product.as_deref().unwrap_or("the device")
+        target.present.product.as_deref().unwrap_or("the device")
     );
-    let mut session = peripheral.connect(target)?;
+    let mut session = peripheral.connect(target, &mut journal)?;
     println!("  model id      {}", session.model_id());
     println!(
         "  family        {} [{}]",
@@ -89,7 +98,7 @@ fn run() -> Result<(), CoreError> {
     }
 
     println!("\n== read {} ==", CapId::HeActuation);
-    let capability = peripheral.read(&mut session, CapId::HeActuation)?;
+    let capability = peripheral.read(&mut session, &mut journal, CapId::HeActuation)?;
     match &capability.value {
         CapValue::PerKey(keys) => {
             for key in keys {
@@ -103,7 +112,7 @@ fn run() -> Result<(), CoreError> {
     println!("  provenance    {}", capability.provenance);
 
     println!("\n== journal ==");
-    for line in session.journal().render() {
+    for line in journal.render() {
         println!("  {line}");
     }
 

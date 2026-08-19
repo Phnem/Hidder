@@ -1,6 +1,4 @@
-//! Orchestration.
-//!
-//! Skeleton only. Wired up with TICKET-12/13.
+//! Orchestration: the model the UI reads.
 //!
 //! # Where the boundary runs
 //!
@@ -23,7 +21,23 @@
 //! usage, a vendor opcode, or a query to a wireless receiver rather than to the
 //! device itself -- and the UI must never learn which one applied.
 
+//! # One device, one entry, and the limit of that
+//!
+//! Devices are separated by VID:PID, which is as far as enumeration alone can
+//! separate them. Two identical boards therefore appear as one card. That is a
+//! recorded limit rather than an oversight: telling them apart needs either an
+//! instance identifier the policy here redacts, or a platform-specific reading
+//! of device paths, and inventing a heuristic for hardware this project cannot
+//! test would be worse than saying so (TICKET-13).
+
+pub mod model;
 pub mod observe;
+pub mod service;
 pub mod session;
 
-pub use session::{CoreError, DeviceSession, DiscoveredDevice, Peripheral};
+pub use model::{
+    AvailabilityView, CapabilityReading, CapabilitySlot, ConnectionView, DeviceCard, JournalRow,
+    ValueView, WriteView,
+};
+pub use service::{DeviceService, EventSink, ServiceEvent, ServiceStopped};
+pub use session::{CoreError, DeviceSession, DiscoveredDevice, Peripheral, PresentDevice};

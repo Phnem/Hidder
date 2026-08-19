@@ -50,7 +50,15 @@ pub trait Clock {
     fn now_ms(&self) -> u64;
 }
 
-/// The process clock, started when the gate is built.
+/// A monotonic clock, zeroed when it is created.
+///
+/// `Copy`, and that is load-bearing rather than a convenience. A gate is built
+/// per operation on the read path today, so a clock constructed inside each gate
+/// would restart at zero for every entry and stamp a whole journal with times
+/// near zero -- times that cannot be ordered or subtracted, in the one record
+/// whose purpose is to say what happened to a device and in what order. Copying
+/// one clock into every gate is what makes the entries comparable.
+#[derive(Clone, Copy)]
 pub struct MonotonicClock {
     start: std::time::Instant,
 }

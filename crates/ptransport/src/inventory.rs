@@ -113,6 +113,24 @@ impl Hid {
             .map_err(|e| TransportError::Backend(e.to_string()))
     }
 
+    /// Re-asks the operating system which devices exist.
+    ///
+    /// Needed because [`Hid::enumerate`] answers from a list the backend built
+    /// once, when this handle was opened. Without this call a device unplugged
+    /// afterwards keeps appearing and a device plugged in afterwards never
+    /// does -- and both of those are the user watching a screen that is quietly
+    /// wrong about their hardware, which is the specific failure the UI is
+    /// required not to have (spec.md, TICKET-13 acceptance criteria).
+    ///
+    /// It is not device traffic. This asks the OS's own device registry and
+    /// opens nothing, which is what makes it safe to call on a cadence when
+    /// sending anything on a cadence would not be.
+    pub fn refresh(&mut self) -> Result<(), TransportError> {
+        self.api
+            .refresh_devices()
+            .map_err(|e| TransportError::Backend(e.to_string()))
+    }
+
     /// Every HID top-level collection the OS is willing to enumerate.
     ///
     /// No filtering by vendor id. Filtering belongs to the caller: a registry

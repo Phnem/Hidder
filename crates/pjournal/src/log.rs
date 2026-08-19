@@ -71,7 +71,14 @@ impl JournalLog {
     }
 }
 
-fn render_entry(entry: &JournalEntry) -> String {
+/// One entry as a person reads it.
+///
+/// Public because a table of entries is rendered a row at a time, and a caller
+/// that had only [`JournalLog::render`] would either re-derive the wording or
+/// index into a parallel `Vec<String>` by position. Both of those are ways for
+/// two front-ends to disagree about what happened, which is the thing this
+/// function existing in this crate prevents.
+pub fn render_entry(entry: &JournalEntry) -> String {
     let outcome = match entry.outcome {
         Outcome::Completed => "ok".to_string(),
         Outcome::Rejected => "answer failed validation".to_string(),

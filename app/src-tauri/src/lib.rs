@@ -1,12 +1,14 @@
 //! Desktop application shell.
 //!
-//! Skeleton only (TICKET-07). Screens arrive with TICKET-13, real device state
-//! with TICKET-12.
-//!
 //! This layer owns presentation and the IPC contract, and nothing else. Device
-//! knowledge lives in `pcore` and below.
+//! knowledge lives in `pcore` and below: there is no branch in this crate that
+//! depends on what a device is, and if one ever appears it is a sign the
+//! capability model failed to hide something it was supposed to hide.
 
 pub mod ipc;
+
+use pcore::DeviceService;
+use tauri::Manager;
 
 /// Version plus the commit it was built from, when that is knowable.
 ///
@@ -36,12 +38,38 @@ pub fn run() {
                 .level(log::LevelFilter::Info)
                 .build(),
         )
-        // All three IPC mechanisms are wired from the skeleton. The channel
-        // command refuses for now rather than being absent, so the contract is
-        // real and the frontend can be written against it.
+        // The device thread is started in `setup` rather than before the
+        // builder, because it emits events and therefore needs a handle to emit
+        // through. That ordering is also why a failure to open the backend is
+        // handled here: the window exists by this point, so the application can
+        // come up and say what went wrong instead of vanishing.
+        .setup(|app| {
+            let emitter = app.handle().clone();
+            match DeviceService::start(Box::new(move |event| {
+                ipc::events::forward(&emitter, event);
+            })) {
+                Ok(service) => {
+                    app.manage(ipc::Devices::new(service));
+                }
+                Err(error) => {
+                    // Not fatal. Every command that needs a device will report
+                    // that the service is unavailable, which is a screen saying
+                    // so rather than a window that never opened.
+                    log::error!("the device service did not start: {error}");
+                }
+            }
+            Ok(())
+        })
+        // All three IPC mechanisms are wired. The channel command refuses for
+        // now rather than being absent, so the contract is real and the frontend
+        // is written against it.
         .invoke_handler(tauri::generate_handler![
             ipc::commands::build_id,
             ipc::commands::list_devices,
+            ipc::commands::connect_device,
+            ipc::commands::disconnect_device,
+            ipc::commands::read_capability,
+            ipc::commands::journal,
             ipc::channels::subscribe_analog_stream,
         ])
         .run(tauri::generate_context!());
@@ -62,5 +90,32 @@ mod tests {
     #[test]
     fn build_id_starts_with_the_version() {
         assert!(build_id().starts_with(env!("CARGO_PKG_VERSION")));
+    }
+
+    /// Every command constant is one this crate actually registers.
+    ///
+    /// The list in `generate_handler!` is a macro argument and cannot be
+    /// inspected, so this checks the other half of the same fact: that the
+    /// declared names match the functions that exist. A name declared and never
+    /// registered would pass the frontend contract test and still fail at
+    /// runtime.
+    #[test]
+    fn the_declared_command_names_match_the_functions() {
+        let registered: &[&str] = &[
+            stringify!(build_id),
+            stringify!(list_devices),
+            stringify!(connect_device),
+            stringify!(disconnect_device),
+            stringify!(read_capability),
+            stringify!(journal),
+            stringify!(subscribe_analog_stream),
+        ];
+        for name in ipc::commands::ALL {
+            assert!(
+                registered.contains(name),
+                "`{name}` is declared but is not in the invoke handler"
+            );
+        }
+        assert_eq!(registered.len(), ipc::commands::ALL.len());
     }
 }

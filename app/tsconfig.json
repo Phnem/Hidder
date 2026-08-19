@@ -23,5 +23,5 @@
   // composite project cannot disable emit, so it forces build artifacts to exist
   // purely to satisfy a type check. This config uses no Node built-ins, so there
   // is nothing to separate.
-  "include": ["src", "vite.config.ts"]
+  "include": ["src", "vite.config.ts", "vitest.config.ts"]
 }

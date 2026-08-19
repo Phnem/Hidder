@@ -11,6 +11,10 @@
 use serde::Serialize;
 use tauri::ipc::Channel;
 
+/// The command that hands a channel down. Declared like the others so the
+/// contract test can see it, even though it does nothing yet.
+pub const SUBSCRIBE_ANALOG_STREAM: &str = "subscribe_analog_stream";
+
 /// One sample of key travel.
 ///
 /// `value` is normalised travel in 0..=1, never raw sensor units. Devices report

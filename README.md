@@ -4,9 +4,16 @@ A local configurator for Hall-effect keyboards, and in time for mice. It
 identifies the board itself, reads and writes actuation, rapid trigger, dead
 zones and the rest, and works fully offline with no account.
 
-Status: **skeleton**. Nothing talks to hardware yet. The crate boundaries, the
-safety gate and the licence policy are in place first, on purpose: those are the
-things that are expensive to add once there is code to retrofit them onto.
+Status: **read-only vertical slice**. On one board — an AULA Hero 84 HE — the
+application enumerates it, establishes which protocol it speaks by asking it,
+reads its per-key actuation points, and shows them in a window alongside the
+command that produced them and the scale that converted them. It writes nothing:
+not because writing is switched off, but because a build's write commands come
+from a generated allow-list and this one contains none.
+
+Everything else is still a stub. The crate boundaries, the safety gate and the
+licence policy went in before any of this, on purpose: those are the things that
+are expensive to add once there is code to retrofit them onto.
 
 ## Why it exists
 
@@ -30,7 +37,7 @@ where this starts.
 | `crates/plearn` | Learning mode for unknown hardware |
 | `crates/pjournal` | What was written to a device, and where knowledge of a model came from |
 | `crates/pcore` | Orchestration; the model the UI reads |
-| `app/` | Desktop application (Tauri 2 + React) |
+| `app/` | Desktop application (Tauri 2 + React). Devices, HE, Journal, About |
 | `tools/emu` | Device emulator, so CI can run without hardware |
 | `tools/protodoc` | Generates support and protocol docs from the registry |
 | `tools/ingest` | Vendor-artifact ingestion. Separate workspace, never in a release build |
@@ -57,6 +64,10 @@ because the failure it prevents happens to real hardware:
   proves only that this firmware on this board does not implement it.
 - **Never show a control with no confirmed command behind it.**
 - **`tools/ingest` is physically outside the release build.**
+- **The UI never asks a device anything to refresh an indicator.** Device state
+  is owned by `pcore` and pushed up as events. A front-end polling a device
+  competes with real work on the same endpoint and adds to the pressure that
+  stalls it.
 
 ## Building
 
@@ -76,6 +87,10 @@ Checks, all of which run in CI on Windows, Linux and macOS:
 
 ```bash
 cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace
+```
+
+```bash
+cd app && npm run typecheck && npm test
 ```
 
 ```bash

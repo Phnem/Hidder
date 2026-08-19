@@ -4,27 +4,200 @@
  *
  * Everything crossing the boundary is declared here rather than at call sites,
  * so a rename on the Rust side breaks one file instead of leaking through the
- * component tree as `invoke("some_string")`.
+ * component tree as `invoke("some_string")`. A test on the Rust side reads this
+ * file and fails if a name here is not one it handles, and vice versa — a
+ * mismatch is otherwise silent in both directions.
+ *
+ * The types below mirror `pcore::model`. They are hand-written rather than
+ * generated, and the discipline that keeps them honest is that every state the
+ * Rust side keeps separate stays separate here: no `string | null` where the
+ * other side has three variants, because collapsing them is how "this board
+ * lacks the feature" and "we have no way to ask" become the same grey box.
  */
-import { invoke } from "@tauri-apps/api/core";
-import { Channel } from "@tauri-apps/api/core";
+import { Channel, invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
-// --- Mechanism 1: commands (request/response, UI-initiated) -----------------
+// --- the vocabulary --------------------------------------------------------
 
-export interface DeviceView {
-  id: number;
-  label: string;
-  /** A device whose protocol family is not verified opens read-only. */
-  readOnly: boolean;
+/** How sure one axis of identity is. Never a device's overall confidence. */
+export type Confidence = "unknown" | "candidate" | "high" | "verified";
+
+/** Where knowledge about a capability came from. */
+export type OriginLabel =
+  | "verified on hardware"
+  | "from a vendor artifact"
+  | "assumed";
+
+export interface SignalView {
+  signal: string;
+  /** `differed` argues against a match; `absent` argues nothing at all. */
+  state: "matched" | "differed" | "absent";
 }
+
+export interface AxisView {
+  answer: string | null;
+  confidence: Confidence;
+  signals: SignalView[];
+}
+
+export interface FamilyView {
+  family: string | null;
+  confidence: Confidence;
+  reason:
+    | "no_evidence"
+    | "not_recorded"
+    | "from_registry"
+    | "from_protocol_evidence";
+  /** One of two conditions for a write. See {@link WriteView}. */
+  permitsWrite: boolean;
+  signals: SignalView[];
+}
+
+export interface IdentityView {
+  structural: AxisView;
+  product: AxisView;
+  family: FamilyView;
+}
+
+/** Where a device stands between "plugged in" and "we are talking to it". */
+export type ConnectionView =
+  | { state: "noConfigEndpoint" }
+  | { state: "ready" }
+  | { state: "connected" }
+  | {
+      state: "unreachable";
+      userMessage: string;
+      /** A suspicion, never a finding: the backend gives no error code. */
+      vendorSoftwareSuspected: boolean;
+    }
+  | { state: "stalled"; userMessage: string };
+
+/**
+ * Why a capability has no value.
+ *
+ * Four states rather than a boolean, and the UI must render them differently:
+ * only one of them can ever change by installing an update.
+ */
+export type AvailabilityView =
+  | { state: "readable" }
+  | { state: "notRead" }
+  | { state: "noVerifiedCommand" }
+  | { state: "notPresent"; evidence: string };
+
+export interface CapabilitySlot {
+  /** The canonical id, e.g. `he.actuation`. */
+  id: string;
+  availability: AvailabilityView;
+}
+
+export interface WriteView {
+  familyPermits: boolean;
+  commandsAvailable: number;
+  /** Both conditions. The only field a write control may be enabled on. */
+  enabled: boolean;
+}
+
+export interface DeviceCard {
+  id: number;
+  hardwareId: string;
+  label: string;
+  product: string | null;
+  manufacturer: string | null;
+  /** Whether one exists — never its value. */
+  serialPresent: boolean;
+  identity: IdentityView;
+  connection: ConnectionView;
+  capabilities: CapabilitySlot[];
+  writes: WriteView;
+  modelId: number | null;
+}
+
+export interface MeasurementView {
+  value: number;
+  unit: string;
+  decimals: number;
+  /**
+   * How the value should be shown. Use this rather than formatting `value`:
+   * how many decimals mean anything is a fact about the device's own step.
+   */
+  rendered: string;
+}
+
+export interface KeyMeasurementView {
+  label: string;
+  measurement: MeasurementView;
+}
+
+export type ValueView =
+  | { shape: "scalar"; measurement: MeasurementView }
+  | { shape: "perKey"; keys: KeyMeasurementView[] }
+  | { shape: "compound"; entries: KeyMeasurementView[] }
+  | { shape: "stream"; unit: string };
+
+export interface CapabilityReading {
+  id: string;
+  origin: OriginLabel;
+  originCommand: string | null;
+  /** Whether this may be presented as a fact rather than as an expectation. */
+  fromHardware: boolean;
+  confidence: Confidence;
+  provenance: string;
+  value: ValueView;
+  readAtUnixMs: number;
+}
+
+export interface JournalRow {
+  atUnixMs: number;
+  atMs: number;
+  deviceId: number;
+  family: string;
+  command: string;
+  class: string;
+  intent: "read" | "probe" | "write";
+  payloadLen: number;
+  outcome: "ok" | "refused" | "failed" | "rejected";
+  detail: string | null;
+  verification: string;
+  line: string;
+}
+
+// --- Mechanism 1: commands (request/response, UI-initiated) -----------------
 
 export function buildId(): Promise<string> {
   return invoke<string>("build_id");
 }
 
-export function listDevices(): Promise<DeviceView[]> {
-  return invoke<DeviceView[]>("list_devices");
+export function listDevices(): Promise<DeviceCard[]> {
+  return invoke<DeviceCard[]>("list_devices");
+}
+
+/**
+ * Opens a session: sends the device one command and establishes its protocol
+ * family from the answer.
+ *
+ * Called because a person asked, never on device arrival. The vendor's own
+ * software may be holding the configuration endpoint, and the policy is to
+ * detect that and say so rather than race for it.
+ */
+export function connectDevice(id: number): Promise<DeviceCard> {
+  return invoke<DeviceCard>("connect_device", { id });
+}
+
+export function disconnectDevice(id: number): Promise<DeviceCard> {
+  return invoke<DeviceCard>("disconnect_device", { id });
+}
+
+/** Reads one capability by its canonical id. */
+export function readCapability(
+  id: number,
+  capability: string,
+): Promise<CapabilityReading> {
+  return invoke<CapabilityReading>("read_capability", { id, capability });
+}
+
+/** Everything the safety gate authorised in this run, oldest first. */
+export function journal(): Promise<JournalRow[]> {
+  return invoke<JournalRow[]>("journal");
 }
 
 // --- Mechanism 2: events (rare, backend-initiated) -------------------------
@@ -32,10 +205,15 @@ export function listDevices(): Promise<DeviceView[]> {
 /** Event names must match app/src-tauri/src/ipc/events.rs exactly. */
 export const EVENTS = {
   deviceConnected: "device:connected",
+  deviceUpdated: "device:updated",
   deviceDisconnected: "device:disconnected",
   batteryChanged: "device:battery-changed",
   protocolError: "device:protocol-error",
 } as const;
+
+export interface DeviceGoneEvent {
+  deviceId: number;
+}
 
 export interface ProtocolErrorEvent {
   deviceId: number;
@@ -51,14 +229,52 @@ export interface BatteryEvent {
   charging: boolean;
 }
 
-export function onProtocolError(
-  handler: (event: ProtocolErrorEvent) => void,
+/**
+ * Everything the backend can announce, in one union.
+ *
+ * Declared as one type so the state module can be a total function over it: a
+ * new event added on the Rust side and forgotten here becomes a type error at
+ * the place that handles them, rather than a message silently ignored.
+ */
+export type DeviceEvent =
+  | { kind: "connected"; card: DeviceCard }
+  | { kind: "updated"; card: DeviceCard }
+  | { kind: "disconnected"; deviceId: number }
+  | { kind: "protocolError"; error: ProtocolErrorEvent };
+
+/**
+ * Subscribes to every device event and hands them over as one stream.
+ *
+ * One subscription point rather than four, because the four have to be undone
+ * together: a component that unlistened three of them would keep receiving the
+ * fourth and mutate state nobody is rendering.
+ */
+export async function onDeviceEvents(
+  handler: (event: DeviceEvent) => void,
 ): Promise<UnlistenFn> {
-  return listen<ProtocolErrorEvent>(EVENTS.protocolError, (e) =>
-    handler(e.payload),
-  );
+  const unlisteners = await Promise.all([
+    listen<DeviceCard>(EVENTS.deviceConnected, (e) =>
+      handler({ kind: "connected", card: e.payload }),
+    ),
+    listen<DeviceCard>(EVENTS.deviceUpdated, (e) =>
+      handler({ kind: "updated", card: e.payload }),
+    ),
+    listen<DeviceGoneEvent>(EVENTS.deviceDisconnected, (e) =>
+      handler({ kind: "disconnected", deviceId: e.payload.deviceId }),
+    ),
+    listen<ProtocolErrorEvent>(EVENTS.protocolError, (e) =>
+      handler({ kind: "protocolError", error: e.payload }),
+    ),
+  ]);
+  return () => unlisteners.forEach((off) => off());
 }
 
+/**
+ * Charge changes for a wireless device.
+ *
+ * Declared, and nothing emits it yet: no device this project speaks to reports
+ * a charge. TICKET-19/20.
+ */
 export function onBatteryChanged(
   handler: (event: BatteryEvent) => void,
 ): Promise<UnlistenFn> {
@@ -78,8 +294,9 @@ export interface AnalogSample {
  * Subscribe to the analog travel stream.
  *
  * A channel, not an event listener: async event listeners may run out of order,
- * and a reordered waveform is wrong data rather than late data. Rejects until
- * TICKET-15 implements it.
+ * and a reordered waveform is wrong data rather than late data — while looking
+ * on screen exactly like a real measurement. Rejects until TICKET-15 implements
+ * it; the call exists now so that ticket is written against this shape.
  */
 export async function subscribeAnalogStream(
   deviceId: number,

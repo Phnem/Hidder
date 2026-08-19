@@ -1,14 +1,20 @@
 /*
- * Design tokens from spec.md Appendix C. Draft palette, not final branding.
+ * Design tokens from spec.md Appendix C, plus the semantic ones the screens in
+ * TICKET-13 actually needed. Draft palette, not final branding.
  *
- * The accent token is named `--accent-gold` here, not after the football club
- * the palette proposal referenced: the hex value is free to use, an internal
- * token name referencing someone else's brand is not something to carry into a
+ * The accent token is named `--accent-gold`, not after the football club the
+ * palette proposal referenced: the hex value is free to use, an internal token
+ * name referencing someone else's brand is not something to carry into a
  * published style guide (see the flag in spec.md Appendix C).
  *
- * Semantic tokens (success/warning/danger) are not invented here. They are
- * needed for the Journal and low-battery warnings, and inventing them before
- * those screens exist would just be three more colours to change later.
+ * # The one thing colour is load-bearing for here
+ *
+ * How sure we are. A value read off hardware, a value we have no command for,
+ * and a device that has stalled must not look alike, because the product rule
+ * is that a control with nothing confirmed behind it is never shown as working.
+ * So `--verified`, `--warn` and `--danger` exist as their own tokens rather than
+ * as three shades of the accent, and every one of them is paired with a word in
+ * the markup: colour is the fast read, never the only one.
  */
 :root {
   --white: #ffffff;
@@ -18,17 +24,37 @@
 
   --bg: var(--white);
   --bg-raised: var(--grey);
+  --bg-sunken: #e6e6e6;
   --fg: var(--night-black);
   --fg-muted: #5a5a5a;
+  --fg-faint: #8a8a8a;
+  --line: #d7d7d7;
   --accent: var(--accent-gold);
+
+  --verified: #12704a;
+  --verified-wash: #e3f1ea;
+  --warn: #8a6100;
+  --warn-wash: #fdf3d8;
+  --danger: #a32a1f;
+  --danger-wash: #f7e4e2;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: var(--night-black);
     --bg-raised: #242424;
+    --bg-sunken: #121212;
     --fg: var(--white);
     --fg-muted: #a0a0a0;
+    --fg-faint: #767676;
+    --line: #383838;
+
+    --verified: #5fcf9c;
+    --verified-wash: #16332a;
+    --warn: #f0c256;
+    --warn-wash: #33290f;
+    --danger: #f08a80;
+    --danger-wash: #351815;
   }
 }
 
@@ -43,31 +69,52 @@ body {
   font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
+button {
+  font: inherit;
+}
+
+button:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* --- shell ---------------------------------------------------------------- */
+
 .shell {
-  max-width: 60rem;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  min-height: 100vh;
+  max-width: 76rem;
   margin: 0 auto;
-  padding: 2rem 1.5rem;
+  padding: 1.5rem 1.5rem 0;
+  gap: 1rem;
+}
+
+.shell > header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
 }
 
 h1 {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: 1.375rem;
   letter-spacing: -0.01em;
 }
 
 .build {
-  margin: 0.25rem 0 1.5rem;
+  margin: 0;
   color: var(--fg-muted);
   font-size: 0.8125rem;
   font-variant-numeric: tabular-nums;
-  min-height: 1.5em;
 }
 
 nav ul {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin: 0 0 1.5rem;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
@@ -78,8 +125,12 @@ nav button {
   border-radius: 0.375rem;
   background: var(--bg-raised);
   color: var(--fg);
-  font: inherit;
   cursor: pointer;
+}
+
+nav button[aria-current="page"] {
+  background: var(--fg);
+  color: var(--bg);
 }
 
 /*
@@ -88,34 +139,360 @@ nav button {
  * control with no confirmed command behind it is never shown as if it works.
  */
 nav button:disabled {
-  opacity: 0.45;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
-nav button:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+main {
+  padding-bottom: 2rem;
 }
 
-section {
+/* --- the status bar ------------------------------------------------------- */
+
+/*
+ * A docked bar saying what is connected, the way every configurator in the
+ * prior-art notes has one. It is the answer to "is this thing talking to my
+ * keyboard" without changing screens.
+ */
+.statusbar {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 0.75rem;
+  border-top: 1px solid var(--line);
+  background: var(--bg);
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+}
+
+.statusbar .spacer {
+  flex: 1;
+}
+
+/* --- generic bits --------------------------------------------------------- */
+
+.panel {
   padding: 1rem 1.25rem;
+  border: 1px solid var(--line);
   border-radius: 0.5rem;
   background: var(--bg-raised);
 }
 
-section ul {
-  margin: 0;
-  padding-left: 1.25rem;
+.panel + .panel {
+  margin-top: 1rem;
 }
 
-.muted {
-  margin: 0;
+.panel h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+
+.panel h3 {
+  margin: 1rem 0 0.375rem;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   color: var(--fg-muted);
 }
 
-.error {
-  margin: 0;
+.muted {
+  margin: 0.25rem 0;
+  color: var(--fg-muted);
+}
+
+.faint {
+  color: var(--fg-faint);
+}
+
+.mono {
+  font-family: ui-monospace, "Cascadia Mono", "Consolas", monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.actions button {
+  padding: 0.375rem 0.875rem;
+  border: 1px solid var(--line);
+  border-radius: 0.375rem;
+  background: var(--bg);
   color: var(--fg);
-  border-left: 3px solid var(--accent);
-  padding-left: 0.75rem;
+  cursor: pointer;
+}
+
+.actions button.primary {
+  border-color: transparent;
+  background: var(--accent);
+  color: var(--night-black);
+  font-weight: 600;
+}
+
+.actions button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* --- badges --------------------------------------------------------------- */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.0625rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge.verified {
+  background: var(--verified-wash);
+  color: var(--verified);
+}
+
+.badge.warn {
+  background: var(--warn-wash);
+  color: var(--warn);
+}
+
+.badge.danger {
+  background: var(--danger-wash);
+  color: var(--danger);
+}
+
+.badge.neutral {
+  background: var(--bg-sunken);
+  color: var(--fg-muted);
+}
+
+/* --- notices -------------------------------------------------------------- */
+
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  border-left: 4px solid var(--danger);
+  border-radius: 0.375rem;
+  background: var(--danger-wash);
+  color: var(--fg);
+}
+
+.notice p {
+  margin: 0;
+}
+
+.notice button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* --- device cards --------------------------------------------------------- */
+
+.cards {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr));
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  padding: 1rem 1.125rem;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  background: var(--bg-raised);
+}
+
+.card.selected {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.card header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.card h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.card .hardware-id {
+  margin: 0.125rem 0 0;
+  font-size: 0.75rem;
+  color: var(--fg-faint);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.125rem 0.75rem;
+  margin: 0.75rem 0 0;
+  font-size: 0.8125rem;
+}
+
+.facts dt {
+  color: var(--fg-muted);
+}
+
+.facts dd {
+  margin: 0;
+}
+
+/* --- tables --------------------------------------------------------------- */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--fg-muted);
+  border-bottom: 1px solid var(--line);
+  padding: 0.375rem 0.5rem;
+  white-space: nowrap;
+}
+
+td {
+  padding: 0.375rem 0.5rem;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+tr.refused td,
+tr.failed td,
+tr.rejected td {
+  background: var(--danger-wash);
+}
+
+.scroll-x {
+  overflow-x: auto;
+}
+
+/* --- the keyboard --------------------------------------------------------- */
+
+.he {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 3fr) minmax(16rem, 1fr);
+  align-items: start;
+}
+
+@media (max-width: 60rem) {
+  .he {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.keyboard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  background: var(--bg-sunken);
+  overflow-x: auto;
+}
+
+.keyboard .row {
+  display: flex;
+  gap: 0.25rem;
+}
+
+/*
+ * Keys are sized in key units so the placeholder layout's widths mean something.
+ * 2.5rem is a compromise: large enough to print a millimetre value under the
+ * legend, small enough that a 15-key row fits without scrolling in the default
+ * window.
+ */
+.key {
+  --unit: 2.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.0625rem;
+  width: calc(var(--unit) * var(--w, 1));
+  height: var(--unit);
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 0.25rem;
+  background: var(--bg);
+  color: var(--fg-faint);
+  font-size: 0.6875rem;
+  line-height: 1.1;
+  cursor: pointer;
+  flex: none;
+}
+
+/* A key with a value read off the board. The only keys that get full colour. */
+.key.has-value {
+  color: var(--fg);
+  border-color: var(--verified);
+  background: var(--verified-wash);
+}
+
+.key.selected {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.key .legend {
+  font-weight: 600;
+}
+
+.key .value {
+  font-size: 0.5625rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.legend-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 0.75rem;
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+}
+
+.legend-key span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.swatch {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 0.1875rem;
+  border: 1px solid var(--line);
+  display: inline-block;
+}
+
+.swatch.read {
+  border-color: var(--verified);
+  background: var(--verified-wash);
+}
+
+.swatch.unread {
+  background: var(--bg);
 }
