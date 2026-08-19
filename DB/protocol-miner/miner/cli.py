@@ -10,6 +10,7 @@ from pathlib import Path
 
 from miner.config import default_settings
 from miner.orchestrator.ingest import ingest_file
+from miner.orchestrator.analyze import analyze_artifact
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -20,6 +21,8 @@ def _parser() -> argparse.ArgumentParser:
     ingest = commands.add_parser("ingest", help="Ingest a local artifact into CAS")
     ingest.add_argument("path", type=Path)
     ingest.add_argument("--vendor")
+    analyze = commands.add_parser("analyze", help="Run static extractors for an ingested SHA-256")
+    analyze.add_argument("artifact_id", help="SHA-256 or sha256:<digest>")
     return parser
 
 
@@ -40,6 +43,14 @@ def main(argv: list[str] | None = None) -> int:
         try:
             result = ingest_file(default_settings(cas_root=args.cas_root), args.path, args.vendor)
         except (OSError, ValueError) as error:
+            print(f"error: {error}", file=sys.stderr)
+            return 2
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0
+    if args.command == "analyze":
+        try:
+            result = analyze_artifact(default_settings(cas_root=args.cas_root), args.artifact_id)
+        except (OSError, ValueError, json.JSONDecodeError) as error:
             print(f"error: {error}", file=sys.stderr)
             return 2
         print(json.dumps(result, ensure_ascii=False, indent=2))
