@@ -61,3 +61,10 @@ def test_pe_import_table_is_parsed_without_relying_on_strings(tmp_path: Path) ->
     binary.write_bytes(raw)
     observations = scan_file("1" * 64, "unpacked/valid.dll", binary)
     assert any(item.kind == "native.pe_import" and item.value["library"] == "hid.dll" for item in observations)
+
+
+def test_nested_blocks_do_not_break_function_data_flow_boundaries(tmp_path: Path) -> None:
+    source = tmp_path / "nested.js"
+    source.write_text("function setDpi(value) { if (value) { log(value); } const packet = new Uint8Array(2); packet[0] = 1; device.sendReport(2, packet); }")
+    observations = scan_file("2" * 64, "unpacked/nested.js", source)
+    assert any(item.kind == "protocol.buffer_builder" for item in observations)
