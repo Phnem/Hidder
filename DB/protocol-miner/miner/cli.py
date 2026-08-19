@@ -55,7 +55,7 @@ def _doctor() -> int:
     for tool in ("node", "playwright", "frida", "analyzeHeadless", "7z", "asar"):
         print(f"{tool}: {'available' if shutil.which(tool) else 'unavailable'}")
     print(f"py7zr: {'available' if importlib.util.find_spec('py7zr') else 'unavailable'}")
-    print("Static foundation available. Dynamic native pipeline disabled.")
+    print("Static pipeline available. Dynamic native pipeline disabled.")
     return 0
 
 
