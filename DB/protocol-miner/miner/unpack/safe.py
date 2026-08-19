@@ -14,6 +14,7 @@ from miner.config import Settings
 from miner.detect.file_type import detect
 from miner.storage.cas import sha256_file
 from miner.unpack.asar import extract as extract_asar
+from miner.unpack.cab import extract as extract_cab
 from miner.unpack.safe_paths import safe_relative as _safe_relative
 
 try:
@@ -53,6 +54,8 @@ class SafeUnpacker:
             return self._seven_zip(archive, destination)
         if kind == "asar":
             return self._asar(archive, destination)
+        if kind == "cab":
+            return self._cab(archive, destination)
         if tarfile.is_tarfile(archive):
             return self._tar(archive, destination)
         return UnpackResult("not_archive", None, 0, 0, f"Static unpack unavailable for {kind}")
@@ -63,6 +66,14 @@ class SafeUnpacker:
             count, total = extract_asar(archive, destination, self.settings.max_file_count, self.settings.max_expanded_size)
             return UnpackResult("success", destination, count, total)
         except (OSError, ValueError) as error:
+            return UnpackResult("error", None, 0, 0, str(error))
+
+    def _cab(self, archive: Path, destination: Path) -> UnpackResult:
+        try:
+            self._prepare(destination)
+            count, total = extract_cab(archive, destination, self.settings.max_file_count, self.settings.max_expanded_size)
+            return UnpackResult("success", destination, count, total)
+        except (OSError, ValueError, CorruptionError, NotSupportedError) as error:
             return UnpackResult("error", None, 0, 0, str(error))
 
     def unpack_nested(self, root_result: UnpackResult, root_sha256: str) -> list[dict[str, object]]:

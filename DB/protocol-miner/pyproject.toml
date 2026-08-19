@@ -7,6 +7,7 @@ name = "peripheral-protocol-miner"
 version = "0.1.0"
 description = "Evidence-first static protocol mining for peripheral vendor artifacts"
 requires-python = ">=3.11"
+dependencies = ["cabarchive>=0.2.5", "py7zr>=0.20.0"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

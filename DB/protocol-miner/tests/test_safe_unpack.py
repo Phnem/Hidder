@@ -1,5 +1,6 @@
 import zipfile
 import json
+from cabarchive import CabArchive, CabFile
 from pathlib import Path
 
 from miner.config import default_settings
@@ -70,3 +71,14 @@ def test_asar_extracts_indexed_files_without_running_electron(tmp_path: Path) ->
     result = SafeUnpacker(settings).unpack(archive, sha256_file(archive), "app.asar")
     assert result.status == "success"
     assert (result.output_dir / "app.js").read_bytes() == content
+
+
+def test_cab_extracts_with_pure_python_adapter(tmp_path: Path) -> None:
+    cabinet = CabArchive()
+    cabinet["app/device.json"] = CabFile(b"{}")
+    archive = tmp_path / "driver.cab"
+    archive.write_bytes(cabinet.save())
+    settings = default_settings(root=tmp_path / "miner", cas_root=tmp_path / "cas")
+    result = SafeUnpacker(settings).unpack(archive, sha256_file(archive), "driver.cab")
+    assert result.status == "success"
+    assert (result.output_dir / "app" / "device.json").read_bytes() == b"{}"
