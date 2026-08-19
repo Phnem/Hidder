@@ -116,3 +116,14 @@ def ingest_all(settings: Settings, vendor: str | None = None) -> list[dict[str, 
     inbox = settings.root / "inbox"
     inbox.mkdir(parents=True, exist_ok=True)
     return [ingest_file(settings, path, vendor) for path in sorted(inbox.iterdir()) if path.is_file()]
+
+
+def ingest_cas(settings: Settings, sha256: str, filename: str, vendor: str | None = None) -> dict[str, str]:
+    """Register an existing compatible CAS blob without duplicating it."""
+    digest = sha256.removeprefix("sha256:").lower()
+    if len(digest) != 64 or any(character not in "0123456789abcdef" for character in digest):
+        raise ValueError("ingest-cas expects a SHA-256 or sha256:<digest>")
+    source = settings.cas_root / digest[:2] / digest
+    if not source.is_file():
+        raise ValueError(f"CAS blob is missing for {digest}")
+    return ingest_file(settings, source, vendor, source_type="existing_registry_cas_artifact", original_filename=filename, provenance_extra={"cas_reused": True})

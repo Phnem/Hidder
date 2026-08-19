@@ -73,7 +73,14 @@ def synthesize(observations: list[Observation]) -> tuple[ProtocolCandidate, list
     if not plan:
         plan.append({"need": "official vendor configurator, utility, or driver artifact", "reason": "obtain stronger static protocol evidence"})
 
-    family = "via-qmk" if any(item.kind == "ecosystem.via_qmk" for item in observations) else None
+    if any(item.kind == "ecosystem.vial" for item in observations):
+        family = "vial"
+    elif any(item.kind == "ecosystem.via_qmk" for item in observations):
+        family = "via-qmk"
+    elif any(item.kind == "ecosystem.qmk" for item in observations):
+        family = "qmk"
+    else:
+        family = None
     candidate = ProtocolCandidate(
         family_candidate=family, identity=identity, topology=topology, capabilities=capabilities,
         commands=commands, dangerous_commands=dangerous, evidence_refs=[item.observation_id for item in observations],

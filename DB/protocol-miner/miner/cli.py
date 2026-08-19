@@ -11,7 +11,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from miner.config import default_settings
-from miner.orchestrator.ingest import ingest_all, ingest_file, ingest_url
+from miner.orchestrator.ingest import ingest_all, ingest_cas, ingest_file, ingest_url
 from miner.orchestrator.analyze import analyze_artifact
 from miner.storage.cleanup import clean_workspace
 
@@ -34,6 +34,10 @@ def _parser() -> argparse.ArgumentParser:
     ingest_url.add_argument("--vendor")
     ingest_all_parser = commands.add_parser("ingest-all", help="Ingest every file in inbox/")
     ingest_all_parser.add_argument("--vendor")
+    ingest_cas_parser = commands.add_parser("ingest-cas", help="Register an existing compatible CAS SHA-256")
+    ingest_cas_parser.add_argument("sha256")
+    ingest_cas_parser.add_argument("--filename", required=True, help="Original filename for type detection and provenance")
+    ingest_cas_parser.add_argument("--vendor")
     analyze = commands.add_parser("analyze", help="Run static extractors for an ingested SHA-256")
     analyze.add_argument("artifact_id", help="SHA-256 or sha256:<digest>")
     report = commands.add_parser("report", help="Print the previously generated summary")
@@ -97,6 +101,14 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "ingest-all":
         try:
             result = ingest_all(settings, args.vendor)
+        except (OSError, ValueError) as error:
+            print(f"error: {error}", file=sys.stderr)
+            return 2
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0
+    if args.command == "ingest-cas":
+        try:
+            result = ingest_cas(settings, args.sha256, args.filename, args.vendor)
         except (OSError, ValueError) as error:
             print(f"error: {error}", file=sys.stderr)
             return 2
