@@ -3,7 +3,7 @@
 Launches a controlled instance of Microsoft Edge or Google Chrome with an isolated
 temporary profile, installs WebHID method and event wrappers before page scripts execute,
 and passively observes real WebHID calls (both outbound reports and inbound input reports)
-without altering arguments or emulating devices.
+without altering arguments, emulating devices, or capturing user keystrokes.
 """
 
 from __future__ import annotations

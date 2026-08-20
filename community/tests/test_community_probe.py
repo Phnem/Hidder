@@ -21,6 +21,7 @@ from community.probe.schema import (
     DeviceIdentity,
     GuidedAction,
     QualityScore,
+    TransitionDelta,
     VendorSoftwareInfo,
     SCHEMA_VERSION,
 )
@@ -65,7 +66,7 @@ def test_generic_driver_strings_cannot_become_resolved_model():
 
 
 def test_failed_attach_reports_empty_hooks_installed():
-    obs = PassiveTransportObserver()
+    obs = PassiveTransportObserver(target_vid="372E", target_pid="103E")
     obs.attach_native(999999, "FakeApp.exe")
     assert obs.capture_metadata.observer_attached is False
     assert obs.capture_metadata.hooks_installed == []
@@ -81,8 +82,8 @@ def test_webhid_script_contains_transparent_wrappers_and_inputreport():
     assert "window.__peripheral_webhid_injected__" in WEBHID_INJECTION_SCRIPT
 
 
-def test_observer_idle_deduplication():
-    obs = PassiveTransportObserver()
+def test_repeated_report_deduplication_compacts_traffic():
+    obs = PassiveTransportObserver(target_vid="372E", target_pid="103E")
     obs.start_idle_baseline()
     
     for _ in range(100):
@@ -97,34 +98,60 @@ def test_observer_idle_deduplication():
     
     assert len(obs.observations) == 1
     assert obs.observations[0].repeat_count == 100
+    assert obs.observations[0].first_seen is not None
+    assert obs.observations[0].last_seen is not None
     assert len(obs.idle_baseline_events) >= 1
 
 
-def test_zero_traffic_caps_score_at_20():
-    wizard = CommunityResearchWizard(is_demo=False)
-    wizard.guided_actions.append(GuidedAction(
-        action_id="test_act",
-        category="vendor_experiment",
-        instruction="Do something",
-        expected_semantic={},
-        started_at=100.0,
-        finished_at=110.0,
-        duration_seconds=10.0,
-        status="completed",
-    ))
-    quality = wizard._calculate_quality()
-    assert quality.traffic_observed is False
-    assert quality.score <= 20
-    assert "no protocol traffic" in quality.rating
+def test_device_id_binding_in_transport_events():
+    obs = PassiveTransportObserver(target_vid="372E", target_pid="103E")
+    obs.record_event(
+        api="sendReport",
+        direction="out",
+        report_id=9,
+        bytes_hex="0913001e004b0074",
+        process_basename="browser.exe"
+    )
+    assert len(obs.observations) == 1
+    assert obs.observations[0].device_id == "372E:103E"
 
 
-def test_pairwise_a_b_a_correlation_with_restored_values():
-    obs = PassiveTransportObserver()
+def test_boot_keyboard_report_privacy_filtering_outside_guided_input():
+    obs = PassiveTransportObserver(target_vid="372E", target_pid="103E")
+    
+    # 1. Background typing outside guided input action should be dropped
+    obs.set_active_action(None)
+    obs._handle_raw_event({
+        "api": "inputreport",
+        "direction": "in",
+        "report_id": 1,
+        "bytes_hex": "0000040000000000",  # Standard boot keyboard report (Key 'A')
+        "timestamp": time.time(),
+    })
+    assert len(obs.observations) == 0
+
+    # 2. Input report inside guided analog action should be captured
+    obs.set_active_action("he_w_light")
+    obs._handle_raw_event({
+        "api": "inputreport",
+        "direction": "in",
+        "report_id": 1,
+        "bytes_hex": "0000040000000000",
+        "timestamp": time.time(),
+    })
+    assert len(obs.observations) == 1
+    assert obs.observations[0].capture_source == "webhid_inputreport"
+
+
+def test_change_and_restore_merge_with_checksum_detection_and_no_fake_baseline():
+    obs = PassiveTransportObserver(target_vid="372E", target_pid="103E")
+    
+    # Real baseline packet with matching structural key (Report 9, Opcode 0x13, Key 0x001E, Travel 0x33, Checksum 0x8C)
     obs.start_idle_baseline()
     obs.record_event("sendFeatureReport", "feature_out", 9, "0913001e0033008c", "browser.exe")
     obs.stop_idle_baseline()
     
-    # 1. Action Change (B)
+    # 1. Action Change (B): Travel 0x4B (75), Checksum 0x74
     action_change = GuidedAction(
         action_id="he_actuation_change",
         category="vendor_experiment",
@@ -138,7 +165,7 @@ def test_pairwise_a_b_a_correlation_with_restored_values():
     obs.record_event("sendFeatureReport", "feature_out", 9, "0913001e004b0074", "browser.exe")
     obs.set_active_action(None)
 
-    # 2. Action Restore (A')
+    # 2. Action Restore (A'): Travel 0x33 (51), Checksum 0x8C
     action_restore = GuidedAction(
         action_id="he_actuation_restore",
         category="vendor_restore",
@@ -157,18 +184,77 @@ def test_pairwise_a_b_a_correlation_with_restored_values():
     candidates = obs.correlate_actions([action_change, action_restore])
     assert len(candidates) == 1
     c = candidates[0]
-    assert c.action_id == "he_actuation"
+    
+    assert c.change_action_id == "he_actuation_change"
+    assert c.restore_action_id == "he_actuation_restore"
     assert c.semantic == "he.actuation"
     assert c.candidate_reports == [9]
-    assert 5 in c.changed_offsets  # 0x4B vs 0x33
-    assert 7 in c.changed_offsets  # Checksum delta
-    assert c.after_values == ["0913001e004b0074"]
-    assert c.restored_values == ["0913001e0033008c"]
+    
+    # Offsets 5 (travel) and 7 (checksum)
+    assert c.changed_offsets == [5, 7]
+    assert c.semantic_offsets == [5]
+    assert c.checksum_offsets == [7]
+    
+    assert c.baseline_available is True
+    assert c.baseline_reports == ["0913001e0033008c"]
+    assert c.change_reports == ["0913001e004b0074"]
+    assert c.restore_reports == ["0913001e0033008c"]
+    assert c.restore_matches_original is True
+    
+    assert len(c.transitions) == 2
+    t_travel = next(t for t in c.transitions if t.offset == 5)
+    assert t_travel.before == "33"
+    assert t_travel.changed == "4b"
+    assert t_travel.restored == "33"
+    assert t_travel.field_role == "semantic_field"
+    
+    t_checksum = next(t for t in c.transitions if t.offset == 7)
+    assert t_checksum.before == "8c"
+    assert t_checksum.changed == "74"
+    assert t_checksum.restored == "8c"
+    assert t_checksum.field_role == "checksum_candidate"
 
 
-def test_rt_table_disambiguation_avoids_false_single_byte_attribution():
-    obs = PassiveTransportObserver()
-    # Simulate a full 64-byte RT configuration table sent during RT press test
+def test_fake_zero_baseline_is_forbidden_when_no_real_baseline_exists():
+    obs = PassiveTransportObserver(target_vid="372E", target_pid="103E")
+    # NO idle baseline recorded
+    
+    action_change = GuidedAction(
+        action_id="light_effect_change",
+        category="vendor_experiment",
+        instruction="Change RGB",
+        expected_semantic={"setting": "light.effect"},
+        started_at=10.0,
+        finished_at=12.0,
+    )
+    obs.set_active_action("light_effect_change")
+    obs.record_event("sendFeatureReport", "feature_out", 9, "0904010200000007", "browser.exe")
+    obs.set_active_action(None)
+
+    action_restore = GuidedAction(
+        action_id="light_effect_restore",
+        category="vendor_restore",
+        instruction="Restore RGB",
+        expected_semantic={"setting": "light.effect", "restore": True},
+        started_at=13.0,
+        finished_at=15.0,
+        restore_attempted=True,
+    )
+    obs.set_active_action("light_effect_restore")
+    obs.record_event("sendFeatureReport", "feature_out", 9, "0904010100000006", "browser.exe")
+    obs.set_active_action(None)
+
+    candidates = obs.correlate_actions([action_change, action_restore])
+    assert len(candidates) == 1
+    c = candidates[0]
+    # Baseline must be empty, not synthetic zero string
+    assert c.baseline_available is False
+    assert c.baseline_reports == []
+    assert c.restore_matches_original is True
+
+
+def test_rt_press_release_ambiguity_does_not_over_promote_confidence():
+    obs = PassiveTransportObserver(target_vid="372E", target_pid="103E")
     rt_table_b = "0919" + "0202020202020202" * 7 + "000000000000"
     rt_table_a = "0919" + "0101010101010101" * 7 + "000000000000"
 
@@ -199,11 +285,32 @@ def test_rt_table_disambiguation_avoids_false_single_byte_attribution():
 
     candidates = obs.correlate_actions([act_change, act_restore])
     assert len(candidates) == 1
-    # Must be flagged as RT table rather than claiming single isolated byte
-    assert "rt_table" in candidates[0].semantic
+    c = candidates[0]
+    assert "rt_table" in c.semantic
+    assert c.notes is not None
+    assert "Composite" in c.notes
+    assert c.confidence == "CommunityGuidedObservation"
 
 
-def test_wizard_demo_run_produces_valid_json():
+def test_quality_score_requires_real_evidence_and_zero_traffic_cap():
+    wizard = CommunityResearchWizard(is_demo=False)
+    wizard.guided_actions.append(GuidedAction(
+        action_id="test_act",
+        category="vendor_experiment",
+        instruction="Do something",
+        expected_semantic={},
+        started_at=100.0,
+        finished_at=110.0,
+        duration_seconds=10.0,
+        status="completed",
+    ))
+    quality = wizard._calculate_quality()
+    assert quality.traffic_observed is False
+    assert quality.score <= 20
+    assert "no protocol traffic" in quality.rating
+
+
+def test_wizard_demo_run_produces_valid_json_with_compact_structure():
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_path = Path(tmpdir)
         wizard = CommunityResearchWizard(is_demo=True, output_dir=tmp_path)
@@ -219,6 +326,13 @@ def test_wizard_demo_run_produces_valid_json():
         assert data["quality"]["score"] >= 80
         assert "capture" in data
         assert "browser_webhid_api_observer" in data["capture"]["mechanism"]
+        assert len(data["correlations"]) >= 1
+        
+        # Verify correlations structure
+        c0 = data["correlations"][0]
+        assert "change_action_id" in c0
+        assert "transitions" in c0
+        assert "restore_matches_original" in c0
 
 
 def test_critical_security_no_raw_hid_writes_in_probe():

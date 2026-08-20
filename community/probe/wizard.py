@@ -61,10 +61,7 @@ class CommunityResearchWizard:
         self.completed: bool = False
         self.started_at: str = ""
         
-        self.observer = PassiveTransportObserver(
-            target_vid=self.selected_device.vid if self.selected_device else "",
-            target_pid=self.selected_device.pid if self.selected_device else ""
-        )
+        self.observer = PassiveTransportObserver()
 
     def run(self) -> Path:
         """Run the full guided workflow and export the JSON bundle."""
@@ -109,7 +106,8 @@ class CommunityResearchWizard:
         print("====================================================\n")
 
     def _prompt_choice(self, prompt: str, options: list[str], default: int = 1) -> int:
-        print(prompt)
+        if prompt:
+            print(prompt)
         for idx, opt in enumerate(options, 1):
             print(f" [{idx}] {opt}")
         while True:
@@ -162,7 +160,7 @@ class CommunityResearchWizard:
         print("----------------------------------------------------")
         print("Например: AULA F75, AULA HERO 84 HE, Attack Shark X68, ATK F1, Logitech G502")
         if self.is_demo:
-            self.user_reported_model = "Demo Device 2026"
+            self.user_reported_model = "AULA HERO 84 HE"
             print(f"> Модель (demo): {self.user_reported_model}")
             return
 
@@ -217,8 +215,8 @@ class CommunityResearchWizard:
                 device_path=f"HID\\{self.user_reported_model}",
             )
         print(f"[+] Выбрано: {self.selected_device.display_name} ({self.selected_device.vid}:{self.selected_device.pid})")
-        self.observer.target_vid = self.selected_device.vid
-        self.observer.target_pid = self.selected_device.pid
+        self.observer.target_vid = self.selected_device.vid.upper().replace("0X", "")
+        self.observer.target_pid = self.selected_device.pid.upper().replace("0X", "")
 
     def _step_physical_input_baseline(self) -> None:
         if self.category == "keyboard":
@@ -386,15 +384,24 @@ class CommunityResearchWizard:
         return "", None
 
     def _step_idle_baseline(self) -> None:
-        print("\n[i] Снятие фонового трафика (3 секунды, не трогайте настройки)...")
+        print("\n----------------------------------------------------")
+        print("Шаг 3 — Снятие фонового трафика устройства (Idle Baseline)")
+        print("----------------------------------------------------")
+        print("Пожалуйста, ничего не трогайте и не нажимайте 3 секунды...")
         self.observer.start_idle_baseline()
         if self.is_demo:
             for _ in range(3):
-                self.observer.record_event("sendFeatureReport", "feature_out", 0, "000000000000", self.vendor_process_name or "browser.exe")
-        time.sleep(1.0 if self.is_demo else 3.0)
+                self.observer.record_event(
+                    api="sendFeatureReport",
+                    direction="feature_out",
+                    report_id=0,
+                    bytes_hex="000000000000",
+                    process_basename=self.vendor_process_name or "browser.exe"
+                )
+        time.sleep(0.5 if self.is_demo else 3.0)
         self.observer.stop_idle_baseline()
         if len(self.observer.idle_baseline_events) > 0:
-            print(f"[+] Фоновый трафик зафиксирован ({len(self.observer.idle_baseline_events)} пакетов).")
+            print(f"[✓] Фоновый трафик зафиксирован ({len(self.observer.idle_baseline_events)} пакетов).")
         else:
             print("[i] Фоновый трафик отсутствует (устройство находится в состоянии покоя).")
 
@@ -588,7 +595,7 @@ class CommunityResearchWizard:
         print("3. Вернитесь сюда и нажмите [ENTER] для завершения шага.")
         
         if self.is_demo:
-            time.sleep(0.1)
+            time.sleep(0.05)
             self.observer.record_event(
                 api="sendFeatureReport",
                 direction="feature_out",
@@ -635,21 +642,35 @@ class CommunityResearchWizard:
         device_bound = self.selected_device is not None
         vendor_bound = self.observer.capture_metadata.observer_attached
         
+        correlations = self.observer.correlate_actions(self.guided_actions)
+        paired_corrs = [c for c in correlations if c.restore_action_id is not None and c.changed_offsets]
+        has_mirrored_restore = any(c.restore_matches_original for c in paired_corrs)
+        
         if not traffic_seen:
             score = 15 if completed_actions else 5
             rating = "Guided actions only — no protocol traffic"
         else:
-            score = 30
+            score = 25
             if device_bound:
                 score += 20
             if vendor_bound:
                 score += 15
             if idle_seen:
                 score += 15
-            if len(restore_actions) > 0:
+            if len(paired_corrs) > 0:
+                score += min(15, len(paired_corrs) * 5)
+            if has_mirrored_restore:
                 score += 10
             if len(analog_actions) > 0 or len(input_actions) > 0:
-                score += 10
+                score += 5
+                
+            # Quality integrity caps:
+            # Score >= 80 requires real traffic, bound device, and paired correlation
+            if score >= 80:
+                if not (traffic_seen and device_bound and len(paired_corrs) > 0):
+                    score = 75
+            if score >= 90 and not idle_seen:
+                score = 85
                 
             score = min(100, max(0, score))
             if score >= 80:
@@ -668,7 +689,7 @@ class CommunityResearchWizard:
             vendor_process_bound=vendor_bound,
             traffic_observed=traffic_seen,
             idle_baseline_captured=idle_seen,
-            change_restore_pairs_count=len(restore_actions),
+            change_restore_pairs_count=len(paired_corrs),
             known_input_actions_count=len(input_actions),
             analog_actions_count=len(analog_actions),
         )
@@ -680,7 +701,6 @@ class CommunityResearchWizard:
         
         dev_id = self.selected_device
         
-        # Resolve model identity safely (never generic strings)
         raw_product = dev_id.product_string if dev_id else ""
         if raw_product and not is_generic_driver_string(raw_product):
             resolved_model = raw_product

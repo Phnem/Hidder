@@ -1,7 +1,8 @@
 """Peripheral Community Research Probe — Data Schema Specification (English edition).
 
 Schema: peripheral.community-observation/1
-Strictly enforces privacy, passive observation provenance, and marker window attribution.
+Strictly enforces privacy, passive observation provenance, marker window attribution,
+pairwise A -> B -> A change/restore correlation, and checksum candidate separation.
 """
 
 from __future__ import annotations
@@ -80,7 +81,7 @@ class GuidedAction:
 class TransportObservation:
     timestamp: float
     process_basename: str
-    api: str  # "sendReport" | "sendFeatureReport" | "receiveFeatureReport" | "HidD_SetFeature" | "WriteFile"
+    api: str  # "sendReport" | "sendFeatureReport" | "receiveFeatureReport" | "inputreport" | "WriteFile"
     direction: str  # "out" | "in" | "feature_out" | "feature_in"
     report_id: int
     bytes_hex: str
@@ -88,7 +89,26 @@ class TransportObservation:
     action_id: str | None = None
     device_id: str | None = None
     repeat_count: int = 1
-    capture_source: str = "webhid_api_observer"  # "webhid_api_observer" | "win32_api_hook"
+    first_seen: float | None = None
+    last_seen: float | None = None
+    capture_source: str = "webhid_api_observer"  # "webhid_api_observer" | "webhid_inputreport" | "win32_api_hook"
+
+    def to_dict(self) -> dict[str, Any]:
+        d = asdict(self)
+        if self.first_seen is None:
+            d["first_seen"] = self.timestamp
+        if self.last_seen is None:
+            d["last_seen"] = self.timestamp
+        return d
+
+
+@dataclass
+class TransitionDelta:
+    offset: int
+    before: str | None
+    changed: str
+    restored: str | None
+    field_role: str = "semantic_field"  # "semantic_field" | "checksum_candidate" | "header" | "unknown"
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -97,16 +117,61 @@ class TransportObservation:
 @dataclass
 class CorrelationCandidate:
     semantic: str
-    action_id: str
-    candidate_reports: list[int]
-    changed_offsets: list[int]
-    before_values: list[str]
-    after_values: list[str]
-    restored_values: list[str]
+    change_action_id: str
+    restore_action_id: str | None = None
+    candidate_reports: list[int] = field(default_factory=list)
+    changed_offsets: list[int] = field(default_factory=list)
+    semantic_offsets: list[int] = field(default_factory=list)
+    checksum_offsets: list[int] = field(default_factory=list)
+    baseline_reports: list[str] = field(default_factory=list)
+    baseline_available: bool = False
+    change_reports: list[str] = field(default_factory=list)
+    restore_reports: list[str] = field(default_factory=list)
+    transitions: list[TransitionDelta] = field(default_factory=list)
+    restore_matches_original: bool = False
     confidence: str = "CommunityGuidedObservation"
+    notes: str | None = None
+
+    # Backward compatibility properties
+    @property
+    def action_id(self) -> str:
+        return self.change_action_id
+
+    @property
+    def before_values(self) -> list[str]:
+        return self.baseline_reports
+
+    @property
+    def after_values(self) -> list[str]:
+        return self.change_reports
+
+    @property
+    def restored_values(self) -> list[str]:
+        return self.restore_reports
 
     def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        return {
+            "semantic": self.semantic,
+            "change_action_id": self.change_action_id,
+            "restore_action_id": self.restore_action_id,
+            "candidate_reports": self.candidate_reports,
+            "changed_offsets": self.changed_offsets,
+            "semantic_offsets": self.semantic_offsets,
+            "checksum_offsets": self.checksum_offsets,
+            "baseline_reports": self.baseline_reports,
+            "baseline_available": self.baseline_available,
+            "change_reports": self.change_reports,
+            "restore_reports": self.restore_reports,
+            "transitions": [t.to_dict() if hasattr(t, "to_dict") else asdict(t) for t in self.transitions],
+            "restore_matches_original": self.restore_matches_original,
+            "confidence": self.confidence,
+            "notes": self.notes,
+            # Backward compatibility fields
+            "action_id": self.action_id,
+            "before_values": self.before_values,
+            "after_values": self.after_values,
+            "restored_values": self.restored_values,
+        }
 
 
 @dataclass
@@ -142,8 +207,7 @@ class CaptureMetadata:
     observer_errors: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
-        d = asdict(self)
-        return d
+        return asdict(self)
 
 
 @dataclass
