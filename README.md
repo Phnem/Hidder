@@ -1,190 +1,161 @@
-# Hidder — Peripheral Research Probe
+# Hidder — Research Probe for Vetro HUD
 
 [![Tests](https://img.shields.io/badge/tests-75%20passed-brightgreen.svg)]()
 [![Platform](https://img.shields.io/badge/platform-Windows%20x64-blue.svg)]()
 [![Safety](https://img.shields.io/badge/hardware%20safety-zero--write%20observer-success.svg)]()
 [![License](https://img.shields.io/badge/license-MIT-green.svg)]()
 
-### 🛡️ Security / Download
-
-* **Pre-built Releases**: Ready-to-use standalone executables are available on the [**Releases**](https://github.com/Phnem/Hidder/releases) page.
-* **VirusTotal Verification**: [VirusTotal Scan Report](https://www.virustotal.com/gui/file/db0af4862b66a85d742bc97bc9f13ca034cdb34a276170896a0f8f54fc113456/detection)
-* **Don't trust a pre-built EXE?** Clone this repository, inspect the source code yourself, and run:
-  * `start_en.bat` (English)
-  * `start_ru.bat` (Russian)
-
-  The BAT scripts automatically set up an isolated `.venv` and run Hidder **directly from the repository sources**.
+> 💡 **Вспомогательный инструмент для [Vetro HUD](https://github.com/Phnem/Vetro-hud)**  
+> Этот скрипт создан для сбора технических дампов протоколов клавиатур и мышей (Rapid Trigger, точки срабатывания, частота опроса, подсветка).  
+> У меня нет физического доступа ко всем существующим девайсам, поэтому запуск этого 5-минутного теста владельцами редких или новых моделей **очень сильно помогает добавить поддержку вашего устройства в Vetro HUD**.
 
 ---
 
-**Hidder** (*Peripheral Research Probe*) is a portable, zero-install research tool designed to passively observe, record, and decode proprietary USB HID and WebHID device protocols from official keyboard and mouse software.
+### 🛡️ Скачивание и Безопасность / Download & Security
 
-It allows gamers and community contributors to run a simple, 5-minute guided session that captures technical protocol payloads (Rapid Trigger, actuation depth, polling rate, DPI, debounce, lighting effects) to help add native support for devices in open-source peripheral drivers and utilities.
+* **Готовые сборки**: Скачайте готовый `.exe` во вкладке [**Releases**](https://github.com/Phnem/Hidder/releases):
+  * `PeripheralResearch_ru.exe` (на русском)
+  * `PeripheralResearch_en.exe` (на английском)
+* **Проверка VirusTotal**: [VirusTotal Scan Report](https://www.virustotal.com/gui/file/db0af4862b66a85d742bc97bc9f13ca034cdb34a276170896a0f8f54fc113456/detection)
+* **Не доверяете скомпилированным EXE?** Клонируйте репозиторий, проверьте открытый исходный код и запустите скрипт напрямую:
+  * `start_ru.bat` — русский интерфейс
+  * `start_en.bat` — английский интерфейс
+
+  Скрипты автоматически настроят локальное окружение Python (`.venv`) и запустят утилиту **напрямую из исходников**.
 
 ---
 
-## 📸 Screenshots
+## 📸 Как выглядит процесс
 
-| 1. Device Discovery & Selection | 2. WebHID & Desktop Observation |
+| 1. Выбор подключённого девайса | 2. Подключение к софту / Web-конфигуратору |
 | :---: | :---: |
 | ![Device Selection](screenshots/WindowsTerminal_AHOXCs4tXw.png) | ![Observation Mode](screenshots/WindowsTerminal_R9I4pBYcT6.png) |
 
-| 3. Guided Action Windows & Final Export |
+| 3. Пошаговые действия и итоговый JSON |
 | :---: |
 | ![Final Export](screenshots/WindowsTerminal_V8VLz5nnIE.png) |
 
 ---
 
-## ⚡ Why Hidder?
+## 🎯 Чем этот тест помогает проекту
 
-Most gaming peripherals (AULA, ATK, DrunkDeer, Lamzu, Attack Shark, Keychron, Bloody, Corsair, etc.) use proprietary USB HID protocols to configure hardware settings. Without technical protocol documentation, reverse-engineering requires expensive hardware or manual packet inspection.
+Большинство производителей (AULA, ATK, DrunkDeer, Lamzu, Attack Shark, Keychron, Bloody и др.) используют закрытые USB HID команды.
 
-**Hidder solves this by providing:**
-* **5-Minute Guided Flow**: Step-by-step instructions for non-technical users.
-* **One-File Executable**: Single standalone `.exe` without Python or dependency requirements.
-* **Zero Hardware Risk**: Hidder **never** sends raw HID writes to your device. Official vendor software is the only writer; Hidder is purely a passive observer.
-* **Privacy by Design**: Automatically scrubs personal data, usernames, Windows file paths, IPs, emails, and device serial numbers.
+Чтобы поддержать настройки конкретной клавиатуры или мыши в Vetro HUD, нужно знать структуру пакетов:
+1. Вы запускаете утилиту (~5 минут).
+2. Выбираете тип устройства и способ настройки (браузерный WebHID или официальная программа).
+3. По подсказкам на экране меняете пару настроек (например, переключаете подсветку или меняете actuation point).
+4. Утилита **пассивно слушает** трафик официального конфигуратора и сохраняет один итоговый `.json` файл.
+5. Вы отправляете этот JSON мне в Telegram ([@Phnem_pro](https://t.me/Phnem_pro)) или прикрепляете к Issue.
 
 ---
 
-## 🏗️ How It Works (Architecture)
+## 🔒 Безопасность и конфиденциальность
 
-Hidder features two specialized observer backends tailored to modern device software:
+* ❌ **Никаких записей в устройство**: утилита **никогда не отправляет** свои команды в ваше устройство. Запись в железо делает только официальный софт вендора; утилита только пассивно слушает.
+* ❌ **Никакого кейлоггинга**: обычный набор текста, пароли и символы не перехватываются и не логируются.
+* ❌ **Серийные номера удаляются**: USB Serial Number и персональные пути автоматически вырезаются из JSON перед сохранением.
+* ❌ **Без установки в систему**: утилита не ставит служб, драйверов и не трогает автозагрузку.
+
+---
+
+## 🏗️ Как устроен сбор данных (Архитектура)
+
+Утилита поддерживает два сценария наблюдения в зависимости от того, как настраивается девайс:
 
 ```mermaid
 graph TD
     subgraph Hidder ["PeripheralResearch.exe / start_*.bat"]
-        Wizard[Interactive Guided Wizard]
-        Correlator[Pairwise A → B → A Correlator]
-        Privacy[Privacy Scrubber]
+        Wizard[Пошаговый мастер]
+        Correlator[Корреляция A → B → A]
+        Privacy[Очистка личных данных]
     end
 
-    subgraph WebHID_Mode ["WebHID Browser Backend"]
-        CDP[Chrome DevTools Protocol Client]
-        Browser["Isolated Microsoft Edge / Chrome (Temp Profile)"]
-        JSHooks["Pre-injected WebHID Wrappers (sendReport, sendFeatureReport, inputreport)"]
-        WebVendor["Official Web Configurator (AULA WebHub, Keychron, etc.)"]
+    subgraph WebHID_Mode ["Web-конфигураторы в браузере"]
+        CDP[Chrome DevTools Protocol]
+        Browser["Изолированный Edge/Chrome (временный профиль)"]
+        JSHooks["Перехват WebHID API (sendReport, inputreport)"]
+        WebVendor["Официальный сайт (AULA WebHub, Keychron и т.д.)"]
     end
 
-    subgraph Native_Mode ["Native Desktop Backend"]
-        MinHook["MinHook Native DLL (Hidder.NativeObserver.x64.dll)"]
-        DesktopVendor["Native Desktop Software (Bloody, iCUE, NGenuity, etc.)"]
-        NamedPipe["Windows Named Pipe IPC"]
+    subgraph Native_Mode ["Десктопные программы"]
+        MinHook["Нативный DLL хук (Hidder.NativeObserver.x64.dll)"]
+        DesktopVendor["Официальная программа (Bloody, iCUE и др.)"]
+        NamedPipe["Windows Named Pipe"]
     end
 
-    Device[Physical Peripheral: Keyboard / Mouse]
+    Device[Клавиатура / Мышь]
 
     Wizard --> CDP
     CDP --> Browser
     Browser --> JSHooks
     WebVendor --> JSHooks
-    JSHooks -->|Passive Mirror| Correlator
-    JSHooks <-->|Real Hardware Exchange| Device
+    JSHooks -->|Пассивный лог| Correlator
+    JSHooks <-->|Официальный обмен| Device
 
     Wizard --> MinHook
     DesktopVendor --> MinHook
     MinHook --> NamedPipe
     NamedPipe --> Correlator
-    DesktopVendor <-->|Real Hardware Exchange| Device
+    DesktopVendor <-->|Официальный обмен| Device
 
     Correlator --> Privacy
-    Privacy --> JSON[Single Observation JSON]
+    Privacy --> JSON[Итоговый Observation JSON]
 ```
 
-### 1. WebHID Observer (for Web-based Configurators)
-* Launches an isolated browser instance (Microsoft Edge or Google Chrome) using a clean temporary profile directory.
-* Pre-injects transparent JavaScript wrappers via CDP (`Page.addScriptToEvaluateOnNewDocument`) before page scripts execute.
-* Observes outbound reports (`sendReport`, `sendFeatureReport`), inbound features (`receiveFeatureReport`), and incoming analog streams (`inputreport`).
-* Calls original methods with exact `this` binding and unchanged arguments (`apply`).
-* Completely cleans up and deletes the temporary profile on exit.
-* **Zero remote process APIs**: Does not call `OpenProcess`, `VirtualAllocEx`, `WriteProcessMemory`, or `CreateRemoteThread`.
-
-### 2. Native Desktop Observer (for Installed Desktop Apps)
-* Injects a safe 64-bit Rust DLL utilizing **MinHook** (HDE64 instruction length disassembly).
-* Hooks Win32 user-mode APIs: `WriteFile`, `HidD_SetFeature`, `HidD_GetFeature`, `HidD_SetOutputReport`, `HidD_GetInputReport`.
-* Filters handles by target USB VID/PID using `HidD_GetAttributes` to avoid logging irrelevant file or socket operations.
-* Streams events in real time over Windows Named Pipe `\\.\pipe\PeripheralResearch_Observer`.
-* Cached in `%LOCALAPPDATA%\Hidder\Runtime\v0.3.0\Hidder.NativeObserver.x64.dll` with stable version metadata.
-
-### 3. Pairwise $A \rightarrow B \rightarrow A$ Change/Restore Correlation
-* Automatically pairs each change action (`*_change`) with its mandatory restore step (`*_restore`).
-* Compares baseline state ($A$), modified state ($B$), and restored state ($A'$).
-* Accurately extracts modified byte offsets and distinguishes full configuration tables (such as Rapid Trigger composite tables) from single-byte fields.
+1. **WebHID режим (для сайтов-конфигураторов)**:
+   * Открывает окно браузера с чистым временным профилем.
+   * Через CDP прозрачно перехватывает вызовы `sendReport` и `inputreport`.
+   * Полностью удаляет временный профиль браузера при закрытии.
+2. **Native Desktop режим (для установленных программ)**:
+   * Подключается к выбранному процессу с вашего явного согласия.
+   * Фильтрует пакеты исключительно по целевому VID/PID вашего устройства.
+3. **Корреляция $A \rightarrow B \rightarrow A$**:
+   * Сравнивает состояние «до изменения», «во время изменения» и «после возврата», точно определяя байты и таблицы параметров (например, Rapid Trigger).
 
 ---
 
-## 🔒 Privacy & Security Invariants
+## 🚀 Как запустить
 
-* ❌ **No Keystroke Logging**: Never records regular typing or text input.
-* ❌ **No Serial Numbers**: USB serial numbers are filtered out.
-* ❌ **No Browser Data**: Uses an empty temporary profile; personal cookies, history, and passwords are never accessed.
-* ❌ **No Permanent Installation**: Does not install background services, drivers, or registry startup entries.
-* ❌ **No Hardware Writes**: Does not emit raw writes or firmware modifications.
-* ❌ **No Anti-AV Tricks**: Zero obfuscation, zero stealth injection, zero runtime API hashing.
+### Вариант 1: Готовый EXE (самый простой)
+1. Скачайте `PeripheralResearch_ru.exe` (или `_en.exe`) со страницы [Releases](https://github.com/Phnem/Hidder/releases).
+2. Запустите двойным кликом.
+3. Следуйте подсказкам мастера (~5 минут).
+4. Отправьте полученный `.json` файл автору: Telegram [@Phnem_pro](https://t.me/Phnem_pro).
 
----
-
-## 🛡️ Security Verification & Transparency
-
-Official releases provide complete source-to-binary traceability. You can verify the integrity of your download:
-
-| Artifact | SHA-256 Checksum | Windows Defender Status |
-| :--- | :--- | :--- |
-| `PeripheralResearch_ru.exe` | See `build_manifest.json` | Clean (No threats) |
-| `PeripheralResearch_en.exe` | See `build_manifest.json` | Clean (No threats) |
-| `Hidder.NativeObserver.x64.dll` | `76605408aa3ca9b89aa3afaf09d264360333ee6c7ded661594d2219178732186` | Clean (No threats) |
-
-> **Note on Windows SmartScreen**:
-> As an independent, non-commercial open-source project without an expensive EV code-signing certificate, Windows SmartScreen may show an "Unrecognized app" prompt on first run until community reputation is established. This is normal for unsigned open-source binaries. All source code is 100% public and inspectable.
-
----
-
-## 🚀 Quick Start
-
-### Option A: Pre-built Executable (Recommended for non-technical users)
-1. Download from the [Releases](https://github.com/Phnem/Hidder/releases) page:
-   * **Russian Edition**: `PeripheralResearch_ru.exe`
-   * **English Edition**: `PeripheralResearch_en.exe`
-2. Double-click the executable.
-
-### Option B: Run Directly from Source (For developers & code auditors)
-1. Clone the repository:
+### Вариант 2: Запуск из исходного кода
+1. Склонируйте репозиторий:
    ```cmd
    git clone https://github.com/Phnem/Hidder.git
    cd Hidder
    ```
-2. Run the launcher:
-   * **English**: `start_en.bat`
-   * **Russian**: `start_ru.bat`
+2. Запустите батник:
+   * `start_ru.bat` (русский)
+   * `start_en.bat` (английский)
 
 ---
 
-## 🛠️ Building from Source
+## 🛠️ Сборка бинарников из исходников
 
-### Prerequisites
+### Требования
 * Windows 10/11 x64
 * Python 3.10+
 * Rust toolchain (`cargo`, `rustc`)
 * PyInstaller (`pip install pyinstaller pytest pefile`)
 
-### Build Both Executables
+### Команда сборки
 ```cmd
-git clone https://github.com/Phnem/Hidder.git
-cd Hidder
 python community/build_exe.py
 ```
-Compiled standalone executables and cryptographic manifest will be placed in `community/dist/`:
-* `community/dist/PeripheralResearch_ru.exe`
-* `community/dist/PeripheralResearch_en.exe`
-* `community/dist/build_manifest.json`
+Собранные бинарники и файл манифеста появятся в `community/dist/`.
 
-### Run Test Suite
+### Запуск тестов
 ```cmd
 python -m pytest -v community/tests DB/protocol-miner/tests
 ```
 
 ---
 
-## 📄 License
+## 📄 Лицензия
 
-This project is licensed under the MIT License.
+Проект распространяется под открытой лицензией MIT.
