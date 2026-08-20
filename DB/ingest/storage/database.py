@@ -1,6 +1,8 @@
 """SQLite storage manager for staging registry."""
 
 import json
+import hashlib
+from urllib.parse import urlparse
 import sqlite3
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -57,6 +59,14 @@ class RegistryDatabase:
                 pass
 
             conn.executescript(SCHEMA_SQL)
+            self._migrate_forensic_evidence(conn)
+            self._migrate_scope_aware_facts(conn)
+            self._migrate_full_typed_reingest(conn)
+            self._migrate_operation_validation(conn)
+            self._migrate_scope_aware_operations(conn)
+            self._migrate_mapping_provenance(conn)
+            self._migrate_source_content_cache(conn)
+            self._migrate_external_attachments(conn)
             from ingest.brands.canonical import ALL_CANONICAL_BRANDS
             for b in ALL_CANONICAL_BRANDS:
                 # 1. Seed brand
@@ -94,6 +104,243 @@ class RegistryDatabase:
                                    VALUES (?, ?, ?, ?, ?)""",
                                 (src_id, tgt_id, rel.rel_type.value, rel.confidence, rel.provenance)
                             )
+
+    @staticmethod
+    def _canonical_value(value: str) -> str:
+        """Stabilize structured values without treating arbitrary text as JSON."""
+        try:
+            parsed = json.loads(value)
+        except (TypeError, ValueError):
+            return str(value)
+        return json.dumps(parsed, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+    def _migrate_forensic_evidence(self, conn: sqlite3.Connection) -> None:
+        """Backfill the evidence-aware layer once, preserving legacy fact rows.
+
+        Old ingestion recorded exactly one source on each row.  The backfill makes
+        that limitation explicit as partial provenance instead of inventing line
+        locations or independent confirmations.
+        """
+        if conn.execute("SELECT 1 FROM audit_schema_versions WHERE version = 1").fetchone():
+            return
+        rows = conn.execute(
+            "SELECT id, product_id, key, value, source_id, evidence_level, confidence FROM facts"
+        ).fetchall()
+        for row in rows:
+            value = self._canonical_value(row["value"])
+            value_hash = hashlib.sha256(value.encode("utf-8")).hexdigest()
+            conn.execute(
+                """INSERT OR IGNORE INTO normalized_facts
+                   (product_id, canonical_key, canonical_value, value_hash)
+                   VALUES (?, ?, ?, ?)""",
+                (row["product_id"], row["key"], value, value_hash),
+            )
+            nf = conn.execute(
+                "SELECT id FROM normalized_facts WHERE product_id IS ? AND canonical_key = ? AND value_hash = ?",
+                (row["product_id"], row["key"], value_hash),
+            ).fetchone()
+            conn.execute(
+                """INSERT OR IGNORE INTO fact_evidence
+                   (normalized_fact_id, source_id, collector_name, collector_version,
+                    extraction_method, trust_class, confidence, evidence_level,
+                    independent_source_group, provenance_status)
+                   VALUES (?, ?, 'legacy_ingestion', 'pre-forensic', 'legacy_backfill',
+                           'Unknown', ?, ?, 'legacy', 'partial')""",
+                (nf["id"], row["source_id"], row["confidence"], row["evidence_level"]),
+            )
+        conn.execute("INSERT INTO audit_schema_versions(version) VALUES (1)")
+
+    def _migrate_scope_aware_facts(self, conn: sqlite3.Connection) -> None:
+        """Add explicit scope without changing legacy fact consumers."""
+        if conn.execute("SELECT 1 FROM audit_schema_versions WHERE version = 2").fetchone():
+            return
+        columns = {row["name"] for row in conn.execute("PRAGMA table_info(normalized_facts)")}
+        if "scope_type" not in columns:
+            conn.execute("ALTER TABLE normalized_facts ADD COLUMN scope_type TEXT NOT NULL DEFAULT 'device'")
+        if "scope_key" not in columns:
+            conn.execute("ALTER TABLE normalized_facts ADD COLUMN scope_key TEXT")
+        if "semantic" not in columns:
+            conn.execute("ALTER TABLE normalized_facts ADD COLUMN semantic TEXT")
+        conn.execute("UPDATE normalized_facts SET scope_key=COALESCE(scope_key, 'product:' || COALESCE(product_id, id)), semantic=COALESCE(semantic, canonical_key)")
+        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_normalized_facts_scope ON normalized_facts(scope_type, scope_key, semantic, value_hash)")
+        conn.execute("INSERT INTO audit_schema_versions(version) VALUES (2)")
+
+    def _migrate_full_typed_reingest(self, conn: sqlite3.Connection) -> None:
+        if conn.execute("SELECT 1 FROM audit_schema_versions WHERE version = 3").fetchone():
+            return
+        source_file_columns = {row["name"] for row in conn.execute("PRAGMA table_info(source_files)")}
+        for name, declaration in {
+            "bytes_scanned": "INTEGER NOT NULL DEFAULT 0",
+            "collector_version": "TEXT",
+            "facts_extracted": "INTEGER NOT NULL DEFAULT 0",
+            "operations_extracted": "INTEGER NOT NULL DEFAULT 0",
+            "layouts_extracted": "INTEGER NOT NULL DEFAULT 0",
+            "sequences_extracted": "INTEGER NOT NULL DEFAULT 0",
+            "failure_detail": "TEXT",
+        }.items():
+            if name not in source_file_columns:
+                conn.execute(f"ALTER TABLE source_files ADD COLUMN {name} {declaration}")
+        operation_columns = {row["name"] for row in conn.execute("PRAGMA table_info(protocol_operations)")}
+        for name, declaration in {
+            "request_method": "TEXT", "response_method": "TEXT", "opcode": "TEXT",
+            "command_class": "TEXT", "command_id": "TEXT", "endpoint": "INTEGER",
+            "interface": "INTEGER", "usage_page": "INTEGER", "usage": "INTEGER",
+            "report_id_in_buffer": "INTEGER", "dynamic_fields_json": "TEXT",
+            "preconditions_json": "TEXT", "timeout_ms": "INTEGER", "delay_ms": "INTEGER",
+            "side_effect": "TEXT", "persistence": "TEXT", "risk_state": "TEXT",
+            "production_safe": "INTEGER NOT NULL DEFAULT 0",
+        }.items():
+            if name not in operation_columns:
+                conn.execute(f"ALTER TABLE protocol_operations ADD COLUMN {name} {declaration}")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_protocol_operations_semantic ON protocol_operations(semantic, product_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_fact_evidence_group ON fact_evidence(independent_source_group, normalized_fact_id)")
+        conn.execute("INSERT INTO audit_schema_versions(version) VALUES (3)")
+
+    def _migrate_operation_validation(self, conn: sqlite3.Connection) -> None:
+        if conn.execute("SELECT 1 FROM audit_schema_versions WHERE version = 4").fetchone():
+            return
+        risk_columns = {row["name"] for row in conn.execute("PRAGMA table_info(command_risks)")}
+        if "operation_id" not in risk_columns:
+            conn.execute("ALTER TABLE command_risks ADD COLUMN operation_id INTEGER REFERENCES protocol_operations(id)")
+        root_columns = {row["name"] for row in conn.execute("PRAGMA table_info(source_roots)")}
+        for name, declaration in {
+            "trust_class": "TEXT NOT NULL DEFAULT 'Unknown'",
+            "lineage_group": "TEXT",
+            "files_total": "INTEGER NOT NULL DEFAULT 0",
+            "files_relevant": "INTEGER NOT NULL DEFAULT 0",
+            "files_processed": "INTEGER NOT NULL DEFAULT 0",
+            "files_failed": "INTEGER NOT NULL DEFAULT 0",
+            "bytes_scanned": "INTEGER NOT NULL DEFAULT 0",
+            "collector_version": "TEXT",
+        }.items():
+            if name not in root_columns:
+                conn.execute(f"ALTER TABLE source_roots ADD COLUMN {name} {declaration}")
+        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_command_risks_operation ON command_risks(operation_id) WHERE operation_id IS NOT NULL")
+        conn.execute("INSERT INTO audit_schema_versions(version) VALUES (4)")
+
+    def _migrate_scope_aware_operations(self, conn: sqlite3.Connection) -> None:
+        """Allow typed operations to live at family or device scope.
+
+        Earlier databases made ``product_id`` mandatory.  The rebuild is
+        deliberately lossless for existing operation rows; dependent derived
+        tables are rebuilt because they are regenerated by the audit pass.
+        """
+        if conn.execute("SELECT 1 FROM audit_schema_versions WHERE version = 5").fetchone():
+            return
+        columns = {row["name"]: row for row in conn.execute("PRAGMA table_info(protocol_operations)")}
+        already_scoped = {"operation_key", "scope_type", "scope_key", "protocol_family_id"}.issubset(columns) and not columns["product_id"]["notnull"]
+        if already_scoped:
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_protocol_operations_scope ON protocol_operations(scope_type, scope_key, semantic)")
+            conn.execute("INSERT INTO audit_schema_versions(version) VALUES (5)")
+            return
+
+        conn.execute("DROP TABLE IF EXISTS operation_completeness")
+        conn.execute("DROP TABLE IF EXISTS operation_evidence")
+        conn.execute("DROP TABLE IF EXISTS protocol_sequence_steps")
+        conn.execute("DROP TABLE IF EXISTS command_risks")
+        conn.execute("""CREATE TABLE protocol_operations_scoped (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            operation_key TEXT NOT NULL UNIQUE,
+            scope_type TEXT NOT NULL CHECK(scope_type IN ('device','protocol_family')),
+            scope_key TEXT NOT NULL,
+            product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
+            protocol_family_id INTEGER REFERENCES protocol_families(id) ON DELETE CASCADE,
+            protocol_family TEXT, semantic TEXT NOT NULL, transport TEXT,
+            api_semantics TEXT, report_id TEXT, api_length INTEGER, wire_length INTEGER,
+            direction TEXT CHECK(direction IN ('host_to_device','device_to_host','bidirectional')),
+            request_encoding_json TEXT, response_encoding_json TEXT, checksum_json TEXT,
+            sequencing_json TEXT, initialization_json TEXT, capability_mapping_json TEXT,
+            confidence REAL NOT NULL DEFAULT 0.0, source_trust TEXT NOT NULL DEFAULT 'Unknown',
+            operation_status TEXT NOT NULL DEFAULT 'candidate' CHECK(operation_status IN ('candidate','implemented','observed','hardware_verified','rejected')),
+            source_fact_id INTEGER REFERENCES normalized_facts(id), request_method TEXT,
+            response_method TEXT, opcode TEXT, command_class TEXT, command_id TEXT,
+            endpoint INTEGER, interface INTEGER, usage_page INTEGER, usage INTEGER,
+            report_id_in_buffer INTEGER, dynamic_fields_json TEXT, preconditions_json TEXT,
+            timeout_ms INTEGER, delay_ms INTEGER, side_effect TEXT, persistence TEXT,
+            risk_state TEXT, production_safe INTEGER NOT NULL DEFAULT 0 CHECK(production_safe IN (0,1)),
+            CHECK((scope_type='device' AND product_id IS NOT NULL) OR
+                  (scope_type='protocol_family' AND protocol_family IS NOT NULL))
+        )""")
+        old_names = [row["name"] for row in conn.execute("PRAGMA table_info(protocol_operations)")]
+        transferable = [name for name in old_names if name not in {"id"}]
+        target_names = {row["name"] for row in conn.execute("PRAGMA table_info(protocol_operations_scoped)")}
+        transferable = [name for name in transferable if name in target_names]
+        select_columns = ",".join(transferable)
+        insert_columns = ",".join(["id", "operation_key", "scope_type", "scope_key", *transferable])
+        conn.execute(f"""INSERT INTO protocol_operations_scoped({insert_columns})
+            SELECT id,
+                   'legacy:' || id,
+                   'device',
+                   'product:' || product_id,
+                   {select_columns}
+            FROM protocol_operations""")
+        conn.execute("DROP TABLE protocol_operations")
+        conn.execute("ALTER TABLE protocol_operations_scoped RENAME TO protocol_operations")
+        conn.executescript("""
+            CREATE INDEX idx_protocol_operations_product ON protocol_operations(product_id, protocol_family);
+            CREATE INDEX idx_protocol_operations_scope ON protocol_operations(scope_type, scope_key, semantic);
+            CREATE INDEX idx_protocol_operations_semantic ON protocol_operations(semantic, product_id);
+            CREATE TABLE protocol_sequence_steps (
+                sequence_id INTEGER NOT NULL REFERENCES protocol_sequences(id) ON DELETE CASCADE,
+                step_index INTEGER NOT NULL, operation_id INTEGER REFERENCES protocol_operations(id),
+                step_kind TEXT NOT NULL, condition_json TEXT, expected_response_json TEXT,
+                delay_ms INTEGER, PRIMARY KEY(sequence_id, step_index));
+            CREATE TABLE operation_evidence (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                operation_id INTEGER NOT NULL REFERENCES protocol_operations(id) ON DELETE CASCADE,
+                source_file_id INTEGER REFERENCES source_files(id), source_id INTEGER REFERENCES sources(id),
+                extraction_method TEXT NOT NULL, trust_class TEXT NOT NULL, lineage_group TEXT NOT NULL,
+                confidence REAL NOT NULL, line_start INTEGER, line_end INTEGER, symbol TEXT);
+            CREATE UNIQUE INDEX idx_operation_evidence_file_unique
+                ON operation_evidence(operation_id, source_file_id, extraction_method)
+                WHERE source_file_id IS NOT NULL;
+            CREATE UNIQUE INDEX idx_operation_evidence_source_unique
+                ON operation_evidence(operation_id, source_id, extraction_method)
+                WHERE source_id IS NOT NULL;
+            CREATE INDEX idx_operation_evidence_lineage ON operation_evidence(operation_id, lineage_group);
+            CREATE TABLE operation_completeness (
+                operation_id INTEGER PRIMARY KEY REFERENCES protocol_operations(id) ON DELETE CASCADE,
+                score INTEGER NOT NULL, missing_requirements_json TEXT NOT NULL,
+                complete INTEGER NOT NULL CHECK(complete IN (0,1)), explanation TEXT NOT NULL);
+            CREATE TABLE command_risks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                normalized_fact_id INTEGER REFERENCES normalized_facts(id) ON DELETE CASCADE,
+                risk_class TEXT NOT NULL CHECK(risk_class IN ('read_only','volatile_write','persistent_write','destructive','unknown_risk')),
+                rationale TEXT NOT NULL,
+                operation_id INTEGER REFERENCES protocol_operations(id),
+                UNIQUE(normalized_fact_id));
+            CREATE UNIQUE INDEX idx_command_risks_operation ON command_risks(operation_id) WHERE operation_id IS NOT NULL;
+        """)
+        conn.execute("INSERT INTO audit_schema_versions(version) VALUES (5)")
+
+    def _migrate_mapping_provenance(self, conn: sqlite3.Connection) -> None:
+        if conn.execute("SELECT 1 FROM audit_schema_versions WHERE version = 6").fetchone():
+            return
+        columns = {row["name"] for row in conn.execute("PRAGMA table_info(device_protocol_mappings)")}
+        if "source_file_id" not in columns:
+            conn.execute("ALTER TABLE device_protocol_mappings ADD COLUMN source_file_id INTEGER REFERENCES source_files(id)")
+        conn.execute("INSERT INTO audit_schema_versions(version) VALUES (6)")
+
+    def _migrate_source_content_cache(self, conn: sqlite3.Connection) -> None:
+        if conn.execute("SELECT 1 FROM audit_schema_versions WHERE version = 7").fetchone():
+            return
+        conn.execute("""CREATE TABLE IF NOT EXISTS source_content_cache(
+            absolute_path TEXT PRIMARY KEY, size INTEGER NOT NULL, mtime_ns INTEGER NOT NULL,
+            sha256 TEXT NOT NULL, verified_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
+        conn.execute("INSERT INTO audit_schema_versions(version) VALUES (7)")
+
+    def _migrate_external_attachments(self, conn: sqlite3.Connection) -> None:
+        if conn.execute("SELECT 1 FROM audit_schema_versions WHERE version = 8").fetchone():
+            return
+        conn.executescript("""CREATE TABLE IF NOT EXISTS external_attachments(
+            external_id TEXT PRIMARY KEY, source_name TEXT NOT NULL, issue_iid INTEGER,
+            issue_url TEXT, attachment_url TEXT NOT NULL UNIQUE, filename TEXT NOT NULL,
+            kind TEXT NOT NULL, status TEXT NOT NULL, content_sha256 TEXT, size INTEGER,
+            content_type TEXT, error TEXT, source_created_at TEXT,
+            last_checked TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+            CREATE INDEX IF NOT EXISTS idx_external_attachments_status
+                ON external_attachments(source_name,status,kind);""")
+        conn.execute("INSERT INTO audit_schema_versions(version) VALUES (8)")
 
     def get_or_create_vendor(self, name: str, display_name: str, website: Optional[str] = None) -> int:
         clean_name = name.strip().lower()
@@ -650,15 +897,77 @@ class RegistryDatabase:
                     "UPDATE facts SET last_seen = ?, source_id = COALESCE(?, source_id), artifact_sha256 = COALESCE(?, artifact_sha256) WHERE id = ?",
                     (now, resolved_source_id, fact.artifact_sha256, existing["id"])
                 )
+                self._upsert_normalized_fact_evidence_conn(conn, fact, resolved_source_id)
                 return False
             else:
-                conn.execute(
+                cur = conn.execute(
                     """INSERT INTO facts (product_id, key, value, source_id, artifact_sha256, evidence_level, confidence, is_inference, first_seen, last_seen)
                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     (fact.product_id, fact.key, fact.value, resolved_source_id, fact.artifact_sha256,
                      int(fact.evidence_level), fact.confidence, 1 if fact.is_inference else 0, now, now)
                 )
+                self._upsert_normalized_fact_evidence_conn(conn, fact, resolved_source_id)
                 return True
+
+    @classmethod
+    def _source_trust_and_group(cls, conn: sqlite3.Connection, source_id: Optional[int]) -> tuple[str, str]:
+        if source_id is None:
+            return "Unknown", "unknown"
+        row = conn.execute("SELECT source_type, source_url FROM sources WHERE id = ?", (source_id,)).fetchone()
+        if not row:
+            return "Unknown", "unknown"
+        source_type = row["source_type"]
+        trust = {
+            "official_repository": "OfficialSDK",
+            "vendor_technical": "OfficialSpecification",
+            "vendor_software": "OfficialSDK",
+            "vendor_product": "OfficialSpecification",
+            "vendor_download": "OfficialSDK",
+            "open_source": "UpstreamImplementation",
+            "community": "CommunityImplementation",
+        }.get(source_type, "Unknown")
+        parsed = urlparse(row["source_url"])
+        parts = [part for part in parsed.path.split("/") if part]
+        if parsed.netloc in {"github.com", "gitlab.com"} and len(parts) >= 2:
+            group = f"{parsed.netloc}/{parts[0]}/{parts[1]}"
+        else:
+            group = parsed.netloc or "unknown"
+        return trust, group.lower()
+
+    def _upsert_normalized_fact_evidence_conn(
+        self, conn: sqlite3.Connection, fact: GenericFact, source_id: Optional[int]
+    ) -> None:
+        """Attach evidence without collapsing independent sources into one fact row."""
+        value = self._canonical_value(fact.value)
+        value_hash = hashlib.sha256(value.encode("utf-8")).hexdigest()
+        conn.execute(
+            """INSERT OR IGNORE INTO normalized_facts
+               (product_id, canonical_key, canonical_value, value_hash, last_seen)
+               VALUES (?, ?, ?, ?, ?)""",
+            (fact.product_id, fact.key, value, value_hash, utc_now_iso()),
+        )
+        normalized = conn.execute(
+            "SELECT id FROM normalized_facts WHERE product_id IS ? AND canonical_key = ? AND value_hash = ?",
+            (fact.product_id, fact.key, value_hash),
+        ).fetchone()
+        trust, group = self._source_trust_and_group(conn, source_id)
+        evidence_exists = conn.execute(
+            """SELECT 1 FROM fact_evidence
+               WHERE normalized_fact_id=? AND source_id IS ? AND collector_name='registry_database'
+                 AND collector_version='forensic-1' AND extraction_method='collector_upsert'
+               LIMIT 1""",
+            (normalized["id"], source_id),
+        ).fetchone()
+        if not evidence_exists:
+            conn.execute(
+                """INSERT INTO fact_evidence
+               (normalized_fact_id, source_id, collector_name, collector_version,
+                extraction_method, trust_class, confidence, evidence_level,
+                independent_source_group, provenance_status)
+               VALUES (?, ?, 'registry_database', 'forensic-1', 'collector_upsert',
+                       ?, ?, ?, ?, 'partial')""",
+                (normalized["id"], source_id, trust, fact.confidence, int(fact.evidence_level), group),
+            )
 
     def _record_change(self, conn: sqlite3.Connection, run_id: str, entity_type: str, entity_id: str, change_type: str, details: dict):
         conn.execute(

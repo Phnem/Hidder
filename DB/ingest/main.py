@@ -3,9 +3,11 @@
 import datetime
 import json
 import os
+import subprocess
 import sys
 import time
 import uuid
+from collections import defaultdict
 from pathlib import Path
 from typing import Optional, List
 
@@ -26,9 +28,13 @@ if sys.platform == "win32":
 
 from ingest.artifacts.cache import ArtifactCache
 from ingest.artifacts.downloader import ArtifactDownloader
-from ingest.artifacts.extractor import SafeExtractor
-from ingest.brands.canonical import ALL_CANONICAL_BRANDS, get_brand_by_slug, get_brands_by_batch, BrandDef
-from ingest.collectors import get_collector_for_brand, SPECIALIZED_COLLECTORS
+from ingest.collectors import (
+    get_collector_for_brand, SPECIALIZED_COLLECTORS,
+    QmkCollector, LibratbagCollector, OpenRGBCollector,
+    SignalRGBCollector, OpenRazerCollector, SolaarCollector,
+    RivalcfgCollector, WootingCollector, CorsairCkbCollector,
+    LogitechDocsCollector, ArtemisRGBNetCollector, LinuxHIDCollector
+)
 from ingest.config import DB_PATH, REPORTS_DIR, settings
 from ingest.logging_setup import setup_logging, get_logger, console, get_log_metrics
 from ingest.network.fetcher import TieredFetcher
@@ -576,6 +582,695 @@ def _generate_run_reports(run_id: str, start_iso: str, duration_str: str, counts
             tech_cnt = b.get("tech_evidence_products") or 0
             reason = b.get("blocking_reason") or ""
             f.write(f"| {i} | **{b['canonical_name']}** | `{st}` | {p_cnt} | {d_cnt} | {art_cnt} | {vid_cnt} | {hint_cnt} | {tech_cnt} | {reason} |\n")
+
+
+@app.command(name="qmk")
+def qmk_ingest(
+    repo: Optional[Path] = typer.Option(None, "--repo", "-r", help="Path to local qmk_firmware repository"),
+    commit: Optional[str] = typer.Option(None, "--commit", "-c", help="Specific commit SHA to record"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Simulate ingestion without modifying database"),
+    limit: Optional[int] = typer.Option(None, "--limit", "-l", help="Limit number of keyboard targets to process"),
+    manufacturer: Optional[str] = typer.Option(None, "--manufacturer", "-m", help="Filter by manufacturer name"),
+    keyboard_prefix: Optional[str] = typer.Option(None, "--keyboard-prefix", "-p", help="Filter by keyboard path prefix"),
+    verbose: bool = typer.Option(True, "--verbose/--quiet", help="Enable verbose console logging")
+):
+    """Bulk-ingest factual keyboard metadata from official qmk/qmk_firmware repository into Peripheral Registry."""
+    logger, log_file = setup_logging(verbose=verbose, log_to_file=True)
+
+    run_id = str(uuid.uuid4())[:8]
+    start_time = time.time()
+    start_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+    # Determine repo path
+    repo_path = repo
+    if not repo_path:
+        candidate_paths = [
+            DB_PATH.parent / "qmk_firmware",
+            DB_PATH.parent.parent / "data" / "qmk_firmware",
+            Path("data/qmk_firmware").resolve(),
+        ]
+        for cp in candidate_paths:
+            if cp.exists() and (cp / "keyboards").exists():
+                repo_path = cp
+                break
+
+    if not repo_path or not (repo_path / "keyboards").exists():
+        target_clone_path = Path("data/qmk_firmware").resolve()
+        logger.info(f"QMK repository not found. Shallow cloning official repository to '{target_clone_path}'...")
+        target_clone_path.parent.mkdir(parents=True, exist_ok=True)
+        res = subprocess.run(
+            ["git", "clone", "--depth", "1", "https://github.com/qmk/qmk_firmware", str(target_clone_path)],
+            capture_output=True,
+            text=True
+        )
+        if res.returncode != 0:
+            logger.error(f"Failed to clone qmk_firmware: {res.stderr}")
+            raise typer.Exit(code=1)
+        repo_path = target_clone_path
+
+    logger.info("=" * 70)
+    logger.info("QMK Firmware Bulk-Ingestion starting")
+    logger.info(f"Run ID: [bold]{run_id}[/bold]")
+    logger.info(f"Repository: {repo_path}")
+    logger.info(f"Dry Run: {dry_run}")
+    logger.info(f"Database: {DB_PATH}")
+    logger.info("=" * 70)
+
+    db = RegistryDatabase(DB_PATH)
+    db.init_db()
+    if not dry_run:
+        db.start_crawl_run(run_id)
+    counts_before = db.get_summary_counts()
+
+    collector = QmkCollector(db=db, repo_path=repo_path, run_id=run_id)
+    if commit:
+        collector.commit_sha = commit
+
+    stats = collector.collect(
+        dry_run=dry_run,
+        limit=limit,
+        manufacturer_filter=manufacturer,
+        prefix_filter=keyboard_prefix
+    )
+
+    counts_after = db.get_summary_counts() if not dry_run else counts_before
+    duration_sec = time.time() - start_time
+    duration_str = str(datetime.timedelta(seconds=int(duration_sec)))
+
+    if not dry_run:
+        db.finish_crawl_run(
+            run_id,
+            {
+                "products_scanned": stats["targets_discovered"],
+                "new_products": stats["records_created"],
+                "updated_products": stats["records_updated"],
+                "new_vid_pids": stats["with_vid_pid"],
+                "new_hints": stats["hints_recorded"],
+                "errors_count": stats["invalid_metadata"]
+            },
+            status="completed"
+        )
+
+    # Print summary table
+    console.print("\n")
+    console.rule("[bold green]QMK INGESTION COMPLETE[/bold green]")
+    summary_table = Table(title=f"QMK Ingestion Summary (Run: {run_id}, Commit: {collector.commit_sha[:10]})", show_header=True, header_style="bold magenta")
+    summary_table.add_column("Metric", style="cyan")
+    summary_table.add_column("Value", style="bold green")
+
+    summary_table.add_row("Duration", duration_str)
+    summary_table.add_row("QMK Commit SHA", collector.commit_sha)
+    summary_table.add_row("Targets Discovered", str(stats["targets_discovered"]))
+    summary_table.add_row("Records Created", str(stats["records_created"]))
+    summary_table.add_row("Records Updated", str(stats["records_updated"]))
+    summary_table.add_row("Manufacturers Discovered", str(stats["manufacturer_count"]))
+    summary_table.add_row("Targets with VID/PID", str(stats["with_vid_pid"]))
+    summary_table.add_row("Targets without VID/PID", str(stats["without_vid_pid"]))
+    summary_table.add_row("Unique VID/PIDs", str(stats["unique_vid_pid_count"]))
+    summary_table.add_row("Unique MCU / Processors", str(len(stats["mcus"])))
+    summary_table.add_row("Unique Bootloaders", str(len(stats["bootloaders"])))
+    summary_table.add_row("Feature Facts Recorded", str(stats["features_recorded"]))
+    summary_table.add_row("Hardware Facts Recorded", str(stats["facts_recorded"]))
+    summary_table.add_row("Invalid / Errored Metadata", str(stats["invalid_metadata"]))
+    summary_table.add_row("Skipped Entries (Filters)", str(stats["skipped_entries"]))
+    summary_table.add_row("Total Products in Registry", str(counts_after["total_products"]))
+    summary_table.add_row("Total Hardware Devices", str(counts_after["total_hardware_devices"]))
+    summary_table.add_row("Total Registry VID/PIDs", str(counts_after["total_vid_pids"]))
+    summary_table.add_row("Total Technical Facts", str(counts_after["total_facts"]))
+
+    console.print(summary_table)
+    console.print(f"[dim]Database: {DB_PATH}[/dim]\n")
+
+
+@app.command(name="libratbag")
+def libratbag_ingest(
+    repo: Optional[Path] = typer.Option(None, "--repo", "-r", help="Path to local libratbag repository"),
+    commit: Optional[str] = typer.Option(None, "--commit", "-c", help="Specific commit SHA to record"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Simulate ingestion without modifying database"),
+    driver: Optional[str] = typer.Option(None, "--driver", "-d", help="Filter by driver name (e.g. hidpp20, sinowealth)"),
+    vid: Optional[str] = typer.Option(None, "--vid", help="Filter by USB Vendor ID (hex or dec)"),
+    pid: Optional[str] = typer.Option(None, "--pid", help="Filter by USB Product ID (hex or dec)"),
+    device: Optional[str] = typer.Option(None, "--device", help="Filter by device name"),
+    protocol_family: Optional[str] = typer.Option(None, "--protocol-family", help="Filter by protocol family"),
+    limit: Optional[int] = typer.Option(None, "--limit", "-l", help="Limit number of device files to process"),
+    verbose: bool = typer.Option(True, "--verbose/--quiet", help="Enable verbose console logging")
+):
+    """Bulk-ingest device metadata and protocol implementations from official libratbag repository into Peripheral Registry."""
+    logger, log_file = setup_logging(verbose=verbose, log_to_file=True)
+
+    run_id = str(uuid.uuid4())[:8]
+    start_time = time.time()
+    start_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+    # Determine repo path
+    repo_path = repo
+    if not repo_path:
+        candidate_paths = [
+            DB_PATH.parent / "libratbag",
+            DB_PATH.parent.parent / "data" / "libratbag",
+            Path("data/libratbag").resolve(),
+        ]
+        for cp in candidate_paths:
+            if cp.exists() and (cp / "data" / "devices").exists():
+                repo_path = cp
+                break
+
+    if not repo_path or not (repo_path / "data" / "devices").exists():
+        target_clone_path = Path("data/libratbag").resolve()
+        logger.info(f"libratbag repository not found. Shallow cloning official repository to '{target_clone_path}'...")
+        target_clone_path.parent.mkdir(parents=True, exist_ok=True)
+        res = subprocess.run(
+            ["git", "clone", "--depth", "1", "https://github.com/libratbag/libratbag", str(target_clone_path)],
+            capture_output=True,
+            text=True
+        )
+        if res.returncode != 0:
+            logger.error(f"Failed to clone libratbag: {res.stderr}")
+            raise typer.Exit(code=1)
+        repo_path = target_clone_path
+
+    logger.info("=" * 70)
+    logger.info("libratbag Device & Protocol Ingestion starting")
+    logger.info(f"Run ID: [bold]{run_id}[/bold]")
+    logger.info(f"Repository: {repo_path}")
+    logger.info(f"Dry Run: {dry_run}")
+    logger.info(f"Database: {DB_PATH}")
+    logger.info("=" * 70)
+
+    db = RegistryDatabase(DB_PATH)
+    db.init_db()
+    if not dry_run:
+        db.start_crawl_run(run_id)
+    counts_before = db.get_summary_counts()
+
+    collector = LibratbagCollector(db=db, repo_path=repo_path, run_id=run_id)
+    if commit:
+        collector.commit_sha = commit
+
+    stats = collector.collect(
+        dry_run=dry_run,
+        limit=limit,
+        driver_filter=driver,
+        vid_filter=vid,
+        pid_filter=pid,
+        device_filter=device,
+        family_filter=protocol_family
+    )
+
+    counts_after = db.get_summary_counts() if not dry_run else counts_before
+    duration_sec = time.time() - start_time
+    duration_str = str(datetime.timedelta(seconds=int(duration_sec)))
+
+    if not dry_run:
+        db.finish_crawl_run(
+            run_id,
+            {
+                "products_scanned": stats["devices_recognized"],
+                "new_products": stats["records_created"],
+                "updated_products": stats["records_updated"],
+                "new_vid_pids": stats["with_vid_pid"],
+                "new_hints": stats["hints_recorded"],
+                "errors_count": stats["parse_failures"]
+            },
+            status="completed"
+        )
+
+    # Print summary table
+    console.print("\n")
+    console.rule("[bold green]LIBRATBAG INGESTION COMPLETE[/bold green]")
+    summary_table = Table(title=f"libratbag Ingestion Summary (Run: {run_id}, Commit: {collector.commit_sha[:10]})", show_header=True, header_style="bold magenta")
+    summary_table.add_column("Metric", style="cyan")
+    summary_table.add_column("Value", style="bold green")
+
+    summary_table.add_row("Duration", duration_str)
+    summary_table.add_row("libratbag Commit SHA", collector.commit_sha)
+    summary_table.add_row("Device Files Discovered", str(stats["device_files_discovered"]))
+    summary_table.add_row("Devices Recognized", str(stats["devices_recognized"]))
+    summary_table.add_row("Records Created", str(stats["records_created"]))
+    summary_table.add_row("Records Updated", str(stats["records_updated"]))
+    summary_table.add_row("Protocol Families Discovered", str(stats["protocol_family_count"]))
+    summary_table.add_row("Protocol Families", ", ".join(stats["protocol_families"]))
+    summary_table.add_row("Devices with VID/PID", str(stats["with_vid_pid"]))
+    summary_table.add_row("Unique VID/PIDs", str(stats["unique_vid_pid_count"]))
+    summary_table.add_row("Commands / Opcodes Extracted", str(stats["commands_extracted"]))
+    summary_table.add_row("Report IDs Extracted", str(stats["report_ids_extracted"]))
+    summary_table.add_row("Packet Struct Layouts", str(stats["packet_layouts_extracted"]))
+    summary_table.add_row("Capability Facts Recorded", str(stats["capability_mappings"]))
+    summary_table.add_row("Quirks Recorded", str(stats["quirks_recorded"]))
+    summary_table.add_row("Parse Failures", str(stats["parse_failures"]))
+    summary_table.add_row("Skipped Entries (Filters)", str(stats["skipped_entries"]))
+    summary_table.add_row("Total Products in Registry", str(counts_after["total_products"]))
+    summary_table.add_row("Total Hardware Devices", str(counts_after["total_hardware_devices"]))
+    summary_table.add_row("Total Registry VID/PIDs", str(counts_after["total_vid_pids"]))
+    summary_table.add_row("Total Technical Facts", str(counts_after["total_facts"]))
+
+    console.print(summary_table)
+    console.print(f"[dim]Database: {DB_PATH}[/dim]\n")
+
+
+@app.command(name="openrgb")
+def openrgb_ingest(
+    repo: Optional[Path] = typer.Option(None, "--repo", "-r", help="Path to local OpenRGB repository"),
+    commit: Optional[str] = typer.Option(None, "--commit", "-c", help="Specific commit SHA to record"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Simulate ingestion without modifying database"),
+    controller: Optional[str] = typer.Option(None, "--controller", help="Filter by controller family (e.g. RedragonController, Corsair)"),
+    vid: Optional[str] = typer.Option(None, "--vid", help="Filter by USB/PCI Vendor ID (hex or dec)"),
+    pid: Optional[str] = typer.Option(None, "--pid", help="Filter by USB/PCI Product ID (hex or dec)"),
+    device: Optional[str] = typer.Option(None, "--device", help="Filter by device name"),
+    category: Optional[str] = typer.Option(None, "--category", help="Filter by category (mouse, keyboard, gpu, etc.)"),
+    limit: Optional[int] = typer.Option(None, "--limit", "-l", help="Limit number of devices to process"),
+    verbose: bool = typer.Option(True, "--verbose/--quiet", help="Enable verbose console logging")
+):
+    """Bulk-ingest device metadata, multi-interface fingerprints, and lighting protocols from official OpenRGB repository into Peripheral Registry."""
+    logger, log_file = setup_logging(verbose=verbose, log_to_file=True)
+
+    run_id = str(uuid.uuid4())[:8]
+    start_time = time.time()
+    start_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+    # Determine repo path
+    repo_path = repo
+    if not repo_path:
+        candidate_paths = [
+            DB_PATH.parent / "openrgb",
+            DB_PATH.parent.parent / "data" / "openrgb",
+            Path("data/openrgb").resolve(),
+        ]
+        for cp in candidate_paths:
+            if cp.exists() and (cp / "Controllers").exists():
+                repo_path = cp
+                break
+
+    if not repo_path or not (repo_path / "Controllers").exists():
+        target_clone_path = Path("data/openrgb").resolve()
+        logger.info(f"OpenRGB repository not found. Shallow cloning official repository to '{target_clone_path}'...")
+        target_clone_path.parent.mkdir(parents=True, exist_ok=True)
+        res = subprocess.run(
+            ["git", "clone", "--depth", "1", "https://github.com/CalcProgrammer1/OpenRGB", str(target_clone_path)],
+            capture_output=True,
+            text=True
+        )
+        if res.returncode != 0:
+            logger.error(f"Failed to clone OpenRGB: {res.stderr}")
+            raise typer.Exit(code=1)
+        repo_path = target_clone_path
+
+    logger.info("=" * 70)
+    logger.info("OpenRGB Device & Protocol Ingestion starting")
+    logger.info(f"Run ID: [bold]{run_id}[/bold]")
+    logger.info(f"Repository: {repo_path}")
+    logger.info(f"Dry Run: {dry_run}")
+    logger.info(f"Database: {DB_PATH}")
+    logger.info("=" * 70)
+
+    db = RegistryDatabase(DB_PATH)
+    db.init_db()
+    if not dry_run:
+        db.start_crawl_run(run_id)
+    counts_before = db.get_summary_counts()
+
+    collector = OpenRGBCollector(db=db, repo_path=repo_path, run_id=run_id)
+    if commit:
+        collector.commit_sha = commit
+
+    stats = collector.collect(
+        dry_run=dry_run,
+        limit=limit,
+        controller_filter=controller,
+        vid_filter=vid,
+        pid_filter=pid,
+        device_filter=device,
+        category_filter=category
+    )
+
+    counts_after = db.get_summary_counts() if not dry_run else counts_before
+    duration_sec = time.time() - start_time
+    duration_str = str(datetime.timedelta(seconds=int(duration_sec)))
+
+    if not dry_run:
+        db.finish_crawl_run(
+            run_id,
+            {
+                "products_scanned": stats["devices_recognized"],
+                "new_products": stats["records_created"],
+                "updated_products": stats["records_updated"],
+                "new_vid_pids": stats["with_vid_pid"],
+                "new_hints": stats["hints_recorded"],
+                "errors_count": stats["parse_failures"]
+            },
+            status="completed"
+        )
+
+    # Print summary table
+    console.print("\n")
+    console.rule("[bold green]OPENRGB INGESTION COMPLETE[/bold green]")
+    summary_table = Table(title=f"OpenRGB Ingestion Summary (Run: {run_id}, Commit: {collector.commit_sha[:10]})", show_header=True, header_style="bold magenta")
+    summary_table.add_column("Metric", style="cyan")
+    summary_table.add_column("Value", style="bold green")
+
+    summary_table.add_row("Duration", duration_str)
+    summary_table.add_row("OpenRGB Commit SHA", collector.commit_sha)
+    summary_table.add_row("Devices Discovered", str(stats["devices_discovered"]))
+    summary_table.add_row("Devices Recognized", str(stats["devices_recognized"]))
+    summary_table.add_row("Records Created", str(stats["records_created"]))
+    summary_table.add_row("Records Updated", str(stats["records_updated"]))
+    summary_table.add_row("Controller Families Discovered", str(stats["controller_family_count"]))
+    summary_table.add_row("Devices with VID/PID", str(stats["with_vid_pid"]))
+    summary_table.add_row("Devices without VID/PID", str(stats["without_vid_pid"]))
+    summary_table.add_row("Devices with Interface/UsagePage/Usage", str(stats["with_ipu"]))
+    summary_table.add_row("Devices with PCI SVID/SPID", str(stats["with_pci_svid"]))
+    summary_table.add_row("Unique VID/PIDs", str(stats["unique_vid_pid_count"]))
+    summary_table.add_row("Lighting Modes Recorded", str(stats["lighting_modes_recorded"]))
+    summary_table.add_row("Facts Recorded", str(stats["facts_recorded"]))
+    summary_table.add_row("Hints Recorded", str(stats["hints_recorded"]))
+    summary_table.add_row("Skipped Entries (Filters)", str(stats["skipped_entries"]))
+    summary_table.add_row("Total Products in Registry", str(counts_after["total_products"]))
+    summary_table.add_row("Total Hardware Devices", str(counts_after["total_hardware_devices"]))
+    summary_table.add_row("Total Registry VID/PIDs", str(counts_after["total_vid_pids"]))
+    summary_table.add_row("Total Technical Facts", str(counts_after["total_facts"]))
+
+    console.print(summary_table)
+    console.print(f"[dim]Database: {DB_PATH}[/dim]\n")
+
+
+@app.command(name="signalrgb")
+def ingest_signalrgb(
+    sources_dir: Optional[Path] = typer.Option(None, "--sources-dir", help="Path to sources directory"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Dry run without writing to DB"),
+    limit: Optional[int] = typer.Option(None, "--limit", "-l", help="Limit number of plugins to ingest"),
+    verbose: bool = typer.Option(True, "--verbose/--quiet", help="Enable verbose console logging")
+):
+    """Ingest SignalRGB official, community, and installed JS plugins."""
+    logger, _ = setup_logging(verbose=verbose, log_to_file=True)
+    run_id = str(uuid.uuid4())[:8]
+    root = sources_dir or Path("sources").resolve()
+
+    logger.info("=" * 70)
+    logger.info(f"SignalRGB Plugin Ingestion starting (Run ID: {run_id})")
+    logger.info(f"Sources Root: {root}")
+    logger.info(f"Database: {DB_PATH}")
+    logger.info("=" * 70)
+
+    db = RegistryDatabase(DB_PATH)
+    db.init_db()
+    if not dry_run:
+        db.start_crawl_run(run_id)
+
+    collector = SignalRGBCollector(db=db, sources_root=root, run_id=run_id)
+    stats = collector.collect(dry_run=dry_run, limit=limit)
+
+    counts_after = db.get_summary_counts()
+    console.print("\n")
+    console.rule("[bold green]SIGNALRGB INGESTION COMPLETE[/bold green]")
+    summary_table = Table(title=f"SignalRGB Ingestion Summary (Run: {run_id})", show_header=True, header_style="bold magenta")
+    summary_table.add_column("Metric", style="cyan")
+    summary_table.add_column("Value", style="bold green")
+    summary_table.add_row("Plugins Discovered", str(stats["plugins_discovered"]))
+    summary_table.add_row("Records Created", str(stats["records_created"]))
+    summary_table.add_row("Records Updated", str(stats["records_updated"]))
+    summary_table.add_row("Unique VID/PIDs", str(stats["unique_vid_pid_count"]))
+    summary_table.add_row("Packet Writes Recorded", str(stats["packet_writes_recorded"]))
+    summary_table.add_row("Opcodes Recorded", str(stats["opcodes_recorded"]))
+    summary_table.add_row("Total Products in Registry", str(counts_after["total_products"]))
+    summary_table.add_row("Total Technical Facts", str(counts_after["total_facts"]))
+    console.print(summary_table)
+
+
+@app.command(name="openrazer")
+def ingest_openrazer(
+    repo: Optional[Path] = typer.Option(None, "--repo", help="Path to openrazer repository"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Dry run without writing to DB"),
+    limit: Optional[int] = typer.Option(None, "--limit", "-l", help="Limit devices to ingest"),
+    verbose: bool = typer.Option(True, "--verbose/--quiet", help="Enable verbose console logging")
+):
+    """Ingest OpenRazer driver tables, packed C structs, and opcodes."""
+    logger, _ = setup_logging(verbose=verbose, log_to_file=True)
+    run_id = str(uuid.uuid4())[:8]
+    repo_path = repo or Path("sources/openrazer").resolve()
+
+    logger.info("=" * 70)
+    logger.info(f"OpenRazer Ingestion starting (Run ID: {run_id})")
+    logger.info(f"Repository: {repo_path}")
+    logger.info(f"Database: {DB_PATH}")
+    logger.info("=" * 70)
+
+    db = RegistryDatabase(DB_PATH)
+    db.init_db()
+    if not dry_run:
+        db.start_crawl_run(run_id)
+
+    collector = OpenRazerCollector(db=db, repo_path=repo_path, run_id=run_id)
+    stats = collector.collect(dry_run=dry_run, limit=limit)
+
+    counts_after = db.get_summary_counts()
+    console.print("\n")
+    console.rule("[bold green]OPENRAZER INGESTION COMPLETE[/bold green]")
+    summary_table = Table(title=f"OpenRazer Ingestion Summary (Run: {run_id})", show_header=True, header_style="bold magenta")
+    summary_table.add_column("Metric", style="cyan")
+    summary_table.add_column("Value", style="bold green")
+    summary_table.add_row("Devices Discovered", str(stats["devices_discovered"]))
+    summary_table.add_row("Records Created", str(stats["records_created"]))
+    summary_table.add_row("Records Updated", str(stats["records_updated"]))
+    summary_table.add_row("Unique VID/PIDs", str(stats["unique_vid_pid_count"]))
+    summary_table.add_row("Total Products in Registry", str(counts_after["total_products"]))
+    summary_table.add_row("Total Technical Facts", str(counts_after["total_facts"]))
+    console.print(summary_table)
+
+
+@app.command(name="solaar")
+def ingest_solaar(
+    repo: Optional[Path] = typer.Option(None, "--repo", help="Path to solaar repository"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Dry run without writing to DB"),
+    limit: Optional[int] = typer.Option(None, "--limit", "-l", help="Limit devices to ingest"),
+    verbose: bool = typer.Option(True, "--verbose/--quiet", help="Enable verbose console logging")
+):
+    """Ingest Solaar Logitech descriptors and HID++ 2.0 feature tables."""
+    logger, _ = setup_logging(verbose=verbose, log_to_file=True)
+    run_id = str(uuid.uuid4())[:8]
+    repo_path = repo or Path("sources/solaar").resolve()
+
+    logger.info("=" * 70)
+    logger.info(f"Solaar Logitech Ingestion starting (Run ID: {run_id})")
+    logger.info(f"Repository: {repo_path}")
+    logger.info(f"Database: {DB_PATH}")
+    logger.info("=" * 70)
+
+    db = RegistryDatabase(DB_PATH)
+    db.init_db()
+    if not dry_run:
+        db.start_crawl_run(run_id)
+
+    collector = SolaarCollector(db=db, repo_path=repo_path, run_id=run_id)
+    stats = collector.collect(dry_run=dry_run, limit=limit)
+
+    counts_after = db.get_summary_counts()
+    console.print("\n")
+    console.rule("[bold green]SOLAAR INGESTION COMPLETE[/bold green]")
+    summary_table = Table(title=f"Solaar Ingestion Summary (Run: {run_id})", show_header=True, header_style="bold magenta")
+    summary_table.add_column("Metric", style="cyan")
+    summary_table.add_column("Value", style="bold green")
+    summary_table.add_row("Devices Discovered", str(stats["devices_discovered"]))
+    summary_table.add_row("HID++ Features Recorded", str(stats["features_recorded"]))
+    summary_table.add_row("Records Created", str(stats["records_created"]))
+    summary_table.add_row("Records Updated", str(stats["records_updated"]))
+    summary_table.add_row("Unique VID/PIDs", str(stats["unique_vid_pid_count"]))
+    summary_table.add_row("Total Products in Registry", str(counts_after["total_products"]))
+    summary_table.add_row("Total Technical Facts", str(counts_after["total_facts"]))
+    console.print(summary_table)
+
+
+@app.command(name="rivalcfg")
+def ingest_rivalcfg(
+    repo: Optional[Path] = typer.Option(None, "--repo", help="Path to rivalcfg repository"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Dry run without writing to DB"),
+    limit: Optional[int] = typer.Option(None, "--limit", "-l", help="Limit devices to ingest"),
+    verbose: bool = typer.Option(True, "--verbose/--quiet", help="Enable verbose console logging")
+):
+    """Ingest Rivalcfg SteelSeries profiles and command packets."""
+    logger, _ = setup_logging(verbose=verbose, log_to_file=True)
+    run_id = str(uuid.uuid4())[:8]
+    repo_path = repo or Path("sources/rivalcfg").resolve()
+
+    logger.info("=" * 70)
+    logger.info(f"Rivalcfg SteelSeries Ingestion starting (Run ID: {run_id})")
+    logger.info(f"Repository: {repo_path}")
+    logger.info(f"Database: {DB_PATH}")
+    logger.info("=" * 70)
+
+    db = RegistryDatabase(DB_PATH)
+    db.init_db()
+    if not dry_run:
+        db.start_crawl_run(run_id)
+
+    collector = RivalcfgCollector(db=db, repo_path=repo_path, run_id=run_id)
+    stats = collector.collect(dry_run=dry_run, limit=limit)
+
+    counts_after = db.get_summary_counts()
+    console.print("\n")
+    console.rule("[bold green]RIVALCFG INGESTION COMPLETE[/bold green]")
+    summary_table = Table(title=f"Rivalcfg Ingestion Summary (Run: {run_id})", show_header=True, header_style="bold magenta")
+    summary_table.add_column("Metric", style="cyan")
+    summary_table.add_column("Value", style="bold green")
+    summary_table.add_row("Devices Discovered", str(stats["devices_discovered"]))
+    summary_table.add_row("Records Created", str(stats["records_created"]))
+    summary_table.add_row("Records Updated", str(stats["records_updated"]))
+    summary_table.add_row("Unique VID/PIDs", str(stats["unique_vid_pid_count"]))
+    summary_table.add_row("Total Products in Registry", str(counts_after["total_products"]))
+    summary_table.add_row("Total Technical Facts", str(counts_after["total_facts"]))
+    console.print(summary_table)
+
+
+@app.command(name="wooting")
+def ingest_wooting(
+    sources_dir: Optional[Path] = typer.Option(None, "--sources-dir", help="Path to sources directory"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Dry run without writing to DB"),
+    limit: Optional[int] = typer.Option(None, "--limit", "-l", help="Limit devices to ingest"),
+    verbose: bool = typer.Option(True, "--verbose/--quiet", help="Enable verbose console logging")
+):
+    """Ingest Wooting analog and Rapid Trigger protocols."""
+    logger, _ = setup_logging(verbose=verbose, log_to_file=True)
+    run_id = str(uuid.uuid4())[:8]
+    root = sources_dir or Path("sources").resolve()
+
+    logger.info("=" * 70)
+    logger.info(f"Wooting Ingestion starting (Run ID: {run_id})")
+    logger.info(f"Sources Root: {root}")
+    logger.info(f"Database: {DB_PATH}")
+    logger.info("=" * 70)
+
+    db = RegistryDatabase(DB_PATH)
+    db.init_db()
+    if not dry_run:
+        db.start_crawl_run(run_id)
+
+    collector = WootingCollector(db=db, sources_root=root, run_id=run_id)
+    stats = collector.collect(dry_run=dry_run, limit=limit)
+
+    counts_after = db.get_summary_counts()
+    console.print("\n")
+    console.rule("[bold green]WOOTING INGESTION COMPLETE[/bold green]")
+    summary_table = Table(title=f"Wooting Ingestion Summary (Run: {run_id})", show_header=True, header_style="bold magenta")
+    summary_table.add_column("Metric", style="cyan")
+    summary_table.add_column("Value", style="bold green")
+    summary_table.add_row("Devices Discovered", str(stats["devices_discovered"]))
+    summary_table.add_row("Records Created", str(stats["records_created"]))
+    summary_table.add_row("Records Updated", str(stats["records_updated"]))
+    summary_table.add_row("Unique VID/PIDs", str(stats["unique_vid_pid_count"]))
+    summary_table.add_row("Total Products in Registry", str(counts_after["total_products"]))
+    summary_table.add_row("Total Technical Facts", str(counts_after["total_facts"]))
+    console.print(summary_table)
+
+
+@app.command(name="bulk-sources")
+def ingest_bulk_sources(
+    sources_dir: Optional[Path] = typer.Option(None, "--sources-dir", help="Path to sources directory"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Dry run without writing to DB"),
+    verbose: bool = typer.Option(True, "--verbose/--quiet", help="Enable verbose console logging")
+):
+    """Execute coordinated multi-source bulk-ingestion across all 21+ hardware sources."""
+    logger, _ = setup_logging(verbose=verbose, log_to_file=True)
+    run_id = str(uuid.uuid4())[:8]
+    root = sources_dir or Path("sources").resolve()
+
+    logger.info("=" * 70)
+    logger.info(f"Multi-Source Bulk Ingestion starting (Run ID: {run_id})")
+    logger.info(f"Sources Root: {root}")
+    logger.info(f"Database: {DB_PATH}")
+    logger.info("=" * 70)
+
+    db = RegistryDatabase(DB_PATH)
+    db.init_db()
+    if not dry_run:
+        db.start_crawl_run(run_id)
+
+    collectors = [
+        ("SignalRGB", SignalRGBCollector(db=db, sources_root=root, run_id=run_id)),
+        ("OpenRazer", OpenRazerCollector(db=db, repo_path=root / "openrazer", run_id=run_id)),
+        ("Solaar", SolaarCollector(db=db, repo_path=root / "solaar", run_id=run_id)),
+        ("Rivalcfg", RivalcfgCollector(db=db, repo_path=root / "rivalcfg", run_id=run_id)),
+        ("Wooting", WootingCollector(db=db, sources_root=root, run_id=run_id)),
+        ("Corsair (ckb-next)", CorsairCkbCollector(db=db, sources_root=root, run_id=run_id)),
+        ("Logitech (CPG & G933)", LogitechDocsCollector(db=db, sources_root=root, run_id=run_id)),
+        ("Artemis / RGB.NET", ArtemisRGBNetCollector(db=db, sources_root=root, run_id=run_id)),
+        ("Linux HID Subsystem", LinuxHIDCollector(db=db, repo_path=root / "linux", run_id=run_id)),
+    ]
+
+    total_stats = defaultdict(int)
+    all_unique_vid_pids = set()
+
+    for name, col in collectors:
+        logger.info(f"Running {name} collector...")
+        try:
+            st = col.collect(dry_run=dry_run)
+            total_stats["devices_discovered"] += st.get("devices_discovered", 0) + st.get("plugins_discovered", 0) + st.get("headsets_recorded", 0)
+            total_stats["records_created"] += st.get("records_created", 0)
+            total_stats["records_updated"] += st.get("records_updated", 0)
+            total_stats["facts_recorded"] += st.get("facts_recorded", 0)
+            total_stats["hints_recorded"] += st.get("hints_recorded", 0)
+            for vp in st.get("unique_vid_pids", []):
+                all_unique_vid_pids.add(vp)
+            logger.info(f"  {name}: {st.get('records_created', 0)} created, {st.get('records_updated', 0)} updated")
+        except Exception as e:
+            logger.error(f"  {name} collector failed: {e}")
+
+    counts_after = db.get_summary_counts()
+    console.print("\n")
+    console.rule("[bold green]ALL BULK SOURCES INGESTION COMPLETE[/bold green]")
+    summary_table = Table(title=f"Multi-Source Bulk Ingestion Summary (Run: {run_id})", show_header=True, header_style="bold magenta")
+    summary_table.add_column("Metric", style="cyan")
+    summary_table.add_column("Value", style="bold green")
+    summary_table.add_row("Total Source Devices/Plugins", str(total_stats["devices_discovered"]))
+    summary_table.add_row("New Records Created", str(total_stats["records_created"]))
+    summary_table.add_row("Records Updated/Enriched", str(total_stats["records_updated"]))
+    summary_table.add_row("Unique VID/PIDs Ingested", str(len(all_unique_vid_pids)))
+    summary_table.add_row("Technical Facts Recorded", str(total_stats["facts_recorded"]))
+    summary_table.add_row("Protocol Hints Recorded", str(total_stats["hints_recorded"]))
+    summary_table.add_row("Total Products in Registry", str(counts_after["total_products"]))
+    summary_table.add_row("Total Hardware Devices", str(counts_after["total_hardware_devices"]))
+    summary_table.add_row("Total Registry VID/PIDs", str(counts_after["total_vid_pids"]))
+    summary_table.add_row("Total Technical Facts", str(counts_after["total_facts"]))
+    console.print(summary_table)
+
+
+@app.command(name="linux-hid")
+def ingest_linux_hid(
+    repo: Optional[Path] = typer.Option(None, "--repo", help="Path to linux repository"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Dry run without writing to DB"),
+    limit: Optional[int] = typer.Option(None, "--limit", "-l", help="Limit devices to ingest"),
+    verbose: bool = typer.Option(True, "--verbose/--quiet", help="Enable verbose console logging")
+):
+    """Ingest Linux kernel HID drivers, device tables, and quirks."""
+    logger, _ = setup_logging(verbose=verbose, log_to_file=True)
+    run_id = str(uuid.uuid4())[:8]
+    repo_path = repo or Path("sources/linux").resolve()
+
+    logger.info("=" * 70)
+    logger.info(f"Linux HID Ingestion starting (Run ID: {run_id})")
+    logger.info(f"Repository: {repo_path}")
+    logger.info(f"Database: {DB_PATH}")
+    logger.info("=" * 70)
+
+    db = RegistryDatabase(DB_PATH)
+    db.init_db()
+    if not dry_run:
+        db.start_crawl_run(run_id)
+
+    collector = LinuxHIDCollector(db=db, repo_path=repo_path, run_id=run_id)
+    stats = collector.collect(dry_run=dry_run, limit=limit)
+
+    counts_after = db.get_summary_counts()
+    console.print("\n")
+    console.rule("[bold green]LINUX HID INGESTION COMPLETE[/bold green]")
+    summary_table = Table(title=f"Linux HID Ingestion Summary (Run: {run_id})", show_header=True, header_style="bold magenta")
+    summary_table.add_column("Metric", style="cyan")
+    summary_table.add_column("Value", style="bold green")
+    summary_table.add_row("Devices Discovered", str(stats["devices_discovered"]))
+    summary_table.add_row("Records Created", str(stats["records_created"]))
+    summary_table.add_row("Records Updated", str(stats["records_updated"]))
+    summary_table.add_row("Unique VID/PIDs", str(stats["unique_vid_pid_count"]))
+    summary_table.add_row("Total Products in Registry", str(counts_after["total_products"]))
+    summary_table.add_row("Total Technical Facts", str(counts_after["total_facts"]))
+    console.print(summary_table)
 
 
 if __name__ == "__main__":

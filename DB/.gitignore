@@ -32,6 +32,11 @@ logs/
 htmlcov/
 
 # Keep data structure but ignore large local dumps if needed
+data/qmk_firmware/
+data/libratbag/
+data/piper/
+data/openrgb/
+sources/
 data/reports/*.json
 data/reports/*.txt
 data/registry.sqlite-journal

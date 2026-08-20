@@ -1,4 +1,4 @@
-"""Collectors registry and factory supporting all 87 canonical brands."""
+"""Collectors registry and factory supporting canonical brands and bulk sources."""
 
 from typing import Type, Optional
 from ingest.brands.canonical import BrandDef, get_brand_by_slug, ALL_CANONICAL_BRANDS
@@ -8,6 +8,18 @@ from ingest.collectors.atk_vxe import AtkCollector, VxeCollector, AtkVxeCollecto
 from ingest.collectors.epomaker import EpomakerCollector
 from ingest.collectors.keychron import KeychronCollector
 from ingest.collectors.generic_collector import GenericBrandCollector
+from ingest.collectors.qmk import QmkCollector, QmkMetadataResolver
+from ingest.collectors.libratbag import LibratbagCollector, LibratbagDeviceParser, LibratbagProtocolExtractor
+from ingest.collectors.openrgb import OpenRGBCollector, OpenRGBDetectorParser, OpenRGBByteProtocolExtractor
+from ingest.collectors.signalrgb import SignalRGBCollector, SignalRGBPluginParser
+from ingest.collectors.openrazer import OpenRazerCollector, OpenRazerDriverParser
+from ingest.collectors.solaar import SolaarCollector, SolaarDescriptorParser
+from ingest.collectors.rivalcfg import RivalcfgCollector, RivalcfgProfileParser
+from ingest.collectors.wooting import WootingCollector
+from ingest.collectors.corsair_ckb import CorsairCkbCollector, CorsairCkbParser
+from ingest.collectors.logitech_docs import LogitechDocsCollector
+from ingest.collectors.artemis_rgbnet import ArtemisRGBNetCollector, ArtemisRGBNetParser
+from ingest.collectors.linux_hid import LinuxHIDCollector, LinuxHIDParser
 
 SPECIALIZED_COLLECTORS: dict[str, Type[BaseCollector]] = {
     "aula": AulaCollector,
@@ -39,6 +51,30 @@ __all__ = [
     "EpomakerCollector",
     "KeychronCollector",
     "GenericBrandCollector",
+    "QmkCollector",
+    "QmkMetadataResolver",
+    "LibratbagCollector",
+    "LibratbagDeviceParser",
+    "LibratbagProtocolExtractor",
+    "OpenRGBCollector",
+    "OpenRGBDetectorParser",
+    "OpenRGBByteProtocolExtractor",
+    "SignalRGBCollector",
+    "SignalRGBPluginParser",
+    "OpenRazerCollector",
+    "OpenRazerDriverParser",
+    "SolaarCollector",
+    "SolaarDescriptorParser",
+    "RivalcfgCollector",
+    "RivalcfgProfileParser",
+    "WootingCollector",
+    "CorsairCkbCollector",
+    "CorsairCkbParser",
+    "LogitechDocsCollector",
+    "ArtemisRGBNetCollector",
+    "ArtemisRGBNetParser",
+    "LinuxHIDCollector",
+    "LinuxHIDParser",
     "SPECIALIZED_COLLECTORS",
     "get_collector_for_brand",
 ]

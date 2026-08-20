@@ -181,3 +181,26 @@ COLLECTORS_MAP["razer"] = RazerCollector
 - All network errors, unexpected HTML changes, or malformed archives are caught and logged with full tracebacks into `logs/run-*.log`.
 - A failure in one vendor or product model will **never** interrupt the remaining crawling pipeline.
 - Old database records are never hard-deleted; models missing from subsequent crawls are flagged as `active = 0`.
+
+---
+
+## Full typed protocol re-ingestion
+
+The forensic reprocessor inventories every discovered source root, parses
+supported C/C++/C#/JavaScript/Python/Rust and capture formats, and rebuilds the
+typed evidence graph without device I/O:
+
+```powershell
+.\.venv\Scripts\python.exe -c "from pathlib import Path; from ingest.full_reingest import FullTypedReprocessor; print(FullTypedReprocessor(Path('data/registry.sqlite'), Path('.')).run())"
+```
+
+Risk and reconstructibility are derived only from typed operations:
+
+```powershell
+.\.venv\Scripts\python.exe -c "from pathlib import Path; from ingest.repair_pass2 import RepairPass2; print(RepairPass2(Path('data/registry.sqlite')).derive_risk_and_reconstructibility())"
+```
+
+The measured report is generated with `build_full_report` from
+`ingest.full_reingest_report`. Public SignalRGB USBData attachments are handled
+by `ingest.signalrgb_attachments`; authentication-blocked URLs remain explicit
+`external_attachments` records and are never reported as downloaded.
