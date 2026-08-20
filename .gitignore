@@ -10,9 +10,11 @@ target/
 *.exp
 *.lib
 
-# PyInstaller build folders
+# PyInstaller / Diagnostic build folders
 build/
 community/build/
+community/build_diagnostic/
+community/dist_diagnostic/
 community/dist/*.json
 community/dist/*.exe
 community/*.json

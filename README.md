@@ -1,6 +1,6 @@
 # Hidder — Peripheral Research Probe
 
-[![Tests](https://img.shields.io/badge/tests-72%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-75%20passed-brightgreen.svg)]()
 [![Platform](https://img.shields.io/badge/platform-Windows%20x64-blue.svg)]()
 [![Safety](https://img.shields.io/badge/hardware%20safety-zero--write%20observer-success.svg)]()
 [![License](https://img.shields.io/badge/license-MIT-green.svg)]()
@@ -55,7 +55,7 @@ graph TD
     end
 
     subgraph Native_Mode ["Native Desktop Backend"]
-        MinHook["MinHook Native DLL (probe_hook_x64.dll)"]
+        MinHook["MinHook Native DLL (Hidder.NativeObserver.x64.dll)"]
         DesktopVendor["Native Desktop Software (Bloody, iCUE, NGenuity, etc.)"]
         NamedPipe["Windows Named Pipe IPC"]
     end
@@ -85,12 +85,14 @@ graph TD
 * Observes outbound reports (`sendReport`, `sendFeatureReport`), inbound features (`receiveFeatureReport`), and incoming analog streams (`inputreport`).
 * Calls original methods with exact `this` binding and unchanged arguments (`apply`).
 * Completely cleans up and deletes the temporary profile on exit.
+* **Zero remote process APIs**: Does not call `OpenProcess`, `VirtualAllocEx`, `WriteProcessMemory`, or `CreateRemoteThread`.
 
 ### 2. Native Desktop Observer (for Installed Desktop Apps)
 * Injects a safe 64-bit Rust DLL utilizing **MinHook** (HDE64 instruction length disassembly).
 * Hooks Win32 user-mode APIs: `WriteFile`, `HidD_SetFeature`, `HidD_GetFeature`, `HidD_SetOutputReport`, `HidD_GetInputReport`.
 * Filters handles by target USB VID/PID using `HidD_GetAttributes` to avoid logging irrelevant file or socket operations.
 * Streams events in real time over Windows Named Pipe `\\.\pipe\PeripheralResearch_Observer`.
+* Cached in `%LOCALAPPDATA%\Hidder\Runtime\v0.3.0\Hidder.NativeObserver.x64.dll` with stable version metadata.
 
 ### 3. Pairwise $A \rightarrow B \rightarrow A$ Change/Restore Correlation
 * Automatically pairs each change action (`*_change`) with its mandatory restore step (`*_restore`).
@@ -106,6 +108,22 @@ graph TD
 * ❌ **No Browser Data**: Uses an empty temporary profile; personal cookies, history, and passwords are never accessed.
 * ❌ **No Permanent Installation**: Does not install background services, drivers, or registry startup entries.
 * ❌ **No Hardware Writes**: Does not emit raw writes or firmware modifications.
+* ❌ **No Anti-AV Tricks**: Zero obfuscation, zero stealth injection, zero runtime API hashing.
+
+---
+
+## 🛡️ Security Verification & Transparency
+
+Official releases provide complete source-to-binary traceability. You can verify the integrity of your download:
+
+| Artifact | SHA-256 Checksum | Windows Defender Status |
+| :--- | :--- | :--- |
+| `PeripheralResearch_ru.exe` | See `build_manifest.json` | Clean (No threats) |
+| `PeripheralResearch_en.exe` | See `build_manifest.json` | Clean (No threats) |
+| `Hidder.NativeObserver.x64.dll` | `76605408aa3ca9b89aa3afaf09d264360333ee6c7ded661594d2219178732186` | Clean (No threats) |
+
+> **Note on Windows SmartScreen**:
+> As an independent, non-commercial open-source project without an expensive EV code-signing certificate, Windows SmartScreen may show an "Unrecognized app" prompt on first run until community reputation is established. This is normal for unsigned open-source binaries. All source code is 100% public and inspectable.
 
 ---
 
@@ -135,7 +153,7 @@ Grab the latest release from the [Releases](https://github.com/Phnem/Hidder/rele
 * Windows 10/11 x64
 * Python 3.11+
 * Rust toolchain (`cargo`, `rustc`)
-* PyInstaller (`pip install pyinstaller pytest`)
+* PyInstaller (`pip install pyinstaller pytest pefile`)
 
 ### Build Both Executables
 ```cmd
@@ -143,9 +161,10 @@ git clone https://github.com/Phnem/Hidder.git
 cd Hidder
 python community/build_exe.py
 ```
-Compiled standalone executables will be placed in `community/dist/`:
+Compiled standalone executables and cryptographic manifest will be placed in `community/dist/`:
 * `community/dist/PeripheralResearch_ru.exe`
 * `community/dist/PeripheralResearch_en.exe`
+* `community/dist/build_manifest.json`
 
 ### Run Test Suite
 ```cmd

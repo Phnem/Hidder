@@ -325,7 +325,25 @@ class CommunityResearchWizard:
         detected_proc, detected_pid = self._find_and_select_vendor_process()
         if detected_proc and detected_pid:
             self.vendor_process_name = detected_proc
-            print(f"[+] Выбран процесс: {self.vendor_process_name} (PID: {detected_pid})")
+            print(f"\n====================================================")
+            print("        Подключение к программе устройства         ")
+            print("====================================================")
+            print(f"Выбрана программа: {self.vendor_process_name} (PID: {detected_pid})")
+            print("\nДля записи технических HID-команд Hidder временно подключится")
+            print("к официальной программе устройства.")
+            print("\nHidder:")
+            print(" • НЕ изменяет файлы программы")
+            print(" • НЕ собирает пароли и личный текст")
+            print(" • Отключится сразу после завершения теста")
+            print("\n[Enter] — Продолжить")
+            print("[S]     — Пропустить подключение к программе")
+            
+            if not self.is_demo:
+                choice = input("\n> ").strip().lower()
+                if choice in ("s", "skip"):
+                    print("[-] Подключение к программе отменено пользователем.")
+                    return
+
             try:
                 ok = self.observer.attach_native(detected_pid, self.vendor_process_name)
                 if ok:
@@ -334,7 +352,7 @@ class CommunityResearchWizard:
                     print("[!] Не удалось подключиться к процессу.")
             except PermissionError:
                 print("\n[!] ВНИМАНИЕ: Программа запущена от имени Администратора.")
-                print("    Перезапустите PeripheralResearch от имени Администратора.")
+                print("    Перезапустите Hidder от имени Администратора.")
             except Exception as e:
                 print(f"[!] Ошибка подключения: {e}")
 

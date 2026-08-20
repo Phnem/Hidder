@@ -325,7 +325,25 @@ class CommunityResearchWizard:
         detected_proc, detected_pid = self._find_and_select_vendor_process()
         if detected_proc and detected_pid:
             self.vendor_process_name = detected_proc
-            print(f"[+] Selected process: {self.vendor_process_name} (PID: {detected_pid})")
+            print(f"\n====================================================")
+            print("        Connect to Vendor Software                  ")
+            print("====================================================")
+            print(f"Selected application: {self.vendor_process_name} (PID: {detected_pid})")
+            print("\nTo record technical HID commands, Hidder will temporarily attach")
+            print("to the official vendor application.")
+            print("\nHidder:")
+            print(" • Does NOT modify application files")
+            print(" • Does NOT record passwords or typed text")
+            print(" • Detaches immediately after the test completes")
+            print("\n[Enter] — Continue")
+            print("[S]     — Skip software connection")
+            
+            if not self.is_demo:
+                choice = input("\n> ").strip().lower()
+                if choice in ("s", "skip"):
+                    print("[-] Software connection skipped by user.")
+                    return
+
             try:
                 ok = self.observer.attach_native(detected_pid, self.vendor_process_name)
                 if ok:
@@ -334,7 +352,7 @@ class CommunityResearchWizard:
                     print("[!] Could not attach to process.")
             except PermissionError:
                 print("\n[!] WARNING: Software is running as Administrator.")
-                print("    Please restart PeripheralResearch as Administrator.")
+                print("    Please restart Hidder as Administrator.")
             except Exception as e:
                 print(f"[!] Attach error: {e}")
 

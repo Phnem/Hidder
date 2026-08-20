@@ -18,7 +18,10 @@ if sys.platform == "win32":
     except Exception:
         pass
 
-from community.probe.wizard import CommunityResearchWizard
+try:
+    from probe.wizard import CommunityResearchWizard
+except ImportError:
+    from community.probe.wizard import CommunityResearchWizard
 
 
 def main() -> int:

@@ -1,6 +1,8 @@
-"""Native Windows desktop application observer using MinHook DLL injection (English edition).
+"""Native Windows desktop application observer using transparent MinHook DLL injection (English edition).
 
 Interprets WriteFile and HidD_* calls from native desktop vendor software.
+Uses stable runtime caching in %LOCALAPPDATA%\\Hidder\\Runtime\\v0.3.0\\
+without random dropper filenames or stealth persistence.
 """
 
 from __future__ import annotations
@@ -8,6 +10,7 @@ from __future__ import annotations
 import atexit
 import ctypes
 from ctypes import wintypes
+import hashlib
 import json
 import os
 import shutil
@@ -24,16 +27,17 @@ PIPE_READMODE_MESSAGE = 0x00000002
 PIPE_WAIT = 0x00000000
 INVALID_HANDLE_VALUE = -1
 PIPE_NAME = r"\\.\pipe\PeripheralResearch_Observer"
+RUNTIME_VERSION = "v0.3.0"
+HELPER_DLL_NAME = "Hidder.NativeObserver.x64.dll"
 
 
 class NativeVendorObserver:
-    """Manages Named Pipe IPC and DLL injection for native Windows desktop software."""
+    """Manages Named Pipe IPC and transparent DLL injection for native Windows desktop software."""
 
     def __init__(self, on_event_callback: Callable[[dict[str, Any]], None]) -> None:
         self.on_event_callback = on_event_callback
         self.attached_pid: int | None = None
         self.target_process_name: str = ""
-        self._temp_dir: Path | None = None
         self._pipe_stop_event = threading.Event()
         self._pipe_thread: threading.Thread | None = None
         self._pipe_handle: int | None = None
@@ -100,31 +104,54 @@ class NativeVendorObserver:
         self.attached_pid = pid
         self.target_process_name = process_basename
 
-        dll_path = self._get_hook_dll_path()
+        dll_path = self._ensure_helper_dll()
         if not dll_path or not dll_path.is_file():
             return False
 
         return self._inject_dll(pid, dll_path)
 
-    def _get_hook_dll_path(self) -> Path | None:
+    def _get_stable_runtime_dir(self) -> Path:
+        """Return stable, transparent directory for cached runtime helper."""
+        local_appdata = os.environ.get("LOCALAPPDATA")
+        if local_appdata:
+            base_dir = Path(local_appdata) / "Hidder" / "Runtime" / RUNTIME_VERSION
+        else:
+            base_dir = Path(tempfile.gettempdir()) / "Hidder" / "Runtime" / RUNTIME_VERSION
+        base_dir.mkdir(parents=True, exist_ok=True)
+        return base_dir
+
+    def _ensure_helper_dll(self) -> Path | None:
+        """Locate or safely cache the helper DLL in stable runtime path."""
         module_dir = Path(__file__).resolve().parent
-        local_asset = module_dir / "assets" / "probe_hook_x64.dll"
-        if local_asset.is_file():
-            return local_asset
-            
-        cargo_asset = module_dir.parent.parent / "probe_hook" / "target" / "release" / "probe_hook.dll"
-        if cargo_asset.is_file():
-            return cargo_asset
+        candidate_sources = [
+            module_dir / "assets" / HELPER_DLL_NAME,
+            module_dir / "assets" / "probe_hook_x64.dll",
+            module_dir.parent.parent / "probe" / "assets" / HELPER_DLL_NAME,
+            module_dir.parent.parent / "probe_hook" / "target" / "release" / "probe_hook.dll",
+        ]
+        
+        # Check PyInstaller bundle
+        if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+            meipass_base = Path(sys._MEIPASS)
+            candidate_sources.extend([
+                meipass_base / "probe" / "assets" / HELPER_DLL_NAME,
+                meipass_base / "probe" / "assets" / "probe_hook_x64.dll",
+                meipass_base / HELPER_DLL_NAME,
+            ])
 
+        src_dll = next((p for p in candidate_sources if p.is_file()), None)
+        if not src_dll:
+            return None
+
+        runtime_dir = self._get_stable_runtime_dir()
+        target_dll = runtime_dir / HELPER_DLL_NAME
+        
         try:
-            if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
-                meipass_asset = Path(sys._MEIPASS) / "probe" / "assets" / "probe_hook_x64.dll"
-                if meipass_asset.is_file():
-                    return meipass_asset
+            if not target_dll.is_file() or target_dll.stat().st_size != src_dll.stat().st_size:
+                shutil.copy2(src_dll, target_dll)
+            return target_dll
         except Exception:
-            pass
-
-        return None
+            return src_dll
 
     def _inject_dll(self, pid: int, dll_path: Path) -> bool:
         kernel32 = ctypes.windll.kernel32
@@ -149,7 +176,7 @@ class NativeVendorObserver:
             if err == 5:
                 raise PermissionError(
                     "Target vendor process is running with Administrator privileges. "
-                    "Please restart PeripheralResearch as Administrator."
+                    "Please restart Hidder as Administrator."
                 )
             return False
 
@@ -188,5 +215,3 @@ class NativeVendorObserver:
                 ctypes.windll.kernel32.CloseHandle(self._pipe_handle)
             except Exception:
                 pass
-        if self._temp_dir and self._temp_dir.is_dir():
-            shutil.rmtree(self._temp_dir, ignore_errors=True)
