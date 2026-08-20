@@ -5,6 +5,18 @@
 [![Safety](https://img.shields.io/badge/hardware%20safety-zero--write%20observer-success.svg)]()
 [![License](https://img.shields.io/badge/license-MIT-green.svg)]()
 
+### 🛡️ Security / Download
+
+* **Pre-built Releases**: Ready-to-use standalone executables are available on the [**Releases**](https://github.com/Phnem/Hidder/releases) page.
+* **VirusTotal Verification**: [VirusTotal Scan Report](https://www.virustotal.com/gui/file/db0af4862b66a85d742bc97bc9f13ca034cdb34a276170896a0f8f54fc113456/detection)
+* **Don't trust a pre-built EXE?** Clone this repository, inspect the source code yourself, and run:
+  * `start_en.bat` (English)
+  * `start_ru.bat` (Russian)
+
+  The BAT scripts automatically set up an isolated `.venv` and run Hidder **directly from the repository sources**.
+
+---
+
 **Hidder** (*Peripheral Research Probe*) is a portable, zero-install research tool designed to passively observe, record, and decode proprietary USB HID and WebHID device protocols from official keyboard and mouse software.
 
 It allows gamers and community contributors to run a simple, 5-minute guided session that captures technical protocol payloads (Rapid Trigger, actuation depth, polling rate, DPI, debounce, lighting effects) to help add native support for devices in open-source peripheral drivers and utilities.
@@ -41,7 +53,7 @@ Hidder features two specialized observer backends tailored to modern device soft
 
 ```mermaid
 graph TD
-    subgraph Hidder ["PeripheralResearch.exe"]
+    subgraph Hidder ["PeripheralResearch.exe / start_*.bat"]
         Wizard[Interactive Guided Wizard]
         Correlator[Pairwise A → B → A Correlator]
         Privacy[Privacy Scrubber]
@@ -129,21 +141,21 @@ Official releases provide complete source-to-binary traceability. You can verify
 
 ## 🚀 Quick Start
 
-### 1. Download
-Grab the latest release from the [Releases](https://github.com/Phnem/Hidder/releases) page:
-* **Russian Edition**: `PeripheralResearch_ru.exe`
-* **English Edition**: `PeripheralResearch_en.exe`
+### Option A: Pre-built Executable (Recommended for non-technical users)
+1. Download from the [Releases](https://github.com/Phnem/Hidder/releases) page:
+   * **Russian Edition**: `PeripheralResearch_ru.exe`
+   * **English Edition**: `PeripheralResearch_en.exe`
+2. Double-click the executable.
 
-### 2. Run
-1. Double-click the executable.
-2. Select your device category (`Keyboard` or `Mouse`).
-3. If Keyboard, choose `Mechanical` or `Hall Effect (Rapid Trigger)`.
-4. Enter your device model (e.g., `AULA HERO 84 HE`).
-5. Choose your software type:
-   * `[1] Web Configurator` (launches browser with WebHID instrumentation)
-   * `[2] Desktop Application` (attaches to running vendor app)
-6. Follow the 2-phase prompts (press Enter, perform the setting change, return and press Enter).
-7. A single JSON observation file will be generated in the same directory (e.g. `PeripheralResearch-keyboard-he-372E-103E-20260820-004500.json`).
+### Option B: Run Directly from Source (For developers & code auditors)
+1. Clone the repository:
+   ```cmd
+   git clone https://github.com/Phnem/Hidder.git
+   cd Hidder
+   ```
+2. Run the launcher:
+   * **English**: `start_en.bat`
+   * **Russian**: `start_ru.bat`
 
 ---
 
@@ -151,7 +163,7 @@ Grab the latest release from the [Releases](https://github.com/Phnem/Hidder/rele
 
 ### Prerequisites
 * Windows 10/11 x64
-* Python 3.11+
+* Python 3.10+
 * Rust toolchain (`cargo`, `rustc`)
 * PyInstaller (`pip install pyinstaller pytest pefile`)
 

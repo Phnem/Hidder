@@ -1,0 +1,5 @@
+# Hidder — Peripheral Research Probe
+# Runtime uses Python 3 standard library and Win32 APIs.
+# Dependencies for testing, building, and static analysis:
+pytest>=7.0.0
+pefile>=2023.2.7
