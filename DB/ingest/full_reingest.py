@@ -155,9 +155,14 @@ def _semantic_from_name(name: str) -> str | None:
         ("dpi", "mouse.dpi"), ("poll", "mouse.polling_rate"), ("battery", "battery.status"),
         ("sidetone", "audio.sidetone"), ("equalizer", "audio.equalizer"), ("eq", "audio.equalizer"),
         ("brightness", "lighting.brightness"), ("color", "lighting.color"), ("rgb", "lighting.color"),
+        ("led", "lighting.update"), ("update", "lighting.update"),
         ("profile", "profile.management"), ("actuation", "keyboard.actuation"),
         ("rapid_trigger", "keyboard.rapid_trigger"), ("firmware", "firmware.operation"),
         ("dfu", "firmware.dfu"), ("reset", "device.reset"), ("mode", "device.mode"),
+        ("handshake", "protocol.initialize"), ("initialize", "protocol.initialize"),
+        ("initialise", "protocol.initialize"), ("init", "protocol.initialize"),
+        ("commit", "protocol.commit"), ("apply", "protocol.commit"),
+        ("readback", "protocol.readback"), ("query", "protocol.readback"),
     )
     return next((semantic for token, semantic in mappings if token in low), None)
 
@@ -388,6 +393,15 @@ class FullTypedReprocessor:
             function_names = re.findall(r"(?:function\s+|def\s+|[A-Za-z0-9_<>,\[\]\s]+\s+)([A-Za-z_][A-Za-z0-9_]*)\s*\([^()]*\)\s*(?:\{|:)", before)
             symbol = function_names[-1] if function_names else None
             semantic = _semantic_from_name(symbol or "")
+            # OpenRGB controller helpers often have transport-only names such
+            # as SendControlPacket.  They are still concrete procedural
+            # builders when they terminate in a HID sink; retain them as a
+            # deliberately generic command instead of discarding the evidence.
+            if semantic is None and root.name in {"openrgb", "data-openrgb"} and symbol:
+                if re.search(r"(?i)(send|write).*(packet|report|command)|(?:send|write)control", symbol):
+                    semantic = "protocol.command"
+                elif re.search(r"(?i)(read|get).*(packet|report|response|status)", symbol):
+                    semantic = "protocol.readback"
             if semantic is None:
                 continue
             api, direction, report_in_buffer = sinks[match.group("sink")]
@@ -435,6 +449,16 @@ class FullTypedReprocessor:
             conn.execute("INSERT OR IGNORE INTO operation_evidence(operation_id,source_file_id,extraction_method,trust_class,lineage_group,confidence,line_start,symbol) VALUES(?,?,?,?,?,?,?,?)", (operation_id, source_file_id, f"tree_sitter_{language}+procedural_sink", root.trust, root.name, 0.7, text.count("\n", 0, match.start()) + 1, symbol))
             counts["operations"] += 1
             counts["operation_candidates"] += 1
+            if direction == "device_to_host":
+                self._insert_typed_fact(
+                    conn, "ResponseDefinition", scope_type, scope_key,
+                    "protocol.response", f"{symbol or match.group('sink')}:{index}",
+                    {"api_semantics": api, "report_id": report_id,
+                     "source_expression": args[:500]}, source_file_id,
+                    root.trust, root.name, text.count("\n", 0, match.start()) + 1,
+                    symbol, f"tree_sitter_{language}+response_sink", 0.7,
+                )
+                counts["facts"] += 1
 
         # Explicit checksum functions are structured definitions, not operations.
         for match in re.finditer(r"(?is)(?:function\s+|def\s+|[A-Za-z0-9_<>,\[\]\s]+\s+)(?P<name>[A-Za-z0-9_]*(?:crc|checksum)[A-Za-z0-9_]*)\s*\([^)]*\)\s*(?:\{|:)(?P<body>.{0,1800})", text):

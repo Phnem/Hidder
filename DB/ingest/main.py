@@ -40,8 +40,30 @@ from ingest.logging_setup import setup_logging, get_logger, console, get_log_met
 from ingest.network.fetcher import TieredFetcher
 from ingest.scanners import ScannerDispatcher
 from ingest.storage.database import RegistryDatabase
+from ingest.mass_model_discovery import ModelInventoryPass
+from ingest.ai_model_reconciliation import AIModelReconciliation
 
 app = typer.Typer(help="Peripheral Registry Ingestion & Static Analysis Pipeline")
+
+
+@app.command(name="model-inventory")
+def model_inventory(
+    online: bool = typer.Option(False, "--online", help="Also inspect official sitemap/JSON-LD pages (best effort)."),
+    no_inbox: bool = typer.Option(False, "--no-inbox", help="Skip the official software inbox pass."),
+):
+    """Build the additive commercial model / variant identity graph and reports."""
+    summary = ModelInventoryPass(DB_PATH).run(include_inbox=not no_inbox, online=online)
+    console.print_json(json.dumps(summary, ensure_ascii=False))
+
+
+@app.command(name="reconcile-ai-models")
+def reconcile_ai_models(
+    input_path: Path = typer.Option(Path(r"C:\Users\2004i\Downloads\brends.txt"), "--input", help="AI discovery corpus TXT."),
+    promote: bool = typer.Option(False, "--promote", help="Promote only verified candidates after staging."),
+):
+    """Stage and verify AI-discovered keyboard/mouse candidates without auto-promotion."""
+    result = AIModelReconciliation(DB_PATH, input_path).run(promote=promote)
+    console.print_json(json.dumps(result, ensure_ascii=False))
 
 
 @app.command()

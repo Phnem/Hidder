@@ -108,6 +108,14 @@ def build_full_report(db_path: Path, workspace: Path, output_json: Path, output_
             "operations_implementation_plus_capture": _scalar(conn, """SELECT count(*) FROM (SELECT operation_id FROM operation_evidence GROUP BY operation_id
                 HAVING max(trust_class LIKE '%Implementation')=1 AND max(trust_class='CommunityCapture')=1)"""),
         }
+        correlation_available = bool(_scalar(conn, "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='operation_capture_correlations'"))
+        correlation = ({
+            "operations_with_capture_correlation": _scalar(conn, "SELECT count(DISTINCT operation_id) FROM operation_capture_correlations"),
+            "operations_with_independent_evidence": _scalar(conn, """SELECT count(*) FROM (
+                SELECT operation_id FROM operation_evidence GROUP BY operation_id
+                HAVING count(DISTINCT lineage_group) >= 2)"""),
+            "by_confidence_level": _rows(conn, "SELECT confidence_level,count(*) count FROM operation_capture_correlations GROUP BY confidence_level ORDER BY confidence_level"),
+        } if correlation_available else {"operations_with_capture_correlation": 0, "operations_with_independent_evidence": 0, "by_confidence_level": []})
         reconstructibility = _rows(conn, """SELECT coalesce(p.category,'other') category,dr.classification,count(*) count
             FROM device_reconstructibility dr JOIN products p ON p.id=dr.product_id
             GROUP BY coalesce(p.category,'other'),dr.classification ORDER BY category,dr.classification""")
@@ -138,6 +146,10 @@ def build_full_report(db_path: Path, workspace: Path, output_json: Path, output_
         }
         top_gaps = _rows(conn, """SELECT missing_requirements_json,count(*) count FROM operation_completeness
             WHERE complete=0 GROUP BY missing_requirements_json ORDER BY count DESC LIMIT 30""")
+        requirement_states = (_rows(conn, """SELECT requirement,state,count(*) count
+            FROM operation_requirement_states WHERE state IN ('UNKNOWN','CONFLICTED')
+            GROUP BY requirement,state ORDER BY count DESC,requirement""")
+            if _scalar(conn, "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='operation_requirement_states'") else [])
         integrity = conn.execute("PRAGMA integrity_check").fetchone()[0]
         fk_rows = conn.execute("PRAGMA foreign_key_check").fetchall()
         orphans = {
@@ -164,10 +176,10 @@ def build_full_report(db_path: Path, workspace: Path, output_json: Path, output_
                                 "processed_relevant": sum(x["files_processed"] for x in coverage),
                                 "unexplained_skipped": _scalar(conn, "SELECT count(*) FROM source_files WHERE relevant=1 AND parsed=0"),
                                 "parse_failures": sum(x["files_failed"] for x in coverage), "by_root": coverage},
-            "data": data, "cross_evidence": cross, "reconstructibility": reconstructibility,
+            "data": data, "cross_evidence": cross, "capture_correlation": correlation, "reconstructibility": reconstructibility,
             "risk": {"counts": risks, "samples": risk_samples}, "captures": captures,
             "signalrgb_usbdata": usbdata, "source_specific": source_results,
-            "validation": validation, "top_gaps": top_gaps, "spot_checks": spot,
+            "validation": validation, "top_gaps": top_gaps, "top_requirement_states": requirement_states, "spot_checks": spot,
             "integrity": {"orphans": orphans, "malformed_json": malformed_json},
         }
     finally:

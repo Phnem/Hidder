@@ -1,0 +1,107 @@
+A4Tech - D
+Akko - C
+Alienware - D
+Anne Pro - D
+Apple - D
+ASUS - D
+ATK - C
+Attack Shark - D
+AULA - D
+Bastard Keyboards - D
+Binepad - D
+Bloody - D
+Boardsource - D
+CannonKeys - D
+Cherry - C
+Chilkey - E
+Chosfox - D
+Cidoo - E
+Clueboard - D
+Cooler Master - D
+Corsair - D
+Dareu - E
+Dark Project - D
+DOIO - D
+Drop - D
+DrunkDeer - E
+DZTECH - D
+Elecom - D
+Elgato - D
+Endgame Gear - E
+EPOMAKER - D
+Ergodox EZ - D
+EVGA - D
+Fantech - E
+Feker - D
+Finalmouse - E
+FL·ESPORTS - D
+Fnatic - D
+G-Wolves - E
+Gamakay - E
+Gigabyte - D
+Glorious - D
+HyperX - D
+IDOBAO - D
+Input Club - D
+IO by Red Square - D
+IQUNIX - E
+KBDfans - D
+Keebio - D
+Kemove - E
+Keychron - D
+Keycult - D
+Kingly-Keys - D
+KPrepublic - D
+Kysona - D
+Lamzu - E
+Lemokey - E
+Lenovo - D
+Leobog - D
+Leopold - E
+Lian Li - D
+Logitech - D
+Machenike - E
+MagicForce - D
+Matrix Lab - D
+MCHOSE - D
+Mechboards - D
+MechKeys - D
+Mechlovin - D
+MechWild - D
+Meletrix - D
+MelGeek - D
+Microsoft - D
+Mode Designs - D
+MonsGeek - D
+Mountain - D
+Ninjutso - E
+Nintendo - D
+NuPhy - D
+NZXT - D
+Ploopy - D
+Pulsar - D
+Qwertykeys - D
+RAMA Works - D
+Razer - D
+Redragon - D
+Royal Kludge - D
+Scyrox - E
+Skyloong - D
+Sony - D
+SteelSeries - D
+System76 - D
+The Key Company - D
+Thermaltake - D
+Turtle Beach - D
+Unicomp - D
+Valve - D
+Varmilo - D
+VXE - D
+WLMOUSE - E
+Womier - D
+Wooting - D
+Wuque Studio - D
+X-Bows - D
+YMDK - D
+Yunzii - D
+ZOWIE - E

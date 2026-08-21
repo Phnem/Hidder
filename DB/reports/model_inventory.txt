@@ -1,0 +1,3707 @@
+A4Tech
+  2.4G
+  Bluetooth / 2.4G
+  G3_G7_BT_16in1_V2023.1208
+  KeyboardMaster_V2025.0218_MUI
+  Nb 95
+  Rp 649
+  Standard8InRight_V2023.1128
+  Wcp32Pu
+  X5 005D
+Ajazz
+  AF98
+  AF98_PLUS_Tri_mode_RGB
+  AJ039
+  AJ039_Wired_Version_A704F_Mouse
+  AJ129_PAW3327_Mouse
+  AJ139_MAX_Tripe_Mode_PAW3395_Win_System_Mouse
+  AJ139_PRO_Dual-mode_PAW339_Windows_Only_Mouse
+  AJ139P
+    AJ139P V3 Max
+    AJ139P V3 MC
+  AJ159
+  AJ159_AJ159P_Dual_modes_PAW3395_Win_Mouse
+  AJ179
+  AJ179_AJ179P_Dual-mode_PAW3395_Windows_Only_Mouse
+  AJ199 Carbon Fiber
+  AJ199 Carbon Fibre
+  AJ199_Carbon_fiber_Tripe_mode_PAW3311_Win_Mouse
+  AJ199_MAX_Triple_Modes_PAW3395_Windows_Mouse
+  AJ199_No_RGB_Dual_Modes_PAW3395_Mouse
+  AJ358
+  AJ358_Gaming_Mouse
+  AK029
+  AK18
+  AK35I_V3_Single_Mode_RGB_Keyboard
+  AK650
+  AK650_Tri-mode_with_Screen_RGB_version_Keyboard
+  AK680_MAX_8_8K_tripe_mode_RGB_magnetic_switch_keyboard_drive_V2.1.87
+  AK680_MAX__8_1K_tripe_mode_RGB_magnetic_switch_keyboard_drive_V2.1.87
+  AK820
+    AK820 Max
+    AK820 Pro
+  AK820_MAX
+  AK820_MAX_HE
+  AK820_Pro_Triple_mode_0.85inch_Screen_RGB_V1.0.0.5
+  AK820_Wired_Version_RGB_Keyboard
+  AK820pro
+  AK820V2
+  AK832
+    AK832 Pro
+  AK832_Pro_Tri-mode_RGB__Keyboard
+  AK832_Triple_modes_White_Light_Keyboard
+  AK870
+    AK870 V2
+  AK870_single-mode_RGB_magnetic_switch_keyboard
+  AK870_V2_Tri_mode_RGB_Tri_mode_With_Screen_RGB_Keyboard
+  AK870_V2_Wired_Version_RGB__Keyboard
+  AK870MC_Single_Mode_Mixed_Color_Lighting_Keyboard
+  AK980
+  AKL680
+  AKP05E
+    AKP05E PRO
+  AKP815
+  AKS068
+  AKS075_Triple_Modes_RGB_With_Screen_Keyboard
+  AM3_MAX_Triple_Modes_PAW3950_Windows_Mouse
+  AM3_PRO_Triple_Modes_PAW3950_Windows_Mouse
+  FirstBlood B6
+  GearHub-V5
+  NACODEX_NK68_RGB_Wired_Version_Keyboard
+  NK68
+Akko
+  3068B
+    3068B Plus
+  5075 QMK
+  5075B_Plus_3m_via_json20240103
+  ACR87
+  Air 01
+  Cloud_v4
+  gem_01
+  gem_02
+  Hello Kitty 5108
+    Hello Kitty 5108 V5
+  HubInstaller_V5.22
+  Lord of the Mysteries 5108
+    Lord of the Mysteries 5108 V5
+  M1
+    M1 V5 HE Barebone
+  Mineral 01 VIA Original price was Current price is
+  mineral_01
+  mineral_02
+  MOD007
+    MOD 007 V3 VIA
+    MOD007 V5 HE
+  MU02 Mountain Seclusion
+  New Arrival Hello Kitty 5075
+    New Arrival Hello Kitty 5075 V5
+  TAC75
+    TAC75 HE Web
+  TOP40
+  V5 Creamy Blue
+    V5 Creamy Blue Pro
+  V5 Creamy Yellow
+    V5 Creamy Yellow Pro
+  Wired_Manager2.0
+  Y0B_20Q_001_VS09M54A+3311_V0140_20260611
+Alienware
+  15 R3
+  AW3225QF
+  AW3423DWF
+  AW410K
+  AW510K
+  AW558
+ARDOR GAMING
+  ardor-gaming-edge-air-elit-ardw-ega3325-bk_drajver_171833_23112022
+  ardor-gaming-edge-air-ultra-ardw-ega3370-bk_drajver_150649_13012023
+  ardor-gaming-edge-pro-ard-eg3389-bk_drajver_180031_23112022
+  ardor-gaming-executor-3-wireless-new-17112025_drajver_162947_17112025
+  ardor-gaming-executor-3_drajver_123932_29042025
+  ardor-gaming-fury-pro-ard-fury3360-bk_drajver_100525_14122022
+  ardor-gaming-guardian_prilozenie_165355_24042026
+  ardor-gaming-katana-v2_prilozenie_162408_07072026
+  ardor-gaming-phantom-ardw-ph3335-bk_drajver_172244_23112022
+  ardor-gaming-phantom-pro-ardw-ph3395-bk_drajver_181800_23112022
+  ardor-gaming-prime-pro-ard-pr3370-bk_drajver_160142_30112022
+  ardor-gaming-prime-wireless-ardw-pr3325-bk_drajver_165841_23112022
+  ardor-gaming-wakizashi-v2_drajver_171454_02022026
+  drivers_oth_A_ardor-gaming-blade-pro-optical_drajver_121142_22112024
+  Executor_3
+  oth_A_ardor-gaming-fury-ardw-fury3325-bk_drajver_124757_16032023
+  soft-dla-mysek-data-proizvodstva-kotoryh-ot-maa-2024-goda_drajver_124215_29042025
+  versia-10610_drajver_160435_20062025
+ASUS ROG
+  AC_Full_Package_1.5.0.7_202508051359
+  ASTRAL GeForce RTX 5080
+  ASTRAL GeForce RTX 5080 OC
+  ASTRAL GeForce RTX 5080 OC WHITE
+  ASTRAL GeForce RTX 5080 WHITE
+  ASTRAL GeForce RTX 5090
+  ASTRAL GeForce RTX 5090 OC
+  ASTRAL GeForce RTX 5090 OC BTF
+  ASTRAL GeForce RTX 5090 OC WHITE
+  ASTRAL LC GeForce RTX 5090 OC
+  ASTRAL LC OC GeForce RTX 5090 OC
+  Asustek Rog Z13 Lightbar
+  Azoth 2.4GHz
+  Chakram X 2.4GHz
+  GeForce RTX 3080 GUNDAM EDITION
+  GeForce RTX STRIX 3080 Ti
+  GX860 Buzzard
+  MATRIX PLATINUM GeForce RTX 4090
+  MATRIX PLATINUM GeForce RTX 5090
+  PG32UQ
+  Poseidon GeForce GTX 1080 Ti
+  Spatha X 2.4GHz
+  Strix Flare CoD Black Ops 4 Edition
+  STRIX GeForce GTX 1050
+  STRIX GeForce GTX 1050 Ti
+  STRIX GeForce GTX 1060
+  STRIX GeForce GTX 1070
+  STRIX GeForce GTX 1070 A8G Ti
+  STRIX GeForce GTX 1070 Ti
+  STRIX GeForce GTX 1080
+  STRIX GeForce GTX 1080 A8G
+  STRIX GeForce GTX 1080 Ti
+  STRIX GeForce GTX 1650 SUPER
+  STRIX GeForce GTX 1650 SUPER A4G
+  STRIX GeForce GTX 1660 SUPER
+  STRIX GeForce GTX 1660 Ti
+  STRIX GeForce RTX 2060
+  STRIX GeForce RTX 2060 EVO
+    STRIX GeForce RTX 2060 EVO V2
+  STRIX GeForce RTX 2060 SUPER
+  STRIX GeForce RTX 2060 SUPER A8G
+  STRIX GeForce RTX 2060 SUPER A8G EVO
+  STRIX GeForce RTX 2070
+  STRIX GeForce RTX 2070 A8G
+  STRIX GeForce RTX 2070 SUPER
+  STRIX GeForce RTX 2070 SUPER A8G
+  STRIX GeForce RTX 2080
+    STRIX GeForce RTX 2080 V2
+  STRIX GeForce RTX 2080 SUPER
+  STRIX GeForce RTX 2080 SUPER A8G
+  STRIX GeForce RTX 2080 SUPER White OC
+  STRIX GeForce RTX 2080 Ti
+  STRIX GeForce RTX 2080 Ti A11G
+  STRIX GeForce RTX 3050
+  STRIX GeForce RTX 3060
+    STRIX GeForce RTX 3060 V2
+  STRIX GeForce RTX 3060 Ti
+    STRIX GeForce RTX 3060 Ti V2 OC
+  STRIX GeForce RTX 3060 Ti OC
+  STRIX GeForce RTX 3070
+    STRIX GeForce RTX 3070 V2
+    STRIX GeForce RTX 3070 V2 White OC
+  STRIX GeForce RTX 3070 OC
+  STRIX GeForce RTX 3070 Ti
+  STRIX GeForce RTX 3070 White OC
+  STRIX GeForce RTX 3080
+    STRIX GeForce RTX 3080 V2
+    STRIX GeForce RTX 3080 V2 White OC
+  STRIX GeForce RTX 3080 12G
+  STRIX GeForce RTX 3080 12G OC
+  STRIX GeForce RTX 3080 12G OC EVA EDITION
+  STRIX GeForce RTX 3080 White OC
+  STRIX GeForce RTX 3090
+  STRIX GeForce RTX 3090 GUNDAM EDITION
+  STRIX GeForce RTX 3090 OC EVA EDITION
+  STRIX GeForce RTX 4060
+  STRIX GeForce RTX 4060 Ti
+  STRIX GeForce RTX 4070
+  STRIX GeForce RTX 4070 SUPER
+  STRIX GeForce RTX 4070 Ti
+  STRIX GeForce RTX 4070 Ti SUPER
+  STRIX GeForce RTX 4080
+  STRIX GeForce RTX 4080 SUPER OC
+  STRIX GeForce RTX 4080 SUPER White
+  STRIX GeForce RTX 4080 SUPER White OC
+  STRIX GeForce RTX 4090
+  STRIX GeForce RTX 4090 OC EVA-02
+  STRIX GeForce RTX 5070 Ti
+  STRIX LC GeForce RTX 3080 Ti
+  STRIX LC GeForce RTX 3090 Ti
+  STRIX LC GeForce RTX 4090
+  STRIX LC Radeon RX 6800 XT
+  STRIX LC Radeon RX 6900 XT
+  STRIX LC Radeon RX 6950 XT
+  STRIX Radeon RX 470
+  STRIX Radeon RX 480
+  STRIX Radeon RX 560
+  STRIX Radeon RX 5600 XT
+  STRIX Radeon RX 570
+  STRIX Radeon RX 5700
+  STRIX Radeon RX 5700 XT
+  STRIX Radeon RX 580
+  STRIX Radeon RX 590
+  STRIX Radeon RX 6600 XT
+  STRIX Radeon RX 6650 XT
+  STRIX Radeon RX 6700 XT
+  STRIX Radeon RX 6750 XT
+  STRIX Radeon RX 6800
+  STRIX Radeon Vega 64
+  Strix SCAR 15
+  Strix SCAR 17
+  Strix Scope II 96
+  Strix Scope II 96 RX
+  Strix Scope RX EVA-02 Edition
+  Strix XG279Q
+  Strix XG27AQ
+  STRIX XG27AQDMG
+  Strix XG27AQM
+  STRIX XG27UCG
+  Strix XG27W
+  Strix XG32VC
+  SWIFT PG32UCDM
+  SWIFT PG32UCDMR
+ATK
+  100-CS14C9-V0105-20241213
+  2.4-Dongle-V1.09
+  4K-Dongle-V1.09
+  5c91bac0d12b731b5aa7e85867c5b451
+  68
+  68V2_V103
+  75
+  75L_MCU1_V0.05_MCU2_V1.03
+  933ebd7faabb5ec425075016f21ac04b
+  A87_Pro_V132
+  A9 Nearlink_V120
+  A9-Air-IR-3950Ultra-V1.01
+  A98_Pro_V118
+  A9_Pro_Mouse_V124
+  Blazing Sky F1
+  Blazing Sky F1 Ultimate
+  Dragonfly F1
+    Dragonfly F1 Pro Max
+  Dragonfly R1
+    Dragonfly R1 Pro
+    Dragonfly R1 SE+
+  Duckbill_Ultra_IR_key_3950Ultra_V3.00
+  F1-LEVIATAN_IR_key_3950Ultra_V3.00
+  F1-ULTIMATE-IR-3950Ultra-V1.01
+  F1ProMax-V1.12
+  hub-3.2.16
+  KG655U_207E_ATK68_20250901_MCU1_V0.45_MCU2_V1.25
+  Kokomi-108-v0103
+  MAD-R+-V3.00
+  Nordic-8K-GEM-11D8-V3.00
+  Nordic-NordicGEM-373B-11D9-V3.00
+  RS7
+  S99
+  U2 Nearlink_V120
+  U2-Mini-3950Ultra-V1.01
+  U2PRO_v123
+  VXER1SE_V3.14
+  Wireless_Mouse_8k Dongle_V2.00
+  X1
+  X1 Ultimate
+  X1-EXTREME_IR_V3.00
+  X1-ULTIMATE-IR-3950Ultra-V1.01
+  X1-V122
+  Y9-Ultimate-IR-3950Ultra-V1.01
+  YOGO75
+  YOGO75-PRO
+  Z1-ULTRA-V3.01
+  Z87-CSC822-V0104-20241121
+  升级包VXE-V75X 三模-RGB机械键盘-V0110-20240312
+Attack Shark
+  A2 Transparent
+  AJ159P
+  AK820
+  AK820Pro
+  AK832
+  ATTACKSHARKG3
+  ATTACKSHARKG3PRO
+  ATTACKSHARKK85
+  ATTACKSHARKK86
+  ATTACKSHARKM86
+  ATTACKSHARKM87
+  ATTACKSHARKM87PRO
+  ATTACKSHARKR1
+  ATTACKSHARKR11ULTRA
+  ATTACKSHARKR2
+  ATTACKSHARKR3
+  ATTACKSHARKR5
+  ATTACKSHARKR6
+  ATTACKSHARKR68HE
+  ATTACKSHARKR82HE
+  ATTACKSHARKR85HE
+  ATTACKSHARKR98HE
+  ATTACKSHARKRS3
+  ATTACKSHARKRS6
+  ATTACKSHARKV3
+  ATTACKSHARKV3PRO
+  ATTACKSHARKV5
+  ATTACKSHARKV6
+  ATTACKSHARKX1
+  ATTACKSHARKX11
+  ATTACKSHARKX11PROV2
+  ATTACKSHARKX11SE
+  ATTACKSHARKX11Ultra
+  ATTACKSHARKX3
+  ATTACKSHARKX3MAX
+  ATTACKSHARKX3PRO
+  ATTACKSHARKX6
+  ATTACKSHARKX65
+  ATTACKSHARKX66
+  ATTACKSHARKX68HE
+  ATTACKSHARKX68MAX
+  ATTACKSHARKX68PROHE
+  ATTACKSHARKX8
+  ATTACKSHARKX82PROHE
+  ATTACKSHARKX85
+  ATTACKSHARKX85PRO
+  ATTACKSHARKX86
+  ATTACKSHARKX87
+  ATTACKSHARKX87ULTRA
+  ATTACKSHARKX8ULTIMATE
+  ATTACKSHARKX98
+  ATTACKSHARKX98PRO
+  G3
+    G3 PRO
+  G3 25000 DPI
+    G3 25000 DPI Ultra Lightweight
+  G300 ANC Foldable
+  G500
+  G6
+  G800
+  K85 Rapid Trigger
+  K86
+  L30
+    L30 PRO
+  L50
+    L50 PRO
+  L60
+  L80
+    L80 PRO
+  L90 Foldable
+  M36
+    M36 HE One-Handed
+  M71Software
+  M86
+  M87
+  Pre Order ATTACK SHARK F1 AIR 39g PAW3955MAX
+  R1
+  R11
+    R11 ULTRA Carbon Fiber 8K PAW3950MAX
+  R2 Magnesium Alloy PAW3950
+    R2 Magnesium Alloy PAW3950 8K
+  R3 Magnesium Alloy
+    R3 Magnesium Alloy 8K
+  R5
+    R5 ULTRA Carbon Fiber 8K PAW3950MAX
+  R6 Ultralight 39g
+    R6 Ultralight 39g 8K PAW3950MAX
+  R68
+    R68 HE Carbon Fiber Rapid Trigger
+  R82
+    R82 HE Rapid Trigger
+  R85
+    R85 HE Rapid Trigger
+  R98
+    R98 HE Carbon Fiber Rapid Trigger
+  RS3
+    RS3 ULTRA Carbon Fiber PAW3955MAX
+  RS6
+    RS6 ULTRA Carbon Fiber PAW3955MAX
+  V3
+    V3 PRO
+  V5
+  V6
+  V8
+  x AJ159P
+  X AJAZZ AK029 One-Handed
+  x AJAZZ AK820
+    x AJAZZ AK820 PRO
+  x AJAZZ AK832
+  x AJAZZ AKP153 STREAM DECK
+  x AJAZZ AKS068
+    x AJAZZ AKS068 PRO Alice
+  x AJAZZ AKS068 Alice
+  x MAMBASNAKE SH33
+  X1
+  X11
+    X11 PRO V2
+    X11 ULTRA Carbon Fiber 8K PAW3950MAX
+  X11SE
+  X2
+    X2 PRO
+  X3
+    X3 MAX PAW3950
+    X3 PRO Three Modes 8K
+  X3 PAW3395 Superlight
+  X5
+  X6 Three Modes
+  X65
+    X65 HE
+    X65 PRO HE Rapid Trigger
+  X68
+    X68 HE Rapid Trigger
+    X68 MAX HE Rapid Trigger Aluminum
+    X68 PRO HE Rapid Trigger
+  X75 Full Aluminum
+  X8
+  X82
+    X82 PRO HE Rapid Trigger
+  X820
+    X820 ULTRA
+  X85
+    X85 PRO
+  X86 Full Aluminum
+  X87
+  X98
+    X98 PRO
+  X98 Full-size
+AULA
+  A700
+  AG60
+  F-NB98
+  F108
+    F108 PRO
+    F108 PRO V2
+  F2088
+  F65
+  F75
+    F75 MAX
+    F75 Ultra
+  F81
+  F87
+    F87 Pro
+    F87 PRO V2
+  F98
+  F99
+    F99 MAX
+    F99 PRO
+  HERO 68
+    HERO 68 HE
+  HERO 75
+  HERO 84
+    HERO 84 HE
+  King68
+  L99
+  M75
+  MINI60
+    MINI60 HE
+    MINI60 HE Pro
+  S102
+    S102 PRO
+  SC380PRO
+  SC390
+  SC580
+  SC590
+    SC590 Pro
+  SC620
+  SC620-V1.2.2
+  SC680
+    SC680 8K
+  SC800
+  SC900
+  V9
+  WIN60
+    WIN60 HE
+  WIN68
+    WIN68 HE
+  X9Driver
+Bloody
+  B820R
+  Esports_V2026.0525_MUI
+  KeyDominator3_V2026.0623_MUI
+  Magnetic_Axis_Esports_Assistant-1.0.0.20
+  MP 50RS
+  W60
+    W60 Pro
+  W70
+    W70 Max
+  W90
+    W90 Max
+    W90 Pro
+  Wireless K-Esport Editor-EN-20250110-V1.0.21
+  Wireless_8KM_Esport_20260303
+  WorkShop8_V2026.0723_MUI
+CHERRY
+  M8W
+  Xtrfy-M3-3360-sensor
+  Xtrfy-M4
+  Xtrfy-M4-MZ1-and-M42-Wireless
+  Xtrfy-M42
+  Xtrfy-MZ1
+  Xtrfy_M64_M68_PRO_8K
+Chilkey
+  Foxy 65 Assembled EditionU.S. shipping only
+  Foxy65 Barebone
+  Glacier LW
+    Glacier LW 8K L
+    Glacier LW 8K M
+    Glacier LW 8K M Exclusive Discount
+  ND104
+  ND65
+  ND65 CS
+    ND65 CS HE
+  ND75 Add On - Plate
+  ND75 Assembled
+  ND75 Barebone
+  ND75 LP
+  Paw 65 Barebone
+  SF60
+    SF60 HE
+  Slice68
+    Slice68 HE
+  Slice75
+    Slice75 HE
+Chosfox
+  CF81
+  Choc
+    Choc V1 Fidget Keychain
+    Choc V2 Fidget Keychain
+  Darmoshark N3
+  Duhuk Matcha
+    Duhuk Matcha V4 Linear
+  Durgod DG60 KIT
+  DURGOD Releases K330W
+    DURGOD Releases K330W PLUS Ultra-Compact 60
+  Fox65
+  Fox65 Counterweight Fox65 Prebuilt only
+  Fox65 Keypad Accessories
+  Fox65 Prebuilt
+  Fox65-60KEY-三模-机械键盘-CS6069-V0101-20240820
+  Gateron Ink
+    Gateron Ink V2
+  Gateron KS-27 Low-Profile
+    Gateron KS-27 Low-Profile v1
+  HMX Hanami Dango
+    HMX Hanami Dango V2 Linear
+  HMX SillyWorks Hyacinth
+    HMX SillyWorks Hyacinth V2 Linear
+  Huano Caramel Latte
+    Huano Caramel Latte V2 Linear
+  Kailh
+    Kailh V2 Low Profile
+  Kailh GM 2.0 4.0 8.0
+  LEO80
+    LEO80 V3
+  Leo80 Prebuilt
+  Leo80 QMK Kit
+  Lumia Duhuk Bitter Tea
+    Lumia Duhuk Bitter Tea v3 Pro
+  Single-mode-VERO 75
+  Tri-mode-VERO 75
+  TTC Frozen Silent
+    TTC Frozen Silent V2
+  TTC Speed Silver
+    TTC Speed Silver v1 v2
+  Vero75 Low-Profile
+  x masro Fox65 QMKVIA Kit
+  X Masro Geonix48Geonix48 Via
+  Zero-G Balance
+    Zero-G Balance v2 Gift Linear
+Cidoo
+  ABM066 Barebones Kit
+  ABM081 Stellar
+  ABM098
+  C60
+    C60 HE
+  C641
+  CD502s Flaretech
+  QK61
+    QK61 V2
+  QK75
+  V68 VIA
+  V75
+    V75 Plus VIA DIY Kit
+  V87
+Cooler Master
+  Apple Magicmouse2
+  Apple Magicmouse2 Usbc
+  ARGB Gen 2 A1
+    ARGB Gen 2 A1 Mini
+    ARGB Gen 2 A1 V2
+  Asustek Lcm2
+  CK530
+    CK530 V2
+  CK550
+    CK550 V1 / CK552
+    CK550 V2
+  Cm109
+  Cm6533
+  Cmedia Hs100B
+  GD160 ARGB
+  GM27-FQS ARGB Monitor
+  Installer_MasterPlus_v1.9.6
+  MasterKeys
+    MasterKeys Pro L
+    MasterKeys Pro L White
+    MasterKeys Pro S
+  MK730
+  MK750
+  MK850
+  MM530
+  MM531
+  MM711
+  MM712
+  MM720
+  MM730
+  MP750 Large
+  MP750 Medium
+  MP750 XL
+  MP750L
+  MP750m
+  MP860
+  MWE Gold
+    MWE Gold V4
+  Radeon RX 6000 GPU
+  Radeon RX 6900 GPU
+  SK620 Black
+  SK620 White
+  SK622 Black
+  SK622 White
+  SK630
+  SK650
+  SK652
+  SK653
+  V8 ACE 3DHP
+Corsair
+  1000D Obsidian
+  CLIPPER
+    CLIPPER PRO MINI 60THERE
+  Commander
+    Commander Pro
+  Dark Core RGB
+    Dark Core Rgb Pro
+    Dark Core RGB Pro SE
+    Dark Core Rgb Pro Se Wl
+    Dark Core Rgb Pro Wl
+  Glaive
+    Glaive Pro
+  Glaive RGB
+    Glaive RGB PRO
+  Harpoon
+    Harpoon Pro
+  Harpoon RGB
+    Harpoon RGB PRO
+  HS80 RGB
+  Hydro H100i
+    Hydro H100i Pro XT
+    Hydro H100i Pro XT v2
+  Hydro H100i Elite
+  Hydro H100i Elite White
+  Hydro H100i Platinum
+    Hydro H100i Platinum SE
+  Hydro H115i
+    Hydro H115i Pro XT
+  Hydro H115i Elite
+  Hydro H115i Platinum
+  Hydro H150i
+    Hydro H150i Pro XT
+  Hydro H150i Elite
+  Hydro H150i Elite White
+  Hydro H60i
+    Hydro H60i Pro XT
+  K100
+  K100 MX Red
+  K100 Optical
+  K100 Optical Variant
+  K100 RGB Optical
+  K55
+    K55 Pro
+    K55 Pro Xt
+  K55 RGB
+    K55 RGB PRO
+    K55 RGB PRO XT
+  K57 D
+  K57 RGB
+  K57 U
+  K60
+    K60 Pro Mono
+    K60 Pro Rgb
+    K60 Pro Rgb Lp
+    K60 Pro Rgb Se
+    K60 Pro Tkl
+  K60 RGB
+    K60 RGB PRO
+    K60 RGB PRO Low Profile
+    K60 RGB PRO TKL Black
+    K60 RGB PRO TKL White
+  K63 Nrgb
+  K63 Nrgb Wl
+  K63 Nrgb Wl2
+  K63 Nrgb Wl3
+  K63 Nrgb Wl4
+  K65
+    K65 Mini
+  K65 Legacy
+  K65 Lux
+  K65 LUX RGB
+  K65 Rfire
+  K65 RGB
+  K65 RGB RAPIDFIRE
+  K66
+  K68
+  K68 Nrgb
+  K68 RED
+  K68 RED SHADOW
+  K68 RGB
+  K70
+    K70 Pro
+    K70 Pro Optic
+  K70 Core RGB
+  K70 Core Rgb 2
+  K70 Core Rgb 3
+  K70 Core RGB TKL
+  K70 Legacy
+  K70 LUX
+  K70 Lux Nrgb
+  K70 LUX RGB
+  K70 Mk2
+  K70 Mk2Lp
+  K70 Mk2Se
+  K70 Rfire
+  K70 Rfire Nrgb
+  K70 RGB
+    K70 RGB PRO
+    K70 RGB PRO V2
+  K70 RGB MK.2
+    K70 RGB MK.2 SE
+  K70 RGB MK.2 Low Profile
+  K70 RGB RAPIDFIRE
+  K70 RGB TKL
+  K70 RGB TKL Champion
+  K70 Tkl
+  K70 Tkl Champ Optic
+  K70R
+  K90
+  K90 Legacy
+  K95
+  K95 Legacy
+  K95 Platinum
+  K95 Platinum Xt
+  K95 RGB
+  K95 RGB PLATINUM
+    K95 RGB PLATINUM SE
+  K95 RGB PLATINUM XT
+  Katar
+    Katar Pro
+    Katar Pro V2
+    Katar Pro XT
+  Lighting Node
+    Lighting Node Pro
+  LS100 Light Strips
+  LS100 Lighting Kit
+  LT100
+  LT100 Lighting Tower
+  M55 RGB
+    M55 RGB PRO
+  M65
+    M65 PRO
+  M65 RGB
+    M65 RGB Ultra
+    M65Rgb
+  M65 RGB Elite
+  M75
+  M95
+  MM700
+  MM700 3XL
+  MM700 RGB
+  MM800 RGB Polaris
+  Sabre O2
+  Scimitar
+    Scimitar Pro
+    Scimitar PRO RGB
+  ST100
+  ST100 RGB
+  Strafe Mk2
+  Strafe Nrgb 2
+  Void
+    Void Pro
+  XC7 RGB ELITE LCD
+Cougar Gaming
+  Cougar 500K
+  Cougar 700K
+  Cougar 700K EVO
+Dareu
+  A104X
+    A104X 8K Full-size
+  A104X Wholesale
+    A104X Wholesale 8K Full-size
+  A3
+    A3 Max 53mm Drivers100+ Hours Battery
+  A3 A3
+    A3 A3 PRO Stylish
+  A710X Headphone
+  A75
+    A75 HE Aluminum
+  A87L TKL 87-Key Hotswap
+  A87L Wholesale TKL 87-Key Hotswap
+  A950
+    A950 Pro Lightweight
+    A950 Pro Magnesium Lightweight
+  A950 WING 35g
+    A950 WING 35g 8K Ultralight
+  A98
+    A98 PRO II 98-Key Hotswap
+    A98 PRO II NEON 98-Key Hotswap
+  A980PROPRO
+    A980PROPRO MAX
+  AE6
+    AE6 Pro Keel Dual 8k
+  COOL 98
+  COOL60
+    COOL60 8K
+  COOL68
+    COOL68 Pro 8KHz Aluminum
+  EK60
+    EK60 HE 0.01mm RT Accuracy Adjustable 8000Hz PollingGaming
+  EK75
+    EK75 Pro Compact 75-Key Hotswap
+  EK75 Compact 75-Key Rainbow
+  EK75 RT Compact 75-Key
+  EK75RT
+    EK75RT 8K 75-Key Aluminium
+  EK87
+    EK87 Pro
+    EK87 PRO TKL 87-Key Hotswap
+  EK98
+    EK98 Pro
+  EM901X
+  LK22 Office Numeric
+  LM135D Silent
+  Thunder 68 Dual-Mode Alluminum
+  ULTRA 07 Modular
+  ULTRA 75 Quick-Release
+  X CUTIEQ NEO84 Low-profile
+  X CUTIEQ Z16 Silent Vertical Design
+  Z19 Dual-mode Cute Numeric
+Dark Project
+  ALU87A Onionite
+    ALU87A Onionite V2
+  Ibm Scrollpoint 800Dpi Optical
+    Ibm Scrollpoint 800Dpi Optical Pro
+  KD3B
+    KD3B V2
+  Pdp Ps4 Riffmaster
+  Pdp Ps5 Riffmaster
+  ThermalTake Argent E1 Headphone Stand
+  ThermalTake Argent HS1 Headphone Stand
+  Ð_Ð_ DP-KD-87A Ñ_ Ð1⁄2Ñ_Ð1⁄4Ð¿Ð°Ð ́Ð3⁄4Ð1⁄4
+  Ð_Ð_ DP-KD-87A-000100-GMS
+  Ð_Ð_ Ð ́Ð»Ñ_ ME5 _ ME5
+    Ð_Ð_ Ð ́Ð»Ñ_ ME5 _ ME5 PRO
+Darmoshark
+  K3 QMK
+Drop
+  ALT
+    ALT v2
+    ALT V2 QMK
+  CSTM65
+  CSTM80
+  CSTM80 QMK
+  CTRL
+    CTRL v2
+  Massdrop CTRL
+    Massdrop CTRL V2 QMK
+  Massdrop SENSE75 QMK
+  Planck REV7
+  SENSE75
+  SHIFT
+    SHIFT v1 QMK
+    SHIFT v2
+    SHIFT v2 QMK
+  The Key
+    The Key V1
+    The Key V2
+  ZJ68
+DrunkDeer
+  A75
+    A75 Ultra HE
+  A75 - Actuation Distance Adjustable
+    A75 - Actuation Distance Adjustable HE
+  G75 - Actuation Distance Adjustable
+    G75 - Actuation Distance Adjustable HE
+  X60Future
+Ducky
+  One 2
+    One 2 Mini
+  One 2 RGB TKL
+  One 2 SF
+  Shine 7/Ducky One 2 RGB
+Endgame Gear
+  KB65HE
+    KB65HE 8k Hall Effect - US
+  KB65HE Hall Effect - US
+  MB1 Bungee
+  OP1
+    OP1 8k v2
+  OP1w
+    OP1w 4k v2
+  OP1we
+  XM2
+    XM2 8k
+    XM2 8k v2
+  XM2w
+    XM2w 4k
+    XM2w 4k v2
+  XM2we
+EPOMAKER
+  AJAZZ AK820
+    AJAZZ AK820 Pro
+  Carbon60
+  CIDOO
+    CIDOO V65 V2
+  ClickLab_Central_V1.0.3.3
+  DynaTab 75X
+  EK21
+  EK68
+  G84
+    G84 HE
+    G84 Pro
+  Galaxy100 Lite
+  Galaxy100 QMKVIA
+  Galaxy70
+  GLOW75 DIY Kit
+  GX1
+  HACK59
+  HACK70
+  HE108
+  HE30
+  HE60
+  HE65
+    HE65 V2 TMR
+  HE68 Lite
+  HE75
+    HE75 V2
+    HE75 V2 TMR
+  HE80
+  LUMA100
+  LUMA40
+  Magcore 87
+  Magcore65 Lite
+  NEX
+    NEX Pro
+  QK108
+  RT100
+    RT100 Pro
+  RT75
+  RT82
+  RT85
+  RT98
+  Split 65
+  Split70
+  TH108
+    TH108 Pro
+    TH108 V2 Pro
+  TH33
+  TH40
+  TH65
+  TH80
+    TH80 Pro
+    TH80 Pro V2
+    TH80 V2
+    TH80 V2 Pro
+  TH85 QMK
+  TH87
+  TH96
+  TH99
+    TH99 Pro
+  TIDE 65
+  v4
+Fantech
+  ALTO 7.1 HG26
+  ALTO MH91
+  ARIA XD7 KAILH
+  ATOM
+    ATOM PRO
+  Atom 104
+    Atom 104 PRO MK889PRO
+    ATOM104
+  Atom 107S MK893S
+  ATOM AIR108
+  ATOM AIR61
+  ATOM HE68
+  ATOM PRO63
+  ATOM PRO66
+  ATOM PRO83
+  ATOM PRO96
+  ATOM X63 MK611
+  ATOM X66 MK614
+  ATOM X83 MK612
+  Atom104S MORI MK878S
+  ATOM61 MK211
+  Atom63 MORI MK874V2
+  Atom81 Hero MK875V2
+  Atom81 Mizu MK875V2
+  Atom87S MORI MK877S
+  BLAKE S WGC5S
+  BLAKE WGC5
+  CARBON 7.1 HG30
+  Carbon MH92
+  CRUISER II WG11V2RD
+  CRUISER WG11
+  CRUZE 7.1 HG31
+  CRYPTO II VX7V2
+  CRYPTO II WG7V2
+  CRYPTO II WG7V2RD
+  CRYPTO VX7
+  CRYPTO WGC3
+  FLASH HQ53
+  GO AIR WH02
+  GO AIR WH02S
+  GO MOVE WH03
+  GO VIBE WH05
+  GO VIBE WH05A
+  HARMONY
+    HARMONY PRO WHG02P
+  HARMONY WHG02
+  HELIOS II
+    HELIOS II PRO 4K
+    HELIOS II PRO S 8K
+  HELIOS II 1K
+  HELIOS UX3
+  HELIOS UX3V2
+  HELIOS XD3
+  HELIOS XD3V2
+  KANATA S VX9S
+  KANATA S WG9S
+  KANATA VX9
+  KANATA WG9
+  Kanata WG9 Supermaxfit
+  KANATA WG9RD
+  MARS II HQ54
+  MAXFIT6 MK920
+  MAXFIT67
+  MAXFIT70
+  MAXFIT70 One Piece
+  MAXFIT8 MK921
+  MAXFIT8 MK921 ROSIE
+  MAXFIT8 One Piece
+  MAXFIT81 FROST
+  MAXFIT81 VIBE
+  MAXFIT81 VIBE BAREBONE
+  ORBITA WHG07
+  PHANTOM II VX6
+  RAIGOR II WG10
+  STELLAR WHG05
+  STUDIO
+    STUDIO PRO V2 WHG03PV2
+    STUDIO PRO WHG03P
+  STUDIO WHG03
+  TAMAGO II WHG04
+  TAMAGO WHG01
+  TANTO
+    TANTO PRO WG13P
+  THOR X9
+  TONE II HQ56
+  VALOR II MH89
+  VENOM II VX8
+  VENOM II WGC2+
+Feker
+  Alice 80
+  Alice60 Wood
+  Alice75 QMKVIA
+  Alice98 QMKVIA
+  IK75
+  K75 Lite
+Filco
+  Majestouch TKL \\w The Pegasus Hoof 2013
+  Majestouch TKL The Pegasus Hoof 2015
+Finalmouse
+  Air58 Ninja - CBB
+  Air58 Ninja - CBR
+  Starlight
+    Starlight Pro - TenZ
+    Starlight Pro - The Last Legend
+  Starlight-12 Achilles
+  Starlight-12 Ares
+  Starlight-12 Hades
+  Starlight-12 Pegasus
+  Starlight-12 Phantom
+  Starlight-12 Poseidon
+  Starlight-12 Zeus
+  Tournament
+    Tournament Pro
+  Ultralight
+    Ultralight Pro - Black
+    Ultralight Pro - White
+  Ultralight 2 - Cape Town
+  ULX
+    ULX Pro
+FL·ESPORTS
+  FL ESPORTS F11
+Fnatic Gear
+  Fnatic Streak65
+G-Wolves
+  Fen
+    Fen Max Asym 8K 20.8g
+  Fenrir
+    Fenrir Max 8K 22.4g
+    Fenrir Pro 8K 18.9g
+  Fenrir Asym
+    Fenrir Asym 8K 20.4g
+  Hati HTM Classic 56g
+  Hati-S 58g
+  Hati-S ACE 56g
+  Hati-S Open Source 58g
+  HSK
+    HSK Plus 4K 41g
+    HSK Plus ACE-2 38g
+    HSK Plus Lite 38g
+    HSK Pro ACE 26g
+    HSK Pro v2.0 8K 26.8g
+  HSK 37g
+  HT-S2
+    HT-S2 8K 32.9g
+    HT-S2 Pro 8K 28.4g
+  HT-S2 just
+  HTM
+    HTM Plus 8K 33.47g
+  HTM ACE 53g
+  HTM ACE 63g
+  HTR
+    HTR 8K 28g
+    HTR Pro 8K 25.3g
+  HTS
+    HTS Plus 4K 46g
+    HTS Plus 8K 46g
+    HTS Plus ACE 46g
+    HTS Plus Classic 46.2g
+    HTS Plus Pro 8K 28g
+    HTS Ultra 8K 29.532.9g
+  HTS ACE 4548g
+  HTX
+    HTX 4K 3943g
+    HTX Mini 8K 26.9g
+    HTX Mini Asym 8K 25.8g
+    HTX Ultra 8K 32.1g
+  HTX ACE 3641g
+  LYCAN
+    LYCAN 8K 28.8g
+  Skoll
+    Skoll Mini SK-S 47g
+  VUK
+    VUK 8K 35g Dual Sensor
+  VUK Medium
+    VUK Medium 8K 29.8g
+  Warg
+    Warg 8K 28.9g
+Gamakay
+  CK87
+  Freewolf K65
+  GK75 75
+  GX1 GX1
+    GX1 GX1 PRO 55g
+  HXSJ A904
+  HXSJ T300
+  K61
+    K61 Pro 60
+  K61 60 Acrylic
+  K66 60 case
+  K77 75 case
+  K87 80 TKL
+  LK70
+  MK61 60
+  SN75 75 Kit
+  Somic G941
+  TK101 98
+  TK68
+    TK68 HE 65 Hall Effect
+  TK68 Mecanical 30OFF
+  TK75 SOCD SnapTap Silent
+  TK75 TMR
+  TK75HE
+    TK75HE V2 Hall Effect 8K Polling Rate 0.005mm RT Accuracy
+  TK75PRO 75 Aluminum Alloy
+  TK75SE 75
+  x Freewolf M88 Feeling
+  x Freewolf M96
+  x NaughShark NS68 Hall Effect
+  x NaughShark NS75 Hall Effect 0.005mm RT Accuracy
+    x NaughShark NS75 Hall Effect 0.005mm RT Accuracy 8K Polling Rate
+Glorious
+  GMBK 75
+  GMMK
+    GMMK Pro ANSI
+    GMMK PRO Barebones 75
+    GMMK Pro ISO
+    GMMK Pro QMK
+    GMMK V2 65 ANSI
+    GMMK V2 65 ISO
+    GMMK V2 96 ANSI
+    GMMK V2 96 ISO
+  GMMK 1 Prebuilt
+  GMMK 2 Barebones Compact 65
+  GMMK 2 Compact 65
+  GMMK 3
+    GMMK 3 HE Prebuilt
+    GMMK 3 PRO Barebones
+    GMMK 3 PRO HE Barebones
+    GMMK 3 PRO HE Prebuilt
+    GMMK 3 PRO Prebuilt
+  GMMK 3 Barebones
+  GMMK 3 Module Pack Firm 100
+  GMMK 3 Module Pack Firm 65
+  GMMK 3 Module Pack Firm 75
+  GMMK 3 Module Pack Flex 100
+  GMMK 3 Module Pack Flex 65
+  GMMK 3 Module Pack Flex 75
+  GMMK 3 Prebuilt
+  GMMK2 Compact - Black
+  Model D3
+  Model I 2
+  Model O 2
+    Model O 2 Mini
+  Model O3
+  Series 2
+    Series 2 PRO
+HyperX
+  3D
+  3D x Guild Wars 2 - Plush Bear
+  3D x HOLOSTARS English - Banzoin Hakka Feather
+  3D x HOLOSTARS English - Banzoin Hakka Hakkito
+  3D x Warframe
+  Alloy Elite 2
+  Alloy Origins 60
+  Alloy Origins 65
+  Alloy Rise 75
+  Cloud Alpha 2
+  Cloud Flight 2
+  Cloud MIX 2
+  Cloud MIX Buds 2 Earbuds
+  Cloud Stinger 2
+  Cloud Stinger 2 Core
+  Cloud Stinger 3
+  CloudX Flight 2
+  CloudX Stinger 2
+  CloudX Stinger 3
+  Elite 2 RGB
+  Eve 1800
+  Fury
+    Fury Ultra
+  HX3D
+  OMEN 23.8 inch FHD 180Hz Monitor - OMEN 24 G2
+  OMEN 27 inch FHD 180Hz Monitor - OMEN 27 G2
+  OMEN 27 inch QHD 180Hz Monitor - OMEN 27q G2
+  OMEN 27 inch QHD 280Hz Monitor - OMEN 27qs G2
+  OMEN 34 inch WQHD 180Hz Curved Monitor - OMEN 34c G2
+  Origins 2
+    Origins 2 Pro 65
+  Origins 2 1800
+  Origins 2 65
+  Pulsefire 2
+  Pulsefire FPS
+    Pulsefire FPS Pro
+  Pulsefire Haste 2
+    Pulsefire Haste 2 Mini
+    Pulsefire Haste 2 Pro 4K
+  Pulsefire Haste 2 Core
+  Pulsefire Haste 2 S
+  Pulsefire Saga
+    Pulsefire Saga Pro
+  QuadCast 2 S
+  QuadCast 2 S USB Microphone
+  QuadCast 2 USB Microphone
+  SoloCast 2 USB Microphone
+IO by Red Square
+  ACER P09-600 RGB
+  Ads Tech Radio Si470X
+  Anne
+    Anne Pro 2
+  Asus TUF K1
+  Cerakey Zen75 QMK ANSI
+  CoolerMaster CK530
+    CoolerMaster CK530 V2
+  CoolerMaster CK550
+    CoolerMaster CK550 V2
+  CoolerMaster CK552
+    CoolerMaster CK552 V2
+  CoolerMaster CK720
+  CoolerMaster CK721
+  CoolerMaster MK730
+  CoolerMaster MK750
+  CoolerMaster MK850
+  CoolerMaster SK620
+  CoolerMaster SK650
+  CoolerMaster SK652
+  CoolerMaster SK653
+  Cygnal Radio Si470X
+  Cygnal Radio Si4713
+  Dealextreame Radio Si4701
+  DZTech ANSI DZ60RGB
+  DZTech DZ65RGB
+    DZTech DZ65RGB V3
+  EVGA X15
+  EVGA X17
+  EVGA Z15
+  EVGA Z20
+  Evision Icl01
+  Freja 65
+  Gigabyte Aorus ATC800
+  Gigabyte Aorus Liquid Cooler 360
+  GMMK 2 65% ANSI QMK
+  GMMK 2 65% ISO QMK
+  GMMK 2 96% ANSI QMK
+  GMMK 2 96% ISO QMK
+  GMMK3 QMK
+  Gyration Remote 2
+  Gyration Remote 3
+  Huion Tablet2
+  IDOBAO ID67
+  Inland KB83 QMK
+  Intel Arc 770
+  Ite Medion E1239T
+  KBDCraft Adam0110 QMK
+  KBDFans KBD67 RGB MKII
+  KBDfans KBD67MKIIRGB ISO QMK
+  KPRepublic BM60 Poker Rev 2
+  Kworld Radio Fm700
+  Lemokey L1
+  Lemokey L3
+  Lemokey P1
+    Lemokey P1 HE ANSI
+    Lemokey P1 HE ISO
+    Lemokey P1 Pro ANSI
+    Lemokey P1 Pro ISO
+  Lenovo Legion 5
+    Lenovo Legion 5 Pro
+  Lenovo Legion 7
+  Lenovo Legion Go2 Dinput
+  Lenovo Legion Go2 Dual Dinput
+  Lenovo Legion Go2 Fps
+  Lenovo Legion Go2 Xinput
+  LG UltraGear 27GN950
+  LG UltraGear 38GL950G
+  LianLi L-Connect 3 Strimer
+  Logitech
+    Logitech Pro TKL
+  Logitech X56 H.O.T.A.S. Stick
+  Logitech X56 H.O.T.A.S. Throttle
+  Magic Force / Kinst MF17 QMK Numpad
+  Mountain Everest
+    Mountain Everest Max
+  Mountain Everest 60
+  Mountain Makalu 67
+  NCR-80 Hotswap
+  Nexio Multitouch Pti0750
+  Nollie 8
+    Nollie 8 v2
+  Nollie1
+  Nollie16v3
+  Nollie32
+  Patriot Viper
+    Patriot Viper V380
+  Prism 8
+  Saitek Rat7 Contagion
+  Sinowealth Device 2
+  StreamDeck
+    StreamDeck V2
+  ThermalTake Argent MP1
+  ThermalTake Level 20 Desk
+  YMDK Melody96 RGB QMK
+  YMDK YMD09 QMK
+IQUNIX
+  EV63
+    EV63 HE
+KBDfans
+  21XX
+  Adam64
+  Aepex 60
+  Athena 1800
+  Athena 1800 Accessories
+  Athena 75
+  Baguette66 RGB
+  Baguette66 Soldered
+  Bauer 65
+  Boop65 RGB
+  Bounce75 Hotswap
+  Bounce75 Soldered
+  D45V2
+  D60B
+  Dusk 67
+  Dusk 67 Accessories
+  DZ60
+  epoch80
+  F1-8X
+    F1-8X V2 Barebone Kit
+  GT-60 Case
+  GT-80 Case
+  Holy60 Accessories
+  Holy60 Case
+  Holy60 Kit
+  Holy80 Case
+  JM60
+  kaishi65
+  kbd0/curve0/60_ansi
+  kbd0/curve0/75_ansi
+  KBD19x
+  KBD4x
+  KBD66
+  KBD67 Hotswap
+  KBD67 Lite R4 Accessories
+  KBD67 Rev1
+  KBD67 Rev2
+  KBD67-MKII Soldered
+  kbd67mkiirgb
+    kbd67mkiirgb v1
+    kbd67mkiirgb v2
+    kbd67mkiirgb v3
+    kbd67mkiirgb v4
+  KBD67MKIIRGB ISO
+  KBD6X
+  KBD75 Hotswap
+  KBD75 rev1
+  KBD75 rev2
+  KBD75RGB
+  KBD8X
+  KBD8X-MKII
+  Kbdpadmk3
+  MM
+    MM HE M64 barebone
+  Odin
+    Odin V2
+  ODIN75
+  Onibi R2
+  Ready to use Athena 1800
+  Ready to use Athena 1800 Anodized Black
+  Ready to use Athena 1800 Anodized Pine green
+  Ready to use Athena 1800 Anodized red
+  Ready to use Athena 1800 Anodized Silver
+  Ready to use Athena 75
+  Ready to use Dusk 67
+  Ready To Use GT-80 Hotswap
+  Ready to use Holy60
+    Ready to use Holy60 HE
+  Ready To Use Holy80 Hotswap
+  Ready to use Tofu Redux
+    Ready to use Tofu Redux V2 HE
+  Ready to use Tofu60 Redux
+    Ready to use Tofu60 Redux V2 MX Hotswap
+  RF-8X
+  Tech80
+  Tiger80
+  TOFU TKL R2
+  TOFU60
+  TOFU60 3.0
+  Tofu60 3.0 Accessories
+  Tofu60 3.0 Color
+  TOFU60 3.0 x
+    TOFU60 3.0 x HE
+  Tofu60 Redux
+    Tofu60 Redux V1 Accessories
+    Tofu60 Redux V2 Accessories
+    Tofu60 Redux V2 Case
+  Tofu60 Redux 60 Case
+  Tofu60 Redux 60 Case Kit
+  Tofu65 3.0
+  Tofu65 3.0 Accessories
+  Tofu65 3.0 Color
+Kemove
+  ADD DIERYA DK61SE 105.00 NIS ADD
+  Dierya DK68E
+  Dierya DK81E
+  M2SE
+  TMKB M1
+  TMKB M1SE
+  TMKB T68
+  TMKB T68-C
+    TMKB T68-C HE
+  TMKB T68E
+Keychron
+  B1
+    B1 Pro Ultra-Slim
+  B11
+    B11 Pro Ultra-Slim Foldable
+  B2
+    B2 Pro Ultra-Slim
+  B3
+    B3 Pro Ultra-Slim
+  B31
+  B33
+  B35
+  B36
+  B4
+    B4 Pro Ultra-Slim
+  B5
+    B5 Pro Ultra-Slim
+  B6
+    B6 Pro Ultra-Slim
+  BM22
+  BM24
+  BM25
+  BM27
+  C0
+    C0 HE One Handed
+  C1
+    C1 Pro
+    C1 Pro 8K
+    C1 Pro 8K QMK
+    C1 Pro ANSI
+    C1 Pro QMK
+    C1 Pro RGB
+    C1 Pro V2
+    C1 Pro V2 RGB
+  C2
+    C2 Pro
+    C2 Pro 8K
+    C2 Pro 8K QMK
+    C2 Pro ANSI
+    C2 Pro QMK
+    C2 Pro RGB
+    C2 Pro V2
+    C2 Pro V2 RGB
+    C2 Pro V2 White ANSI
+  C3
+    C3 HE
+    C3 Pro
+    C3 Pro 8K
+    C3 Pro 8K ANSI QMK
+    C3 Pro 8K QMK
+    C3 Pro QMK
+    C3 Pro Red ANSI
+    C3 Pro RGB
+  C4
+    C4 HE 8K
+  Donkey J2 ANSI QMK
+  G3
+    G3 Ultra Light
+  G4
+  G5
+    G5 Ultra Light
+  J1 QMK
+  J12
+    J12 HE
+  J14
+    J14 HE
+  J2
+    J2 HE 8K
+  J2 QMK
+  J3
+    J3 SE QMK
+  J4
+    J4 HE
+  J4 QMK
+  J5
+    J5 HE
+  J5 QMK
+  J8
+    J8 HE 8K
+  K0
+    K0 Max
+    K0 Max QMK Number Pad
+  K1
+    K1 Max
+    K1 Max QMK
+    K1 Pro QMK
+    K1 Ultra 8K
+    K1 V6
+  K1 QMK
+  K1 QMK - 6
+  K10
+    K10 HE
+    K10 HE ANSI QMK
+    K10 HE ISO QMK
+    K10 Max
+    K10 Max ISO QMK
+    K10 Max QMK
+    K10 Pro ISO QMK
+    K10 Pro QMK
+    K10 Pro QMKVIA
+    K10 Ultra 8K
+    K10 V2
+    K10 V2 ANSI QMK
+    K10 V2 ISO QMK
+  K10 QMK
+  K10 QMK - 2
+  K10v2
+    K10v2 Max QMK
+  K11
+    K11 Max
+  K12 QMK
+  K13
+    K13 Max
+    K13 Max QMK
+  K15
+    K15 Max
+    K15 Max QMK
+  K17
+    K17 Max
+    K17 Max QMK
+    K17 Max QMK ANSI
+  K2
+    K2 HE
+    K2 HE ANSI QMK
+    K2 HE ISO QMK
+    K2 Max
+    K2 Max QMK
+    K2 Pro
+    K2 Pro ISO DE QMK
+    K2 Pro QMK
+    K2 Ultra 8K
+    K2 V3
+  K2 QMK
+  K2 QMK - 3
+  K3
+    K3 HE
+    K3 Max
+    K3 Max QMK - All-Wood Special
+    K3 Max QMKVIA
+    K3 Max SE QMK
+    K3 Pro
+    K3 Pro QMK
+    K3 Pro QMK ISO
+    K3 Ultra 8K
+    K3 V3
+  K3 QMK
+  K3 QMK - 3
+  K4
+    K4 HE
+    K4 HE ANSI QMK
+    K4 Max
+    K4 Max QMK
+    K4 Pro
+    K4 Ultra 8K
+    K4 V3
+  K4 QMK
+  K4 QMK - 3
+  K4v2 QMK
+  K5
+    K5 Max
+    K5 Max ANSI QMK
+    K5 Max ISO QMK
+    K5 Max QMK
+    K5 Pro QMK
+    K5 Ultra 8K
+    K5 V2
+    K5 v2 ISO QMK
+  K5 QMK
+  K5 QMK - 2
+  K6
+    K6 HE
+    K6 Pro
+  K7
+    K7 Max
+  K8
+    K8 HE
+    K8 HE ISO QMK
+    K8 HE QMK
+    K8 Max
+    K8 Max ISO QMK
+    K8 Max QMK
+    K8 Pro
+    K8 Pro ISO DE QMK
+    K8 Pro QMK
+    K8 Ultra 8K
+    K8 V2
+    K8 v2 ANSI QMK
+    K8 v2 TKL ISO QMK
+  K8 QMK
+  K8 TKL ISO QMK
+  K9
+    K9 Max
+    K9 Max QMK
+  Keychon K2
+    Keychon K2 Max ANSI
+    Keychon K2 Max ISO
+  Keychon K2v2+v3 ANSI
+  Keychon K2v3 ISO
+  Keychon K3v3 ISO
+  Lemokey G1
+  Lemokey G2
+  Lemokey L0
+    Lemokey L0 HE One Handed
+  Lemokey L1
+    Lemokey L1 HE
+  Lemokey L1 QMK
+  Lemokey L3
+  Lemokey L4 QMK
+  Lemokey L5
+    Lemokey L5 HE
+  Lemokey P1
+    Lemokey P1 HE
+  Lemokey P1 QMK
+  Lemokey P2
+    Lemokey P2 HE
+  Lemokey P3
+    Lemokey P3 HE
+  Lemokey X0
+  Lemokey X0 QMK Keypad
+  Lemokey X2 QMK
+  Lemokey X4 QMK
+  Lemokey X5 QMK
+  Lemokey X6 QMK
+  M1
+  M3
+  M5
+  M6
+  Nape
+    Nape Pro Trackball
+  P6
+    P6 Ultra 8K
+  Q0
+    Q0 HE
+    Q0 HE QMK Number Pad
+    Q0 Max
+    Q0 Max QMK
+    Q0 Mini 8K Action Key
+    Q0 Plus
+    Q0 Plus QMK
+  Q0 QMK
+  Q1
+    Q1 HE
+    Q1 HE 8K
+    Q1 HE QMK
+    Q1 HE QMK - Copper
+    Q1 HE QMK ANSI
+    Q1 HE QMK ISO
+    Q1 Max
+    Q1 Max ANSI QMK
+    Q1 Max ISO QMK
+    Q1 Max QMK
+    Q1 Pro / OnePlus 81 Pro QMK
+    Q1 Pro ISO QMK
+    Q1 Ultra 8K
+    Q1 V1
+    Q1 V2
+  Q1 ANSI
+  Q1 ISO
+  Q10
+    Q10 Max
+  Q11
+    Q11 Ultra 8K
+  Q12
+    Q12 HE
+    Q12 HE QMK
+    Q12 Max
+    Q12 Max ANSI QMK
+  Q12 QMK
+  Q13
+    Q13 Max
+    Q13 Max QMK
+    Q13 Ultra 8K
+  Q14
+    Q14 Max
+    Q14 Max QMK
+  Q15
+    Q15 Max
+    Q15 Max QMK
+  Q16
+    Q16 HE 8K
+  Q1v1
+  Q1v1 ANSI
+  Q1v1 ISO
+  Q1v1 ISO QMK
+  Q1v1 QMK
+  Q1v2 ISO QMK
+  Q1v2 QMK
+  Q2
+    Q2 HE
+    Q2 HE 8K
+    Q2 HE QMK
+    Q2 Max
+    Q2 Max ANSI QMK
+    Q2 Max QMKVIA
+    Q2 Pro ANSI Encoder
+  Q2 ANSI
+  Q2 ISO
+  Q2 QMK
+  Q3
+    Q3 HE
+    Q3 HE 8K
+    Q3 HE ANSI Encoder
+    Q3 HE QMK
+    Q3 Max
+    Q3 Max ANSI QMK
+    Q3 Max ISO QMK
+    Q3 Pro SE ANSI
+    Q3 Pro SE ISO QMK
+    Q3 Ultra 8K
+  Q3 ANSI
+  Q3 ANSI Encoder
+  Q3 ISO
+  Q4
+    Q4 HE
+    Q4 HE QMK
+    Q4 V1
+    Q4 V2
+  Q4 ANSI
+  Q4 ISO
+  Q5
+    Q5 HE
+    Q5 HE 8K
+    Q5 HE QMK
+    Q5 Max
+    Q5 Max ANSI Encoder QMK
+    Q5 Pro
+    Q5 Pro ISO
+    Q5 Ultra 8K
+  Q5 ANSI
+  Q5 ISO
+  Q5 QMK
+  Q6
+    Q6 HE
+    Q6 HE 8K
+    Q6 HE QMK
+    Q6 Max
+    Q6 Max ANSI QMK
+    Q6 Max ISO QMK
+    Q6 Max QMKVIA
+    Q6 Pro ANSI QMK
+    Q6 Pro ISO QMK
+    Q6 Ultra 8K
+  Q6 ANSI
+  Q6 ISO
+  Q6 QMK
+  Q60
+    Q60 Max
+  Q60 ANSI
+  Q65
+    Q65 Max
+    Q65 Max QMK
+  Q65 QMK
+  Q7
+    Q7 HE
+  Q7 ANSI
+  Q7 ISO
+  Q8
+    Q8 Max
+    Q8 Max ANSI QMK
+    Q8 Pro ANSI QMK
+  Q8 ANSI
+  Q8 ISO
+  Q9
+    Q9 Plus
+  Q9 ANSI
+  Q9 ISO
+  R3 QMK
+  R5 QMK
+  R6 QMK
+  S1
+  S1 ANSI
+  V0
+    V0 Ultra 8K
+    V0 Ultra 8K Number Pad
+  V1
+    V1 8K QMK
+    V1 HE
+    V1 Max
+    V1 MAX ANSI + Encoder QMK
+    V1 MAX ISO + Encoder QMK
+    V1 Max QMK
+    V1 Ultra 8K
+  V1 ANSI
+  V1 ISO
+  V1 ISO QMK
+  V1 QMK
+  V10
+    V10 Max
+    V10 Ultra 8K
+  V2
+    V2 Max
+    V2 Ultra 8K
+  V2 ANSI
+  V2 ISO
+  V2 QMK
+  V3
+    V3 8K QMK
+    V3 Max
+    V3 Max QMK
+    V3 Max QMK ISO
+    V3 Max QMKVIA
+    V3 Ultra 8K
+  V3 ANSI
+  V3 ISO
+  V3 QMK ANSI
+  V3 QMK ISO
+  V4
+    V4 Max
+  V4 ANSI
+  V4 ISO
+  V4 QMK ANSI
+  V4 QMK ISO
+  V5
+    V5 8K QMK
+    V5 Max
+    V5 MAX ANSI + Encoder QMK
+    V5 MAX ISO + Encoder QMK
+    V5 Max QMK
+    V5 Ultra 8K
+  V5 ANSI
+  V5 ISO
+  V5 QMK
+  V5 QMK ANSI Encoder
+  V5 QMK ISO Encoder
+  V6
+    V6 8K QMK
+    V6 HE
+    V6 Max
+    V6 Max ANSI QMK
+    V6 Max ISO QMK
+    V6 Max QMK
+    V6 Ultra 8K
+    V6 V2
+  V6 ANSI
+  V6 ANSI QMK
+  V6 ISO
+  V6 ISO QMK
+  V7
+  V7 ANSI
+  V7 ISO
+  V8
+    V8 Max
+    V8 Max QMK
+  V8 ANSI
+  V8 ISO
+  Z2-70
+    Z2-70 Ultra 8K
+Keycult
+  1800
+  60
+  65
+  No. 2TKL Raw
+  No. 2TKL Rev. 2 - Matte Black Blue Waves
+Kysona
+  M600
+  M600 Dongle
+Lamzu
+  Atlantis
+    ATLANTIS MINI 4K
+    ATLANTIS MINI PRO
+    Atlantis Pro
+  Atlantis OG
+    ATLANTIS OG V2 4K
+    ATLANTIS OG V2 PRO
+    Atlantis OG V2 Sapphire Skate
+  Atlantis OG Sapphire SkateDont match OG
+    Atlantis OG Sapphire SkateDont match OG V2
+  CRYSTAL_WIRELESS_v2.1.0.43_2025.04.18
+  INCA_00.00.00.19
+  Jet75
+  MAYA
+    MAYA 4K
+  MAYA_Champion_Edition_00.00.00.19
+  OG
+    OG V2 Dustproof Seal
+  PARO_AURORA_00.00.00.19
+  THORN
+    THORN 4K
+    THORN V2
+  Thorn_v2
+  v0.0.0.19_Maya_X_1_1
+  v1.6.0.43_2025.04.18
+  X FNATIC THORN
+    X FNATIC THORN 4K
+Lemokey
+  G1
+  G2
+  L0
+    L0 HE One Handed
+  L1
+    L1 HE
+  L1 QMK
+  L1 QMKVIA
+  L3 QMKVIA
+  L4 QMK
+  L5
+    L5 HE
+  P1
+    P1 HE
+  P1 QMK
+  P1 QMKVIA
+  P2
+    P2 HE
+  P3
+    P3 HE
+  X0 QMK Keypad
+  X1 QMKVIA
+  X2 QMK
+  X3 QMKVIA
+  X4 QMK
+  X5 QMK
+  X6 QMK
+Leobog
+  A75
+  Hi75
+  Hi8
+    Hi8 SE
+  K21
+  K81
+    K81 Pro Kit
+Lin Works
+  Blink1
+  Yealink P1K P4K B2K
+Logitech G
+  11
+  13
+  15
+    15 V2 Lcd
+  15 Lcd
+  19
+  203 Lightsync
+  203 Prodigy
+  213
+  25 Wheel
+  27 Wheel
+  29 Wheel
+  300
+  303 Daedalus Apex
+  303 Shroud Edition
+  402
+  402 Hyperion
+  403
+  403 Hero
+  403 Prodigy
+  410 Atlas Spectrum
+  413
+  5
+  500
+  500s
+  502
+  502 Hero
+  502 Proteus Core
+  502 Proteus Spectrum
+  502 X
+    502 X PLUS
+  510
+  510 Usb Audio
+  512
+    512 SE
+  512 RGB
+  513
+  560
+  600
+  602
+  603
+  604
+  610 Orion
+  633
+  635
+  7
+  700
+  700 Receiver
+  700s
+  703
+  703 Hero
+  705
+  733
+  810
+  810 Orion Spectrum
+  813 RGB
+  815
+  815 Lightsync
+  815 RGB
+  9
+  900
+  903
+  903 Hero
+  910
+  910 Orion Spark
+  910 Orion Spectrum
+  915
+  915 TKL
+  920 Wheel
+  923 Xbox Wheel
+  933 Lightsync
+  935
+  9x [Call of Duty MW3 Edition]
+  PRO
+  Pro HERO
+  Pro RGB
+  Pro X
+Machenike
+  Air50 Low-profile
+  CK600
+  CKM3 +
+  CM3 Silent
+  F117-7 Gen 11 Intel Laptop
+  F117-7Plus L17 Gen 11 Intel Laptop
+  F117-7Plus L17 Gen 12 Intel Laptop
+  F117-FP Gen 11 Intel Laptop
+  G1 Gamepad
+  G3
+    G3 V2 Gamepad
+  G5
+    G5 Pro Hall-effect Gamepad
+    G5 Pro Max Gamepad
+    G5 Pro V2 Gamepad
+  G6 Hall-effect Gamepad
+  G7
+  GH603
+  GK80
+  GX30
+    GX30 Pro
+  H300
+  K12 Membrane
+  K500
+  K500 Pro-B94
+  K500-B61
+  K500-B61 - ABNT2
+  K500-B61W
+  K500-B68
+  K500-B94
+  K500-M61
+  K500A-B84
+  K500B-B87
+  K500B-B87 - Thai
+  K500E-B108
+  K500F
+  K500F-B94
+  K500W
+  K520
+  K600
+    K600 Gen2
+  K600 Dual-Mode
+  K600 Lite-B100
+  K600-B82W
+  K600E-B87W
+  K600G
+  K600G-B97W
+  K600S
+  K600T
+  K7
+    K7 Pro
+  K7 Dual-Mode
+  KG75
+  KG87
+  KG98
+  KT68
+    KT68 Pro
+  KT84
+  L8
+    L8 Max
+    L8 Pro
+  L8 Air
+  L9 X1
+  M2
+  M5
+  M6 Ultralight
+  M7
+    M7 Gen2
+    M7 Pro
+  M720
+  M8
+    M8 Gen2
+  TH60 TWS Earphones
+Matrix Lab
+  8XV2.0 Additional
+  M12OG REV2
+  m12og_v1 REV1
+MCHOSE
+  A5
+    A5 V3 Ultralight 8K
+  A7
+    A7 V2
+  A7X
+    A7X Ultra Magnesium Alloy
+  Ace 60
+    Ace 60 Pro Hall Effect
+  Ace 68 Air Hall Effect
+  Ace 68 GT Full-aluminum Esports Hall Effect
+  Ace 68 Hall Effect
+  Ace 68 Turbo Full-aluminum Esports Hall Effect
+  G3
+    G3 V2
+  G3 Dual
+    G3 Dual 8K High-Performance
+  G75
+    G75 Pro
+  G98
+    G98 Pro
+  GX87 Aluminum
+  GX87 ANSI QMK
+  Jet 75 Hall Effect
+  K20
+    K20 Pro Soundbar
+  K7
+    K7 Ultra 8K Lightweight
+    K7 V2
+  K99
+    K99 V3
+  L7
+  Mix 87 Hall Effect
+  S9
+    S9 Pro
+  V9
+  V9 Turbo+
+  x Unbox Therapy - UT98
+  X9
+Meletrix
+  BOOG75 Prebuilt
+  Zoom64 Arctic Blue
+  ZOOM64 Case Kit Add Ons
+  Zoom64 Case Kit-Arctic Blue
+  Zoom64 Case Kit-Cloud Mist Blue
+  Zoom64 Case Kit-Coral Bloom
+  Zoom64 Case Kit-Drift Gray
+  Zoom64 Case Kit-Forged Flow
+  Zoom64 Case Kit-Glacier Startrail
+  Zoom64 Case Kit-Ink Teal
+  Zoom64 Case Kit-Lilac Veil
+  Zoom64 Case Kit-Liquid Silver
+  Zoom64 Case Kit-Midnight Ink Glow
+  Zoom64 Case Kit-Moonstone White
+  Zoom64 Case Kit-Mystic Ink
+  Zoom64 Case Kit-Neon Violet
+  Zoom64 Case Kit-Sakura Pink
+  Zoom64 Case Kit-Titanium Gray
+  Zoom64 Case Kit-Velvet Gold
+  Zoom64 Cloud Mist Blue
+  Zoom64 Coral Bloom
+  Zoom64 Drift Gray
+  Zoom64 Forged Flow
+  Zoom64 Glacier Startrail
+  Zoom64 Ink Teal
+  ZOOM64 Kit Add Ons
+  Zoom64 Lilac Veil
+  Zoom64 Liquid Silver
+  Zoom64 Midnight Ink Glow
+  Zoom64 Moonstone White
+  Zoom64 Mystic Ink
+  Zoom64 Neon Violet
+  ZOOM64 Pre built
+  Zoom64 Sakura Pink
+  Zoom64 Titanium Gray
+  Zoom64 Velvet Gold
+  Zoom65
+    ZOOM65 V2 x Soul Land
+    Zoom65 v3
+    ZOOM65 V3 Add On - External Weight
+    ZOOM65 V3 Add On - Plate
+    Zoom65 V3 External Weight
+    ZOOM65 V3 HE Module
+    Zoom65 V3 Plate
+    ZOOM65 V3 Special Panda
+    Zoom65 V3 X Cupid Collaboration
+    ZOOM65 V3 x Lift off Collaboration
+  Zoom65 Add ons
+  Zoom65 Olivia
+  zoom65_lite
+  Zoom65V1V2Zoom75 Extra Weights
+  ZOOM75
+    ZOOM75 HE Prebuilt
+  Zoom75 - 2U Color LCD Modular
+  Zoom75 - Two-keys Modular
+  Zoom75 Add-on
+  Zoom75 Essential - Blush Pink
+  Zoom75 Essential - Orange
+  Zoom75 TIGA Add Ons
+  Zoom75 TIGA Anodized Black
+  Zoom75 TIGA Anodized Lavender
+  Zoom75 TIGA Aquamarine
+  Zoom75 TIGA Black
+  Zoom75 TIGA Cafe Brown
+  Zoom75 TIGA Dual Wings Modular
+  Zoom75 TIGA E-White
+  Zoom75 TIGA External Weight
+  Zoom75 TIGA Forest Green
+  Zoom75 TIGA Grape Purple
+  Zoom75 TIGA Grille Modular
+  Zoom75 TIGA Gunmetal Gray
+  Zoom75 TIGA Milk Tea
+  Zoom75 TIGA Milky Green
+  Zoom75 TIGA Rear Expansion Modular
+  Zoom75 TIGA Scarlet Red
+  Zoom75 TIGA Sky Blue
+  Zoom75 TIGA Strawberry Icecream
+  Zoom75 TIGA White
+  zoom87
+  Zoom98
+    Zoom98 SE Grape Purple-New Color
+    Zoom98 SE Gunmetal Gray-New Color
+    Zoom98 SE Ice Blue
+    Zoom98 SE Space Grey
+  ZOOM98 - 2U Color LCD Modular
+  ZOOM98 - Two-keys Modular
+  ZOOM98 Add-ons
+  Zoom98 EE Milk Tea
+  Zoom98 EE Wild Green
+  ZOOM98 Extra Weights
+  ZOOM98 X COSMIC ODYSSEY
+MelGeek
+  Centauri60 Asuka
+    Centauri60 Asuka HE
+  Centauri6080 Hall Effect
+  Centauri80 Rei
+    Centauri80 Rei HE
+  CYBER01 Hall Effect
+  Geekmade Magi60 Aluminum 59Keys QMK Programmable
+  Horus Lightweight
+    Horus Lightweight 8k Polling
+  Mach80 REV1
+  Mach80 REV2
+  MADE68
+    MADE68 Ultra V2
+    MADE68 Ultra V2 HE
+    MADE68 Ultra V2 Light Bar
+    MADE68 Ultra V2 Light Guide Panels
+    MADE68 Ultra V2 Side Panel
+    MADE68 Ultra V2 Transparent Light Bar
+  MADE68 Air
+  MADE68 Pro+ Hall Effect
+  MADE68 Ultra+
+  MADE68 Ultra+ Hall Effect
+  MADE68 Ultra+ Jelly Pink
+  MADE6884
+    MADE6884 Pro- Internal Beta Element Version2
+  MADE6884 Multicolor- Internal Beta
+  MADE84
+    MADE84 Pro
+    MADE84 Pro Orange
+  MADE84 Ultra+ Hall Effect
+  MJ61 REV1
+  MJ61 REV2
+  MJ63 REV1
+  MJ63 REV2
+  MJ64 REV1
+  MJ64 REV2
+  MJ64 REV3
+  MJ65 REV3
+  MJ6XY REV3
+  Modern97 Fountain
+  Modern97 Ocean
+  Modern97 Slate
+  Mojo Aluminum 60 Hotswapple 5.2
+  Mojo60 Aluminum Case 60 DIY Kit
+  MOJO68 Ember
+  MOJO68 Monster
+  MOJO68 Neon
+  MOJO68 Pigeon
+  MOJO68 Plastic
+  MOJO68 Retro
+  MoJo68 REV1
+  MOJO68 Rose
+  MoJo75 REV1
+  MOJO84 Advance
+  MOJO84 Plastic
+  MOJO84 Vaporwave
+  O2
+  REAL6781
+  REAL81
+  tegic REV1
+  Z70Ultra REV1
+Mode Designs
+  M256W-H
+  M256W-S
+  M60H
+  M60H-F
+  M60S
+MonsGeek
+  5075B
+  DIY Guide Build in 3 Steps
+  from M2
+    from M2 V5 VIA
+  FUN60
+  M1
+    M1 V5 TMR TMR MagMech
+  M1 75 Check More
+  M1_V3
+  M1_V5 ANSI
+  M1_V5 ISO
+  M2
+    M2 V5 VIA Barebone
+    M2 V5 VIA Compact Full-sized
+  M2 1800 Compact Check More
+  M3
+  M3 QMK
+  M3 TKL Check More
+  M5
+  M5 Discontinued
+  M5 Full-sized Check More
+  M6
+  M6 Arisu Check More
+  M6 Discontinued
+  M7 65 Check More
+  M7 Discontinued
+  M7 QMK
+  Magnetic
+  MG108
+  MG75
+  Shine60
+    Shine60 HE
+  Verve68
+    Verve68 HE
+MSI
+  3-Zone Laptop
+  B450
+  GeForce GTX 1070
+  GeForce GTX 1660
+  GeForce GTX 1660 SUPER
+  GeForce GTX 1660 Ti
+  GeForce RTX 2060
+  GeForce RTX 2060 SUPER
+  GeForce RTX 2060 SUPER ARMOR OC
+  GeForce RTX 2070
+  GeForce RTX 2070 ARMOR
+  GeForce RTX 2070 ARMOR OC
+  GeForce RTX 2070 SUPER
+  GeForce RTX 2070 SUPER ARMOR OC
+  GeForce RTX 2080
+  GeForce RTX 2080 Duke OC
+  GeForce RTX 2080 Sea Hawk EK X
+  GeForce RTX 2080 SUPER
+  GeForce RTX 2080 Ti
+  GeForce RTX 2080 Ti Sea Hawk EK X
+  GeForce RTX 3050
+  GeForce RTX 3060
+  GeForce RTX 3060 Ti
+  GeForce RTX 3060 Ti SUPER 3X OC
+  GeForce RTX 3070
+  GeForce RTX 3070 Suprim
+  GeForce RTX 3070 Suprim LHR
+  GeForce RTX 3070 Suprim X
+  GeForce RTX 3070 Suprim X GODZILLA LHR
+  GeForce RTX 3070 Suprim X LHR
+  GeForce RTX 3070 Ti
+  GeForce RTX 3070 Ti Suprim X
+  GeForce RTX 3080
+  GeForce RTX 3080 12GB
+  GeForce RTX 3080 12GB Suprim X LHR
+  GeForce RTX 3080 Suprim X
+  GeForce RTX 3080 Suprim X LHR
+  GeForce RTX 3080 Ti
+  GeForce RTX 3080 Ti Suprim X
+  GeForce RTX 3090
+  GeForce RTX 3090 Suprim
+  GeForce RTX 3090 Suprim X
+  GeForce RTX 3090 Ti
+  GeForce RTX 3090 Ti Suprim X
+  GeForce RTX 4060
+  GeForce RTX 4060 Ti
+  GeForce RTX 4060 Ti 16GB
+  GeForce RTX 4070
+  GeForce RTX 4070 SUPER
+  GeForce RTX 4070 Ti
+  GeForce RTX 4070 Ti SUPER
+  GeForce RTX 4070 Ti Suprim X Trio
+  GeForce RTX 4080
+  GeForce RTX 4080 SUPER
+  GeForce RTX 4080 SUPER Suprim X
+  GeForce RTX 4080 Suprim X
+  GeForce RTX 4090
+  GeForce RTX 4090 Suprim Liquid X
+  GeForce RTX 4090 Suprim X
+  GeForce RTX 5070
+  GeForce RTX 5070 Ti
+  GeForce RTX 5070 Ti VANGUARD SOC
+  GeForce RTX 5080
+  GeForce RTX 5080 SUPRIM LIQUID SOC
+  GeForce RTX 5080 SUPRIM SOC
+  GeForce RTX 5080 VANGUARD OC SOC
+  GeForce RTX 5090
+  GeForce RTX 5090 SUPRIM LIQUID SOC
+  GeForce RTX 5090 SUPRIM SOC
+  GeForce RTX 5090 VANGUARD SOC
+  GS63
+  Gt683R Led Panel
+  Mystic Light MS_1562
+  Mystic Light MS_1563
+  Mystic Light MS_1564
+  Mystic Light MS_1720
+  Mystic Light MS_3EA4
+  Mystic Light MS_4459
+  Mystic Light MS_7B10
+  Mystic Light MS_7B12
+  Mystic Light MS_7B16
+  Mystic Light MS_7B17
+  Mystic Light MS_7B18
+  Mystic Light MS_7B50
+  Mystic Light MS_7B85
+  Mystic Light MS_7B92
+  Mystic Light MS_7B93
+  Mystic Light MS_7B94
+  Mystic Light MS_7B96
+  Mystic Light MS_7C02
+  Mystic Light MS_7C34
+  Mystic Light MS_7C35
+  Mystic Light MS_7C36
+  Mystic Light MS_7C37
+  Mystic Light MS_7C42
+  Mystic Light MS_7C56
+  Mystic Light MS_7C59
+  Mystic Light MS_7C60
+  Mystic Light MS_7C67
+  Mystic Light MS_7C70
+  Mystic Light MS_7C71
+  Mystic Light MS_7C73
+  Mystic Light MS_7C75
+  Mystic Light MS_7C76
+  Mystic Light MS_7C77
+  Mystic Light MS_7C79
+  Mystic Light MS_7C80
+  Mystic Light MS_7C81
+  Mystic Light MS_7C82
+  Mystic Light MS_7C83
+  Mystic Light MS_7C84
+  Mystic Light MS_7C85
+  Mystic Light MS_7C86
+  Mystic Light MS_7C87
+  Mystic Light MS_7C88
+  Mystic Light MS_7C89
+  Mystic Light MS_7C90
+  Mystic Light MS_7C91
+  Mystic Light MS_7C92
+  Mystic Light MS_7C94
+  Mystic Light MS_7C95
+  Mystic Light MS_7C96
+  Mystic Light MS_7C98
+  Mystic Light MS_7C99
+  Mystic Light MS_7D03
+  Mystic Light MS_7D04
+  Mystic Light MS_7D06
+  Mystic Light MS_7D07
+  Mystic Light MS_7D08
+  Mystic Light MS_7D09
+  Mystic Light MS_7D13
+  Mystic Light MS_7D14
+  Mystic Light MS_7D15
+  Mystic Light MS_7D17
+  Mystic Light MS_7D18
+  Mystic Light MS_7D19
+  Mystic Light MS_7D20
+  Mystic Light MS_7D25
+  Mystic Light MS_7D27
+  Mystic Light MS_7D28
+  Mystic Light MS_7D29
+  Mystic Light MS_7D30
+  Mystic Light MS_7D31
+  Mystic Light MS_7D32
+  Mystic Light MS_7D33
+  Mystic Light MS_7D36
+  Mystic Light MS_7D37
+  Mystic Light MS_7D38
+  Mystic Light MS_7D40
+  Mystic Light MS_7D41
+  Mystic Light MS_7D42
+  Mystic Light MS_7D43
+  Mystic Light MS_7D46
+  Mystic Light MS_7D50
+  Mystic Light MS_7D51
+  Mystic Light MS_7D52
+  Mystic Light MS_7D53
+  Mystic Light MS_7D54
+  Mystic Light MS_7D59
+  Mystic Light MS_7D67
+  Mystic Light MS_7D69
+  Mystic Light MS_7D70
+  Mystic Light MS_7D73
+  Mystic Light MS_7D74
+  Mystic Light MS_7D75
+  Mystic Light MS_7D76
+  Mystic Light MS_7D77
+  Mystic Light MS_7D78
+  Mystic Light MS_7D86
+  Mystic Light MS_7D88
+  Mystic Light MS_7D89
+  Mystic Light MS_7D90
+  Mystic Light MS_7D91
+  Mystic Light MS_7D93
+  Mystic Light MS_7D96
+  Mystic Light MS_7D97
+  Mystic Light MS_7D98
+  Mystic Light MS_7D99
+  Mystic Light MS_7E01
+  Mystic Light MS_7E03
+  Mystic Light MS_7E06
+  Mystic Light MS_7E07
+  Mystic Light MS_7E09
+  Mystic Light MS_7E10
+  Mystic Light MS_7E20
+  Mystic Light MS_7E32
+  Mystic Light MS_7E34
+  Mystic Light MS_7E59
+  Mystic Light MS_7E70
+  Mystic Light MS_7E80
+  Mystic Light MS_7E81
+  Mystic Light MS_905D
+  Mystic Light MS_B926
+  Mystic Light X870
+  Radeon RX 5600 XT
+  Radeon RX 6600 XT
+  Radeon RX 6650 XT
+  Radeon RX 6700 XT
+  Radeon RX 6750 XT
+  Radeon RX 6800
+  Radeon RX 6800 XT
+  Radeon RX 6900 XT
+  Radeon RX 6950 XT
+  Radeon RX 7900 XT
+  Radeon RX 7900 XTX
+  Vigor GK30
+Ninjutso
+  Sora
+    Sora V2 8K
+    Sora V3 Ultralight
+NuPhy
+  Air100
+    Air100 V3
+  Air60
+    Air60 HE
+    Air60 V2
+  Air60 HEMagnetic
+  Air65
+    Air65 V3
+  Air75
+    Air75 HE
+    Air75 V2
+    Air75 V2 QMK
+    Air75 V3
+  Air75 HEMagnetic
+  Air96
+    Air96 V2
+    Air96 v2 ANSI QMK
+  Field75
+    Field75 HE V2
+  Gem80 QMK
+  Halo65
+    Halo65 V2
+  Halo75
+    Halo75 V2
+  Halo96
+    Halo96 V2
+  WH80
+  X BH65
+NZXT
+  Aer F120 F140 Accessory Box
+  B650E Motherboard
+  Creative Live Cam Sync
+    Creative Live Cam Sync V3
+  Creative Live Cam Sync 1080p
+    Creative Live Cam Sync 1080p V2
+  F120
+  F120 Core Fans
+  F120 Duo
+  F120 Duo Triple Pack
+  F140
+  F140 Core
+  F140 Duo Twin Pack
+  F240 Core
+  F280 Core
+  F360
+  F360 Core
+  F360 Reverse
+  F420
+  F420 Core
+  F420 Reverse
+  Hue 2
+  Hue 2 Ambient
+  Hue 2 Motherboard
+  Kraken 120 Accessory Box
+  Kraken 120 LGA1700 Mounting Tools
+  Kraken 2024 ELITE
+  Kraken Elite
+    Kraken Elite v2
+  Kraken Elite Intel Retention Kit - LGA 1700 1851
+  Kraken M2
+  Kraken X2
+  Kraken X3
+  Kraken Z3
+  MMP400
+  MXL900
+  MXP700
+  Smart Device
+    Smart Device V1
+    Smart Device V2
+Pulsar Gaming Gears
+  eS
+    eS HE 70
+  F01
+  Feinmann F01
+  Nova Optical
+    Nova Optical Pro
+  PCMK 2
+    PCMK 2 HE TKL Hall Effect
+  PCMK 2HE TKL
+  PCMK 3
+    PCMK 3 HE
+    PCMK 3 HE - DE
+    PCMK 3 HE - ND
+    PCMK 3 HE 60 Hall Effect
+    PCMK 3 HE TKL
+    PCMK 3 HE TKL - DE
+    PCMK 3 HE TKL - ND
+    PCMK 3 HE TKL Something
+  PCMK 60
+  Pulsar eS FS-1
+  Pulsar eS FS-1 GT Silver
+  X2
+    X2 Mini
+    X2 Mini v1
+    X2 v1
+    X2 v1 Mini
+    X2 v2 Medium
+    X2 v2 Mini
+    X2 v2 Mini Nezuko
+    X2 v2 Mini Zenitsu
+    X2 v3 eS Mini
+    X2 v3 Medium
+    X2 v3 Mini
+  X2 CrazyLight
+    X2 CrazyLight Mini
+  X2 CrazyLight Medium
+  X2 Medium
+  X2A
+    X2A Mini
+    X2A v3 eS Mini
+    X2A v3 Medium
+    X2A v3 Mini
+  X2A eS Medium
+  X2A Medium
+  X2F
+  X2F 5th Anniversary
+  X2H
+    X2H Mini
+    X2H Mini Shinobu
+    X2H v3 eS Medium
+    X2H v3 eS Mini
+    X2H v3 Medium
+    X2H v3 Mini
+  X2H CrazyLight
+    X2H CrazyLight Mini
+  X2H CrazyLight Medium
+  X2H eS Medium
+  X2H Medium
+  X2N CrazyLight
+    X2N CrazyLight Mini
+  X2N CrazyLight Medium
+  X3
+    X3 Mini
+  X3 CrazyLight
+    X3 CrazyLight Mini
+  X3 CrazyLight Medium
+  X3 LHD CrazyLight
+    X3 LHD CrazyLight Mini
+  X3 LHD CrazyLight Medium
+  X3 LHD Medium
+  X3 Medium
+  Xlite
+    Xlite v1
+    Xlite v2
+    Xlite v2 Mini
+    Xlite v3 eS Medium
+    Xlite v3 Large
+    Xlite v3 Medium
+    Xlite v3 Mini
+    Xlite v4 eS Medium
+    Xlite v4 eS Mini
+    Xlite v4 Large
+    Xlite v4 Medium
+    Xlite v4 Mini
+Qwertykeys
+  Compact 65
+  Jelly Evolv Hotswap_6.25U
+  Jelly Evolv Hotswap_7U
+  Neo60 Core
+  Neo60 Core Extra Parts - Purchasing Alone
+  Neo60 Core Extra Parts - Together
+  Neo60 Core Plate
+  Neo60 Core Weight
+  Neo60 Cu
+  Neo60 Cu Extra Parts - Purchasing Alone
+  Neo60 Cu Extra Parts - Together
+  Neo60 Cu Plate
+  Neo60 Cu Weight
+  Neo65
+  Neo65 Core
+    Neo65 Core Plus
+    Neo65 Core Plus Extra Parts - Purchase Alone
+    Neo65 Core Plus Extra Parts - Together
+    Neo65 Core Plus Plate
+    Neo65 Core Plus Weight
+  Neo65 Cu
+  Neo65 Cu BottomCase
+  Neo65 Cu Extra Parts - Purchasing Alone
+  Neo65 Cu Extra Parts - Together
+  Neo65 Cu Plate
+  Neo65 Cu Weight
+  Neo65 Extra Parts - Purchasing Alone
+  Neo65 Sonic He+ Hall Effect
+  Neo65 Weight
+  Neo70 Extra Parts - Purchasing Alone
+  Neo75
+  Neo75 Cu
+  Neo75 Cu Extra Parts - Purchasing Alone
+  Neo75 Cu Extra Parts - Together
+  Neo75 Cu Plate
+  Neo75 Extra Parts - Purchasing Alone
+  Neo75 Extra Parts - Together
+  Neo75 Plate
+  Neo75 Weight
+  Neo80 Cu
+  Neo80 Cu Extra Parts - Purchase Alone
+  Neo80 Cu Extra Parts - Together
+  Neo80 Cu Plate
+  Neo80 Cu Weight
+  Neo80 Extra Parts - Purchasing Alone
+  Neo98
+  Neo98 Extra Parts
+  Neo98 Neo75 Prebuilt
+  Neo98 Plate
+  Neo98 Weight
+  Night Blue 65
+  PT750
+  QK100 ANSI
+  QK100 Mk2
+  qk100 Solder
+  QK101
+  QK101 Extra Parts - Purchasing Alone
+  QK101 Extra Parts - Together
+  QK101 Plate
+  QK65 Hotswap
+  QK65 Mk3 Extra Parts - Purchase Alone
+  QK65 Mk3 Prebuilt
+  QK65 Solder
+  QK80 Mk2
+  QK80 Mk2 Extra Parts - Purchasing Alone
+  QK80 Mk2 Extra Parts - Together
+  QK80 Mk2 Plate
+  QK80 Mk2 Prebuilt
+  Suit80 ANSI
+  Suit80 ISO
+  Voice65 Hotswap
+  Voice65 Soldered
+Rapoo
+  2 4G Receiver
+Razer
+  Abyssus
+    Abyssus V2
+  Abyssus 1800
+  Abyssus 2000
+  Base Station
+    Base Station V2
+    Base Station V2 Chroma
+  Basilisk
+    Basilisk V2
+    Basilisk V3
+    Basilisk V3 35K
+    Basilisk V3 Pro
+    Basilisk V3 Pro 35K
+    Basilisk V3 Pro 35K Phantom Green
+    Basilisk V3 Pro 35K Phantom Green Edition
+    Basilisk V3 X HyperSpeed
+  Blackwidow
+    Blackwidow V3
+    Blackwidow V3 Mini
+    Blackwidow V3 Mini Hyperspeed
+    Blackwidow V3 Pro
+    Blackwidow V3 Tk
+    Blackwidow V3 TKL
+    Blackwidow V4
+    Blackwidow V4 75%
+    Blackwidow V4 75Pct
+    Blackwidow V4 Low Profile TKL
+    Blackwidow V4 Mini Hyperspeed
+    Blackwidow V4 Pro
+    Blackwidow V4 Pro 75%
+    Blackwidow V4 Tenkeyless Hyperspeed
+    Blackwidow V4 TKL
+    Blackwidow V4 X
+  Blackwidow 2019
+  Blackwidow Chroma
+    Blackwidow Chroma V2
+  Blackwidow Te 2014
+  Blackwidow Ultimate 2012
+  Blackwidow Ultimate 2013
+  Blackwidow Ultimate 2013/2014
+  Blackwidow Ultimate 2016
+  Blade
+    Blade Pro
+    Blade Pro 17
+    Blade Pro 2017
+    Blade Pro 2017 Fullhd
+    Blade Pro 2019
+    Blade Pro Early 2020
+    Blade Pro Late 2016
+    Blade Pro Late 2019
+  Blade 14
+  Blade 14 2021
+  Blade 14 2022
+  Blade 14 2023
+  Blade 14 2024
+  Blade 14 2025
+  Blade 15
+  Blade 15 2023
+  Blade 15 Adv 2020
+  Blade 15 Adv Early 2021
+  Blade 15 Adv Early 2022
+  Blade 15 Adv Mid 2021
+  Blade 15 Base 2022
+  Blade 15 Base Early 2021
+  Blade 16 2023
+  Blade 16 2025
+  Blade 17
+    Blade 17 Pro Early 2021
+    Blade 17 Pro Mid 2021
+  Blade 17 2022
+  Blade 18 2023
+  Blade 18 2024
+  Blade 18 2025
+  Blade 2018
+  Blade 2018 Base
+  Blade 2018 Mercury
+  Blade 2019 Adv
+  Blade 2019 Base
+  Blade Adv Late 2019
+  Blade Early 2020 Base
+  Blade Late 2016
+  Blade Late 2020 Base
+  Blade Mid 2019 Mercury
+  Blade Stealth 2019
+  Blade Stealth Early 2020
+  Blade Stealth Late 2016
+  Blade Stealth Late 2017
+  Blade Stealth Late 2019
+  Blade Stealth Late 2020
+  Blade Stealth Mid 2017
+  Blade Studio Edition 2019
+  Book 13
+  Book 2020
+  Cobra
+    Cobra Pro
+  Cynosa
+    Cynosa V2
+  Cynosa Chroma
+    Cynosa Chroma Pro
+    Cynosa Chroma V2
+  Deathadder
+    Deathadder V2
+    Deathadder V2 Lite
+    Deathadder V2 Mini
+    Deathadder V2 Pro
+    Deathadder V2 X Hyperspeed
+    Deathadder V3
+    Deathadder V3 Hyperspeed
+    Deathadder V3 Pro
+    Deathadder V4 Pro
+  Deathadder 1800
+  Deathadder 2000
+  Deathadder 2013
+  Deathadder 3 5G
+  Deathadder 3 5G Black
+  Deathadder 3500
+  Deathadder Essential
+    Deathadder Essential V2
+  Deathadder Essential 2021
+  Deathstalker
+    Deathstalker V2
+    Deathstalker V2 Pro
+    Deathstalker V2 Pro TKL
+  Firefly
+    Firefly V2
+    Firefly V2 Pro
+  Goliathus Chroma 3XL
+  Huntsman
+    Huntsman V2
+    Huntsman V2 Analog
+    Huntsman V2 Tenkeyless
+    Huntsman V2 TKL
+    Huntsman V3 Pro
+    Huntsman V3 Pro 8Khz
+    Huntsman V3 Pro Mini
+    Huntsman V3 Pro Tkl
+    Huntsman V3 Pro TKL White
+  Kraken
+    Kraken V2
+    Kraken V3
+    Kraken V3 HyperSense
+    Kraken V3 X
+    Kraken V4
+  Kraken 7.1
+    Kraken 7.1 V2
+  Kraken 7.1 Chroma
+  Kraken Kitty
+    Kraken Kitty V2
+    Kraken Kitty V2 Pro
+    Kraken Kitty V3 Pro
+  Kraken Kitty Black Edition
+    Kraken Kitty Black Edition V2
+  Lancehead 2017
+  Lancehead 2019
+  Laptop Stand Chroma
+    Laptop Stand Chroma V2
+  Leviathan
+    Leviathan V2
+    Leviathan V2 X
+  Lian Li O11 Dynamic - Razer Edition
+  Lianli O11 Dynamic
+  Mamba 2012
+  Mamba 2015
+  Mamba 2018
+  Naga
+    Naga Pro
+    Naga Pro V2
+    Naga V2 Hyperspeed Receiver
+    Naga V2 Pro
+  Naga 2012
+  Naga 2014
+  Naga Hex
+    Naga Hex V2
+  Naga Left Handed 2020
+  Nommo
+    Nommo Pro
+  Ornata
+    Ornata V2
+    Ornata V3
+    Ornata V3 Alt
+    Ornata V3 Rev2
+    Ornata V3 Tenkeyless
+    Ornata V3 TKL
+    Ornata V3 X
+    Ornata V3 X Alt
+    Ornata V3 X Rev2
+  Ornata Chroma
+    Ornata Chroma V2
+  Orochi
+    Orochi V2
+    Orochi V2 Receiver
+  Orochi 2011
+  Orochi 2013
+  Pro Click
+    Pro Click Mini Receiver
+    Pro Click V2
+    Pro Click V2 Vertical
+    Pro Click V2 Vertical Edition
+  Pro Click Receiver
+  Raptor 27
+  Seiren
+    Seiren V3
+  Tartarus
+    Tartarus Pro
+    Tartarus V2
+  Thunderbolt 4 Dock Chroma
+  Thunderbolt 5 Dock Chroma
+  Tiamat 7.1
+    Tiamat 7.1 V2
+  Viper
+    Viper 8K
+    Viper V2 Pro
+    Viper V3 Hyperspeed
+    Viper V3 Pro
+  Viper 8kHz
+Realforce
+  Topre Realforce R2 108
+  Topre Realforce R2 87
+  Topre Realforce R3S 87
+Red Square
+  Keyrox TKL
+    Keyrox TKL V2
+Royal Kludge
+  A72 68
+  Aqua Computer Farbwerk 360
+  C68 65 Hall Effect
+  C84 75 Hall Effect
+  C87 80 TKL
+  C96 96 Hall Effect
+  C98 96 Hall Effect
+  Crkd Ps4 Gibson Sg
+  Crkd Ps4 Gibson Sg Dongle
+  Crkd Ps5 Gibson Sg
+  Crkd Ps5 Gibson Sg Dongle
+  F68 60 Foldable Low Profile
+  F99 96
+  F99 AI 96
+  Framework Laptop 16 RGB
+  HG103
+  L75 75
+  L98 96
+  Laptop 16 RGB Macropad
+  M75 75 Black Blue Color
+  M87 TKL
+  MG5
+  N80 Low-Profile
+  R65 65
+  R75 75
+  R87
+    R87 PRO TKL
+  R99
+  Rama Works M65-B
+  RK Sink87G RK87 TKL
+  RK61
+  RK61 60
+  RK61 60 Dual Mode - Red
+  RK61 60 Dual Mode Black - Red
+  RK61-DE 60 QWERTZ Mechanische Tastatur
+  RK68 65
+  RK71 70
+  RK84
+    RK84 Pro 75
+  RK84 75
+  RK84 75 Blue Backlit
+  RK84 Limited
+  RK89 85
+  RK920 Full Size
+  RK925 65 Foldable
+  RK96 96
+  RK96 Hot-Swappable
+  RK96 Hot-Swappable Camp Green
+  RK96 Hot-Swappable Forest Blue
+  rkg68
+  S104 Full Size
+  S85 TKL
+  S98 96
+  S98-DE 96 QWERTZ Kabellose Mechanische Tastatur
+  S98-ES Teclado Mecánico Inalámbrico 96 QWERTY
+  S98-FR Clavier Mécanique Sans Fil 96 AZERTY
+  S98-JP 96 ワイヤレス メカニカルキーボード JIS配列
+  X104 Full Size
+Scyrox
+  V6
+  V6 3950
+  V6 PTFE Skate
+  V8
+  V8 PTFE Skate
+Sikakeyb
+  Castle CK75
+  Castle Ck75 83 Key 75
+  Castle Ck75 US 83 Key 75
+  Castle HM66
+  Castle HM66 66 Key 60
+  Castle Hm80
+    Castle Hm80 He Aluminum
+    Castle Hm80 He Esports Games Aluminum
+  Castle HM80 82 Key 80
+  CK75
+  CK75US
+  FNP75
+    FNP75 HE
+  FORT68
+  FORT68 Sakura Gift Box GT68
+    FORT68 Sakura Gift Box GT68 Ultra
+  FORT75
+  HM66
+  HM80HE
+  Sk5 Abs 75 Clean Kit
+  Sk5 Castle 75 Kit
+  Sk6 Castle 68 Key 65 Knob Kit
+  Sk8 Castle 98 Key 95 Knob screen Kit
+  x Gateron FORT68
+Skyloong
+  DT40
+  GK104
+    GK104 Pro
+  gk61
+    gk61 pro
+    gk61 pro 48
+    GK61 V1
+  GK68HE
+    GK68HE Pro
+  qk21
+    qk21 V1
+  SW Eave65
+SteelSeries
+  Aerox 3
+  Aerox 3 CS2 Dragon Lore Edition
+  Aerox 5
+  Aerox 5 Destiny 2 Edition
+  Aerox 5 Diablo IV Edition
+  Aerox 9
+  Apex
+    Apex Pro
+    Apex Pro 3
+    Apex Pro Mini
+    Apex Pro TKL
+    Apex Pro TKL 2023
+    Apex Pro TKL Gen 3
+  Apex 3
+  Apex 3 TKL
+  Apex 350
+  Apex 5
+  Apex 7
+  Apex 7 TKL
+  Apex 9
+    Apex 9 Mini
+  Apex 9 TKL
+  Apex M750
+  Apex M750 RGB
+  Apex M750 TKL
+  Arctis
+    Arctis Pro
+    Arctis Pro GameDAC
+  Arctis 1 X
+  Arctis 5
+  Arctis 9
+  Arctis Nova 3
+  Arctis Nova 5 X
+  Arctis Nova 7
+    Arctis Nova 7 Gen2
+  Arctis Nova 7 2026
+  Arctis Nova 7 Diablo
+  Arctis Nova 7 Diablo 2026
+  Arctis Nova 7 P 2026
+  Arctis Nova 7 Wow
+  Arctis Nova 7 X
+    Arctis Nova 7 X Gen2
+    Arctis Nova 7 X Gen2 2
+    Arctis Nova 7 X Gen2 3
+  Arctis Nova 7 X 2
+  Arctis Nova 7 X 2026
+  Arena 7
+  Arena 9
+  Kana
+    Kana v2
+  Kinzu
+    Kinzu v2
+    Kinzu V2 Pro Edition
+    Kinzu V3
+  Prime Rainbow 6 Siege Black Ice Edition
+  QCK Prism Cloth 3XL
+  QCK Prism Cloth 4XL
+  QCK Prism Cloth 5XL
+  QCK Prism Cloth XL Destiny 2 Lightfall Ed.
+  Rival 100
+  Rival 100 DotA 2 Edition
+  Rival 100 PC Bang
+  Rival 100/105
+  Rival 105
+  Rival 106
+  Rival 110
+  Rival 3
+  Rival 3 Gen 2
+  Rival 300
+  Rival 300 Acer Predator Edition
+  Rival 300 Black Ops Edition
+  Rival 300 CS:GO Fade Edition
+  Rival 300 CS:GO Hyperbeast Edition
+  Rival 300 Dota 2 Edition
+  Rival 300 Evil Geniuses Edition
+  Rival 300 Fallout 4 Edition
+  Rival 300 HP Omen Edition
+  Rival 300S
+  Rival 310
+  Rival 310 CS:GO Howl Edition
+  Rival 310 PUBG Edition
+  Rival 5
+  Rival 5 Destiny
+  Rival 5 Destiny Edition
+  Rival 500
+  Rival 600
+  Rival 600 Dota 2 Edition
+  Rival 650
+  Rival 700
+  Rival 710
+  Rival 95
+  Rival 95 MSI Edition
+  Rival 95 PC Bang
+  Rival Dota 2 Edition
+  Sensei 310
+  Sensei [RAW] Guild Wars 2 Edition
+  Sensi 310
+  Siberia 350
+  Srws1
+TGR
+  910
+  910CE
+  Jane
+    Jane v2
+    Jane v2 CE
+Turtle Beach
+  Roccat Burst
+    Roccat Burst Pro
+    Roccat Burst Pro Air
+  Roccat Elo 7.1
+  Roccat Elo 7.1 Air
+  Roccat Elo 7.1 USB
+  Roccat Kain 100
+  Roccat Kain 120
+  Roccat Kain 200
+  Roccat Kone
+    Roccat Kone Pro
+    Roccat Kone Pro Air
+  Roccat Kone Aimo 16K
+  Roccat Ryos Mk
+    Roccat Ryos Mk Pro
+  Roccat Syn
+    Roccat Syn Pro Air
+  Roccat Vulcan
+    Roccat Vulcan Pro
+    Roccat Vulcan Pro TKL
+  Roccat Vulcan 100
+  Roccat Vulcan 100 Aimo
+  Roccat Vulcan 120
+  Roccat Vulcan 120-Series Aimo
+  Roccat Vulcan II
+    Roccat Vulcan II Max
+  Roccat Vulcan TKL
+    Roccat Vulcan TKL Pro
+  Vulcan II
+    Vulcan II MAX
+  Vulcan II TKL
+    Vulcan II TKL Pro
+Varmilo
+  Change 87108
+  Cypress Varmilo Va104M 07B1
+  Minilo 65 - 50 off
+  Minilo75
+    Minilo 75
+    Minilo75 HE
+    Minilo75 Pro
+  Minilo98
+    Minilo98 Pro
+  Sakura R2 108
+  Sea Melody 108
+  VA100 CMYKMoonlightAurora
+  VA100 Dream of the Red Chamber
+  VA100 Sakura
+  VA100 Sea Melody
+  VA80100 Goddess Luo
+  VA80100 Hygge
+VXE
+  Dragonfly
+    Dragonfly V3 V3 Pro
+  Dragonfly R1
+    Dragonfly R1 Pro
+    Dragonfly R1 Pro Dongle
+  V75 X Aluminum
+Waizowl
+  OGM
+    OGM Pro V2
+WLMOUSE
+  Beast X
+    Beast X Max Magnesium
+    Beast X Mini Pro Magnesium
+    Beast X Pro Magnesium
+  HUAN IEM 1DD+8BA Hybrid Drivers
+  HUAN63
+    HUAN63 HE Magnesium Alloys
+  YING63 Forged Carbon Fiber
+  YING75
+    YING75 HE Forged Carbon Fiber
+WOBKEY
+  PMOKEY Aurora 80 CNC Aluminum
+  PMOKEY Impact 80
+  PMOKEY P75
+  PMOKEY Wave 75 Quick Release
+  Rainy 75
+    Rainy 75 Pro Mithril
+  Rainy 75 DE
+  Rainy 75 RT Halleffect
+  Rainy 75 UK Mechancial
+  ZEN 65 Limited Copper Kit
+  Zen 65 Quick Release
+Womier
+  DUO87
+  ERA75 75 VIA Support Aluminum
+  ERA75 Extra DIY Sticker Set
+  G57 Coral Sea Theme
+  G58
+  G59
+  G705 Kanagawa Themed
+  G706 Black
+  M68
+    M68 HE 65 Topographic Themed Hall Effect
+    M68 HE V2 65 Themed Hall Effect
+  M68HE
+    M68HE PRO 60
+  M87
+    M87 Pro TKL
+  M99 98 VIA Support
+  Q61
+    Q61 PRO QMKVIA Support Mounted
+  Q75 75 VIA Support Mounted
+  QK87 TKL QMKVIA Support Multimedia Display
+  RD75
+    RD75 Pro 75 - QMKVIA Aluminum
+  RD75 Extra Plates
+  SK61
+    SK61 HE 60 Hall Effect
+  SK65 Extra FR4 Flex-Cut Plate
+  SK71
+    SK71 Pro 75 VIA Support Aluminum
+  SK75 75 VIA Support Aluminum
+  SK75 TMR
+  SK80
+    SK80 Pro Themed 75
+  SK80 Mounted 75
+  VK75 75
+  WD75 75 VIA Support Wooden
+  WD99 Full-Size VIA Support Wooden
+  WK61
+    WK61 V2 60 Hot-Swappable
+  X98
+Wooting
+  60
+    60 HE
+  60HE
+  60HE+
+  60HEv2
+  80
+    80 HE
+  80HE
+Wuque Studio
+  Bakeneko60
+  creek70
+  DK1-60 Plate
+  DK1-60 Silica Gel
+  Foxy65 Barebone
+  Freya
+    Freya Ultra x Valhalla Collaboration
+  GBDK1-60 Black
+  GBDK1-60 Cyan Glaze
+  GBDK1-60 Dark Gold
+  GBDK1-60 Ice Blue
+  GBDK1-60 Lilac
+  GBDK1-60 Phantom Blue
+  GBDK1-60 Titanium Gray
+  GBDK1-60 Wine
+  Ginkgo65
+    Ginkgo65 Pro Add-ons
+    Ginkgo65 Pro Kit By MONE Studio
+  Ginkgo65 Add-ons
+  Glacier LW
+    Glacier LW 8K L
+    Glacier LW 8K M Exclusive Discount
+  Ikki68
+    Ikki68 Pro LE
+  ikki68 Aurora
+  M93I Kit Add-ons
+  Mammoth20 Pad
+  mammoth20x
+  Mammoth75
+  mammoth75x
+  Maze 64 Kit
+  ND104
+  ND75 Add On - Plate
+  ND75 LP
+  Paper80
+  Slice68
+    Slice68 HE
+  Tata80 Kit
+  Tata80_wk
+  Tata80_wkl
+X-Bows
+  NUMPAD_V2
+YMDK
+  2.4Ghz Split Corne
+    2.4Ghz Split Corne V4 46 Keys
+  2.4Ghz Split Low profile 46 Keys Corne
+    2.4Ghz Split Low profile 46 Keys Corne V4
+  40 Split 2.4Ghz
+  60
+    60 V1 Aluminum Alloy Case Compatible
+  84
+  Air40
+  Air40 Full
+  CHERRY G80-3000 3494 black white plastic case black green silent red
+  CHERRY G80-3494 Cherry G80-30003494 Overwatch full key
+  CHERRY G80-3494 Cherry G80-30003494 Pokémon 104 Full Size
+  CHERRY G80-3494 Cherry Germany G80-30003494 World of Warcraft game full key
+  DK61 VIA VIAL Hot Swap Hot-swappable Kit
+  EC-Corne 35g 45g Topre Split 46 Keys
+  GH60 Acrylic Milk Case
+  GK61
+    GK61 Pro Hot Swap Hot-swappable Knob 60 Fully Programmable NKRO KitSupport QMK VIA Support Split space
+  GK61 Glass Fiber Plate
+  GK980 Aluminum Triple-Mode 4 Knobs Hot Swappable KitMacro Programmable
+  GK980 Plastic Triple-Mode 4 Knobs Hot Swappable Macro Programmable Kit
+  ID67 Aluminum
+    ID67 Aluminum V1 Kit
+  Idobao x YMDK ID75
+  Idobao x YMDK ID75 Aluminum And Acrylic Layer Kit
+  Idobao x YMDK ID75 Aluminum Kit
+  Kailh Box
+    Kailh Box V2 White
+  M0110 D0110 Hot Swappable Retro Kit Support VIA VIAL
+  M0110 D0110 NCR80 Solenoid
+  Melody96 Hotswap
+  Melody96 Soldered
+  Meow68 Cat Triple-Mode Hot Swappable meow 68 BareboneSupport Macro Programmable
+  Meow68 Cat Triple-Mode Hot Swappable meow 68 Fully
+  NCR-80 NCR80 R2 VINTAGE KIT
+  NCR-80 NCR80 R3 Kit
+  NCR-80 NCR80 R3 VINTAGE Beige Black Case KIT
+  NCR-80 NCR80 R3 VINTAGE Beige Black Case Soldering Kit
+  New GK61 Hot-swappable Fully Programmable KitST main control MCU motherboard Support QMK VIA
+  NP21
+  NP24 U4 RGB6
+  Sofle Split 2.4Ghz 64 Keys
+  SP64
+  Split36 keys
+  Split75
+  Switch1
+  TTC Ace
+    TTC Ace V2
+  W64 Split 2.4Ghz 66 Keys
+  Wholesale YMD-21
+    Wholesale YMD-21 V2 Acrylic Numpad
+  Wings
+    Wings V2
+    Wings V2 Alice CaseOnly case
+    Wings V2 Full
+    Wings V2 Kit
+  Worne Split Knob 52 Keys cornix
+  YD60MQ
+  YM68
+  YMD-21
+    YMD-21 V2 Acrylic Numpad
+    YMD21 v2
+  YMD-40 Air40 Aluminum Kit
+  YMD-60 GH60 Plastic Case QMK Kit
+  YMD-75 84 Acrylic Kit
+  YMD-75 84 Wood Kit
+  YMD-75 Split 84 Aluminum Kit
+  YMD-75 YMD84 Kit1
+  YMD-9 Acrylic Numpad
+  YMD-9 Aluminum And Acrylic Numpad
+  YMD-96 Melody 96 Kit 1
+  YMD-96 Sandwich Kit
+  YMD-HHKB
+    YMD-HHKB Pro Aluminum And Acrylic Layer Kit
+  YMD-Split 75 84 Acrylic Kit
+  Ymd09
+  YMD40
+    YMD40 v2
+  YMD62 ISO QMK
+  YMD67
+  YMD68 YMD-65 ZJ68 Aluminum Kit
+  YMD75
+    YMD75 V4 ISO
+  YMD75 / MT84 REV1
+  YMD75 / MT84 REV2
+  YMD75 / MT84 REV3
+  YMD75 YMD84 Acrylic Kit
+  YMD75 YMD84 Walnut Wood Kit
+  YMD96
+  YMD96XS Ble Wooden case kit
+Yunzii
+  32 in 1 Precision Screwdriver Set and Electronics Repair Tool Kit
+  ACTTO ANBK-01 Numeric Keypad Numpad
+  ACTTO B303
+  ACTTO B305
+  ACTTO B305 - Baby Pink
+  ACTTO B307 Upgraded Rechargeable Retro Typewriter
+  ACTTO B309 Upgraded Rechargeable Retro Typewriter
+  ACTTO B503
+  AL21 Aluminum Numpad
+  AL65 QMKVIA Hollow
+  AL66
+  AL66 Knob Aluminum Kit
+  AL68 QMKVIA
+  AL68 QMKVIA Knob Aluminum Kit
+  AL68_Keyboard
+  AL71 Aluminum Kit
+  AL71 Full Aluminum
+  AL75
+    AL75 PRO Aluminum Barebone Kit
+  AL75 CNC Aluminum
+  al75-pro-black-kit
+  AL75PRO CNC Aluminum
+  AL80 QMK
+  AL80 QMKVIA Aluminum LCD
+  AL80 QMKVIA Knob Aluminum Kit
+  AL98
+    AL98 PRO
+    AL98 PRO Dual-8K Aluminum
+  AL98 QMKVIA Full Aluminum
+  B68
+  B75
+    B75 Pro
+    B75 Pro Coffee Brown
+    B75 Pro Dark Gray
+    B75 Pro Green
+    B75 Pro Heart
+    B75 Pro Olive Green
+  B87
+  B87 Blue Heart QMKVIA
+  B87 Brown Heart QMKVIA
+  B87 Matcha Heart QMKVIA
+  B87 Pink QMKVIA
+  B87 Purple Heart QMKVIA
+  B87 QMKVIA
+  B87 White Heart QMKVIA
+  B98
+    B98 PRO QMKVIA
+  C1 Silicone
+  C2 Silent Silicone
+  C68 Hi-Fi
+  C68 Panda Hi-Fi
+  C75 Cake Meow
+  C75 MAO Cake Kitten
+  C98 Cake Meow
+  C98 MAO Cake Kitten
+  Candy Linear 5-Pin
+  Caramel Coffee
+    Caramel Coffee V2 5-Pin Mute Silent Linear
+  Caramel Coffee 5-Pin Mute Silent Linear
+  CK75 Transparent Bear
+  CK98 Hot Swappable OLED
+  Clickey ZX75 Computer
+  Cocoa Cream 5-Pin Early Bottoming Linear
+  D98 Black Membrane
+  D98 White Membrane
+  EWEADN Q9 Translucent
+  Feker Alice80 Split Kit
+  IF99
+  IF99 QMKVIA Barebone Kit
+  IF99 QMKVIA Full Size LCD
+  KC68 YZ68 Kit
+  KC84 SP-Red 84 Hot Swappable
+  KC84 YZ84 Kit
+  Keynovo IF98
+    Keynovo IF98 Pro
+  KZZI Z98
+    KZZI Z98 Pro
+  L75 Low Profile
+  M1 Lightweight
+  M2 Dual
+    M2 Dual 8K
+  MIKIBY K98 Full-Size
+  MIKIBY Y75
+  Milk
+    Milk V2 5-Pin Linear
+  Milk 3-Pin Linear
+  MK25047
+  N1 Noise Cancelling Headphone
+  PRE-ORDER YUNZII IF68 QMKVIA
+  QL108 Full-Size Typewriter Style
+  QL75 Retro Typewriter QMKVIA
+  QL75 Vintage Retro Typewriter QMKVIA
+  Royalaxe Y68
+  Royalaxe Y87
+  RT68 Rapid Trigger
+  RT75
+    RT75 PRO Dual-8K Rapid Trigger
+  RT75 Rapid Trigger
+  RT80
+  RT80 Rapid Trigger
+    RT80 Rapid Trigger 8K
+  RX S75 Crystal White
+  Snow Linear 5-Pin
+  TTC Mute Brown
+    TTC Mute Brown Pro
+  VXE R1
+    VXE R1 SE+
+  WOOD68
+  WOOD84
+  x JAMESDONKEY A3 - Rosy
+  x JAMESDONKEY A3 Kit
+  x JAMESDONKEY RS2 Kit
+  x MADLIONS MAD68
+    x MADLIONS MAD68 HE Rapid Trigger 8K
+  x MADLIONS NANO68 Rapid Trigger
+    x MADLIONS NANO68 Rapid Trigger 8K
+  X71 Transparent
+  X75
+    X75 PRO 82 Key Hot Swappable Transparent
+  X75 82 Keys Hot Swappable Transparent
+  X98 QMK
+  X98 Solid QMKVIA
+  X98 Transparent QMKVIA
+  YUNZ QZ15 Computer
+  YUNZIl RT8O
+  YZ19
+  YZ21 Macaron Hot Swappable Numeric Keypad Num Pad
+  YZ75
+    YZ75 Pro
+    YZ75 Pro Kit
+  YZ84
+    YZ84 Pro
+  YZ84 - Mint
+  YZ87
+  YZ87 White Line
+  YZ98
+  YZ98 Barebone Kit
+ZOWIE
+  EC1
+  EC2
+  EC3-C
+  FK1+
+  FK2
+  S1
+  S2
+  ZA11
+  ZA12
+  ZA13

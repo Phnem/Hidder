@@ -73,12 +73,44 @@ class RepairPass2:
             missing.append("operation_evidence")
         return sorted(set(missing))
 
+    @staticmethod
+    def _requirement_states(operation: sqlite3.Row, evidence_count: int) -> dict[str, str]:
+        """Return evidence states; absence is UNKNOWN, never implicit N/A."""
+        states: dict[str, str] = {}
+        for field in REQUIRED_OPERATION_FIELDS:
+            value = operation[field]
+            state = "KNOWN" if value not in (None, "", "[]", "{}") else "UNKNOWN"
+            if field.endswith("_json") and state == "KNOWN":
+                try:
+                    structured = json.loads(value)
+                    marker = structured.get("state") if isinstance(structured, dict) else None
+                    if marker == "not_applicable": state = "NOT_APPLICABLE"
+                    elif marker in {"unknown", "unresolved", "pending"}: state = "UNKNOWN"
+                except (TypeError, json.JSONDecodeError):
+                    state = "CONFLICTED"
+            states[field] = state
+        states["report_id"] = "KNOWN" if operation["transport"] != "hid" or operation["report_id"] not in (None, "") else "UNKNOWN"
+        states["framing_length"] = "KNOWN" if operation["api_length"] is not None or operation["wire_length"] is not None else "UNKNOWN"
+        try:
+            sequencing = json.loads(operation["sequencing_json"] or "null")
+        except (TypeError, json.JSONDecodeError):
+            sequencing = None
+        timing_na = isinstance(sequencing, dict) and sequencing.get("timing_state") == "not_applicable"
+        states["timing"] = "NOT_APPLICABLE" if timing_na else ("KNOWN" if operation["timeout_ms"] is not None or operation["delay_ms"] is not None else "UNKNOWN")
+        states["operation_evidence"] = "KNOWN" if evidence_count else "UNKNOWN"
+        return states
+
     def derive_risk_and_reconstructibility(self) -> dict[str, int]:
         """Classify only typed operations; generic facts are deliberately excluded."""
         totals: Counter[str] = Counter()
         with self.connection() as conn:
+            conn.execute("""CREATE TABLE IF NOT EXISTS operation_requirement_states (
+                operation_id INTEGER NOT NULL REFERENCES protocol_operations(id) ON DELETE CASCADE,
+                requirement TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('KNOWN','UNKNOWN','NOT_APPLICABLE','CONFLICTED')),
+                PRIMARY KEY(operation_id,requirement))""")
             conn.execute("DELETE FROM command_risks")
             conn.execute("DELETE FROM operation_completeness")
+            conn.execute("DELETE FROM operation_requirement_states")
             for op in conn.execute("SELECT * FROM protocol_operations WHERE operation_status != 'rejected'").fetchall():
                 evidence_symbols = " ".join(row[0] or "" for row in conn.execute(
                     "SELECT symbol FROM operation_evidence WHERE operation_id=?", (op["id"],)).fetchall())
@@ -97,6 +129,9 @@ class RepairPass2:
                 totals[risk] += 1
                 evidence_count = conn.execute("SELECT count(*) FROM operation_evidence WHERE operation_id=?", (op["id"],)).fetchone()[0]
                 missing = self._operation_missing(op, evidence_count)
+                states = self._requirement_states(op, evidence_count)
+                conn.executemany("INSERT INTO operation_requirement_states(operation_id,requirement,state) VALUES(?,?,?)",
+                                 ((op["id"], name, state) for name, state in states.items()))
                 total_requirements = len(REQUIRED_OPERATION_FIELDS) + 4
                 score = max(0, round(100 * (total_requirements - len(missing)) / total_requirements))
                 conn.execute("INSERT INTO operation_completeness(operation_id,score,missing_requirements_json,complete,explanation) VALUES(?,?,?,?,?)", (op["id"], score, json.dumps(missing), int(not missing), "complete typed contract" if not missing else "missing: " + ", ".join(missing)))

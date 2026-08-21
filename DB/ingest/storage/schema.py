@@ -628,4 +628,248 @@ CREATE TABLE IF NOT EXISTS external_attachments (
     last_checked TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_external_attachments_status ON external_attachments(source_name,status,kind);
+
+-- Commercial model inventory.  This is deliberately an additive layer: the
+-- legacy ``products`` table remains the source-local/technical product graph
+-- and is never re-purposed as a marketing model catalogue.
+CREATE TABLE IF NOT EXISTS commercial_models (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    brand_id INTEGER NOT NULL REFERENCES brands(id),
+    canonical_name TEXT NOT NULL,
+    normalized_name TEXT NOT NULL,
+    category TEXT,
+    product_line TEXT,
+    lifecycle_status TEXT NOT NULL DEFAULT 'CURRENT' CHECK(lifecycle_status IN ('CURRENT', 'DISCONTINUED', 'UNKNOWN')),
+    candidate_only INTEGER NOT NULL DEFAULT 0 CHECK(candidate_only IN (0,1)),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(brand_id, normalized_name)
+);
+CREATE INDEX IF NOT EXISTS idx_commercial_models_brand ON commercial_models(brand_id);
+
+CREATE TABLE IF NOT EXISTS model_variants (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    commercial_model_id INTEGER NOT NULL REFERENCES commercial_models(id) ON DELETE CASCADE,
+    canonical_name TEXT NOT NULL,
+    normalized_name TEXT NOT NULL,
+    variant_label TEXT NOT NULL DEFAULT 'DEFAULT',
+    generation TEXT,
+    model_code TEXT,
+    lifecycle_status TEXT NOT NULL DEFAULT 'CURRENT' CHECK(lifecycle_status IN ('CURRENT', 'DISCONTINUED', 'UNKNOWN')),
+    source_product_id INTEGER REFERENCES products(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(commercial_model_id, normalized_name)
+);
+CREATE INDEX IF NOT EXISTS idx_model_variants_model ON model_variants(commercial_model_id);
+CREATE INDEX IF NOT EXISTS idx_model_variants_source_product ON model_variants(source_product_id);
+
+CREATE TABLE IF NOT EXISTS model_aliases (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    commercial_model_id INTEGER REFERENCES commercial_models(id) ON DELETE CASCADE,
+    model_variant_id INTEGER REFERENCES model_variants(id) ON DELETE CASCADE,
+    alias_name TEXT NOT NULL,
+    normalized_alias TEXT NOT NULL,
+    alias_kind TEXT NOT NULL DEFAULT 'FORMAT',
+    source_url TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CHECK(commercial_model_id IS NOT NULL OR model_variant_id IS NOT NULL),
+    UNIQUE(model_variant_id, normalized_alias)
+);
+
+CREATE TABLE IF NOT EXISTS model_evidence (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    commercial_model_id INTEGER REFERENCES commercial_models(id) ON DELETE CASCADE,
+    model_variant_id INTEGER REFERENCES model_variants(id) ON DELETE CASCADE,
+    evidence_class TEXT NOT NULL,
+    source_id INTEGER REFERENCES sources(id),
+    source_file_id INTEGER REFERENCES source_files(id),
+    source_url TEXT,
+    source_path TEXT,
+    extraction_method TEXT NOT NULL,
+    confidence REAL NOT NULL DEFAULT 0.0,
+    details_json TEXT,
+    observed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CHECK(commercial_model_id IS NOT NULL OR model_variant_id IS NOT NULL),
+    UNIQUE(model_variant_id, evidence_class, source_url, source_path, extraction_method)
+);
+CREATE INDEX IF NOT EXISTS idx_model_evidence_variant ON model_evidence(model_variant_id);
+
+-- ``usb_device_identities`` is the technical identity node.  A model binding
+-- can be many-to-many and keeps its confidence separate from VID/PID itself.
+CREATE TABLE IF NOT EXISTS usb_device_identities (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    vid INTEGER NOT NULL,
+    pid INTEGER NOT NULL,
+    vid_hex TEXT NOT NULL,
+    pid_hex TEXT NOT NULL,
+    interface_number INTEGER,
+    usage_page INTEGER,
+    usage INTEGER,
+    bcd_device TEXT,
+    manufacturer_string TEXT,
+    product_string TEXT,
+    identity_role TEXT NOT NULL DEFAULT 'PERIPHERAL' CHECK(identity_role IN ('PERIPHERAL', 'RECEIVER', 'BOOTLOADER', 'FIRMWARE_UPDATE', 'UNKNOWN')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(vid, pid, interface_number, usage_page, usage, bcd_device, identity_role)
+);
+CREATE INDEX IF NOT EXISTS idx_usb_device_identities_vid_pid ON usb_device_identities(vid, pid);
+
+CREATE TABLE IF NOT EXISTS model_identity_bindings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    model_variant_id INTEGER NOT NULL REFERENCES model_variants(id) ON DELETE CASCADE,
+    usb_device_identity_id INTEGER NOT NULL REFERENCES usb_device_identities(id) ON DELETE CASCADE,
+    binding_role TEXT NOT NULL DEFAULT 'PERIPHERAL' CHECK(binding_role IN ('PERIPHERAL', 'WIRED', 'RECEIVER', 'BOOTLOADER', 'FIRMWARE_UPDATE', 'WIRELESS_CHILD', 'UNKNOWN')),
+    binding_confidence TEXT NOT NULL CHECK(binding_confidence IN ('EXACT_OFFICIAL', 'EXACT_RUNTIME_OBSERVED', 'EXACT_STATIC_IMPLEMENTATION', 'STRONG_MULTI_SOURCE', 'CANDIDATE', 'AMBIGUOUS')),
+    source_device_identifier_id INTEGER REFERENCES device_identifiers(id),
+    evidence_id INTEGER REFERENCES model_evidence(id),
+    provenance TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(model_variant_id, usb_device_identity_id, binding_role, source_device_identifier_id)
+);
+CREATE INDEX IF NOT EXISTS idx_model_identity_identity ON model_identity_bindings(usb_device_identity_id);
+
+CREATE TABLE IF NOT EXISTS model_transports (
+    model_variant_id INTEGER NOT NULL REFERENCES model_variants(id) ON DELETE CASCADE,
+    transport TEXT NOT NULL CHECK(transport IN ('WIRED_USB', 'USB_2_4G_RECEIVER', 'BLUETOOTH_HID', 'OTHER', 'UNKNOWN')),
+    evidence_id INTEGER REFERENCES model_evidence(id),
+    confidence REAL NOT NULL DEFAULT 0.0,
+    PRIMARY KEY(model_variant_id, transport)
+);
+
+CREATE TABLE IF NOT EXISTS receiver_bindings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    peripheral_variant_id INTEGER NOT NULL REFERENCES model_variants(id) ON DELETE CASCADE,
+    receiver_identity_id INTEGER NOT NULL REFERENCES usb_device_identities(id) ON DELETE CASCADE,
+    paired_protocol_info TEXT,
+    binding_confidence TEXT NOT NULL CHECK(binding_confidence IN ('EXACT_OFFICIAL', 'EXACT_RUNTIME_OBSERVED', 'EXACT_STATIC_IMPLEMENTATION', 'STRONG_MULTI_SOURCE', 'CANDIDATE', 'AMBIGUOUS')),
+    evidence_id INTEGER REFERENCES model_evidence(id),
+    UNIQUE(peripheral_variant_id, receiver_identity_id)
+);
+
+CREATE TABLE IF NOT EXISTS model_protocol_bindings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    model_variant_id INTEGER NOT NULL REFERENCES model_variants(id) ON DELETE CASCADE,
+    protocol_family_id INTEGER NOT NULL REFERENCES protocol_families(id) ON DELETE CASCADE,
+    binding_status TEXT NOT NULL CHECK(binding_status IN ('EXACT', 'CANDIDATE', 'AMBIGUOUS')),
+    confidence REAL NOT NULL DEFAULT 0.0,
+    source_product_id INTEGER REFERENCES products(id),
+    evidence_id INTEGER REFERENCES model_evidence(id),
+    provenance TEXT NOT NULL,
+    UNIQUE(model_variant_id, protocol_family_id, source_product_id)
+);
+CREATE INDEX IF NOT EXISTS idx_model_protocol_variant ON model_protocol_bindings(model_variant_id);
+
+CREATE TABLE IF NOT EXISTS software_targets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    brand_id INTEGER NOT NULL REFERENCES brands(id),
+    target_key TEXT NOT NULL,
+    display_name TEXT NOT NULL,
+    target_kind TEXT NOT NULL CHECK(target_kind IN ('WEB_CONFIGURATOR', 'NATIVE_APPLICATION', 'FIRMWARE_TOOL', 'DOWNLOAD_PAGE', 'OTHER')),
+    official_status TEXT NOT NULL DEFAULT 'UNKNOWN' CHECK(official_status IN ('OFFICIAL', 'OBSERVED', 'UNKNOWN')),
+    target_url TEXT,
+    source_path TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(brand_id, target_key)
+);
+CREATE INDEX IF NOT EXISTS idx_software_targets_brand ON software_targets(brand_id);
+
+CREATE TABLE IF NOT EXISTS software_model_compatibilities (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    software_target_id INTEGER NOT NULL REFERENCES software_targets(id) ON DELETE CASCADE,
+    model_variant_id INTEGER NOT NULL REFERENCES model_variants(id) ON DELETE CASCADE,
+    compatibility_status TEXT NOT NULL CHECK(compatibility_status IN ('SUPPORTED_OFFICIAL', 'SUPPORTED_OBSERVED', 'NOT_SUPPORTED_OBSERVED', 'AMBIGUOUS')),
+    confidence REAL NOT NULL DEFAULT 0.0,
+    evidence_id INTEGER REFERENCES model_evidence(id),
+    provenance TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(software_target_id, model_variant_id, compatibility_status)
+);
+CREATE INDEX IF NOT EXISTS idx_software_compat_variant ON software_model_compatibilities(model_variant_id);
+
+-- AI reconciliation staging.  AI output is discovery input only and is kept
+-- separate from canonical commercial models until a verification pass opts in
+-- to promotion.
+CREATE TABLE IF NOT EXISTS ai_model_candidates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_ai TEXT NOT NULL CHECK(source_ai IN ('QWEN', 'GEMINI', 'CLAUDE', 'META_AI')),
+    raw_brand TEXT NOT NULL,
+    canonical_brand_id INTEGER REFERENCES brands(id),
+    brand_status TEXT NOT NULL CHECK(brand_status IN ('CANONICAL', 'NEW_BRAND_CANDIDATE')),
+    category TEXT NOT NULL CHECK(category IN ('KEYBOARD', 'MOUSE')),
+    raw_model_name TEXT NOT NULL,
+    normalized_model_name TEXT NOT NULL,
+    input_path TEXT NOT NULL,
+    line_number INTEGER,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(source_ai, raw_brand, category, raw_model_name, input_path, line_number)
+);
+CREATE INDEX IF NOT EXISTS idx_ai_candidates_key ON ai_model_candidates(canonical_brand_id, category, normalized_model_name);
+
+CREATE TABLE IF NOT EXISTS ai_model_unions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    canonical_brand_id INTEGER REFERENCES brands(id),
+    raw_brand TEXT NOT NULL,
+    brand_status TEXT NOT NULL CHECK(brand_status IN ('CANONICAL', 'NEW_BRAND_CANDIDATE')),
+    category TEXT NOT NULL CHECK(category IN ('KEYBOARD', 'MOUSE')),
+    canonical_candidate_name TEXT NOT NULL,
+    normalized_model_name TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(canonical_brand_id, raw_brand, category, normalized_model_name)
+);
+CREATE INDEX IF NOT EXISTS idx_ai_union_lookup ON ai_model_unions(canonical_brand_id, category, normalized_model_name);
+
+CREATE TABLE IF NOT EXISTS ai_model_votes (
+    ai_model_union_id INTEGER NOT NULL REFERENCES ai_model_unions(id) ON DELETE CASCADE,
+    source_ai TEXT NOT NULL CHECK(source_ai IN ('QWEN', 'GEMINI', 'CLAUDE', 'META_AI')),
+    candidate_count INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY(ai_model_union_id, source_ai)
+);
+
+CREATE TABLE IF NOT EXISTS model_verification_evidence (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ai_model_union_id INTEGER NOT NULL REFERENCES ai_model_unions(id) ON DELETE CASCADE,
+    evidence_tier TEXT NOT NULL CHECK(evidence_tier IN ('TIER_1_OFFICIAL', 'TIER_2_STRONG', 'TIER_3_CANDIDATE')),
+    evidence_class TEXT NOT NULL,
+    source_url TEXT,
+    source_ref TEXT,
+    category TEXT,
+    details_json TEXT,
+    UNIQUE(ai_model_union_id, evidence_tier, evidence_class, source_url, source_ref)
+);
+CREATE INDEX IF NOT EXISTS idx_verification_evidence_union ON model_verification_evidence(ai_model_union_id);
+
+CREATE TABLE IF NOT EXISTS model_reconciliation_results (
+    ai_model_union_id INTEGER PRIMARY KEY REFERENCES ai_model_unions(id) ON DELETE CASCADE,
+    status TEXT NOT NULL CHECK(status IN ('VERIFIED_OFFICIAL', 'VERIFIED_STRONG', 'UNRESOLVED', 'REJECTED_NOT_MODEL', 'REJECTED_WRONG_BRAND', 'REJECTED_WRONG_CATEGORY', 'REJECTED_DUPLICATE', 'COSMETIC_VARIANT', 'ACCESSORY', 'RECEIVER', 'SOFTWARE_ARTIFACT', 'FIRMWARE_ARTIFACT')),
+    classification TEXT NOT NULL CHECK(classification IN ('COMMERCIAL_MODEL', 'HARDWARE_VARIANT', 'COSMETIC_SKU', 'ALIAS', 'RECEIVER', 'ARTIFACT', 'NOT_MODEL', 'UNKNOWN')),
+    reason TEXT NOT NULL,
+    promoted_model_variant_id INTEGER REFERENCES model_variants(id),
+    reviewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Official domains are evidence-bearing facts rather than a one-off static
+-- whitelist.  Subdomains and sibling product hosts can be recognised through
+-- a configured official endpoint or a recorded vendor-owned source.
+CREATE TABLE IF NOT EXISTS official_brand_domains (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    brand_id INTEGER NOT NULL REFERENCES brands(id),
+    hostname TEXT NOT NULL,
+    registrable_domain TEXT NOT NULL,
+    provenance TEXT NOT NULL,
+    source_url TEXT,
+    confidence REAL NOT NULL DEFAULT 1.0,
+    discovered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(brand_id, hostname, provenance, source_url)
+);
+CREATE INDEX IF NOT EXISTS idx_official_brand_domains_lookup ON official_brand_domains(brand_id, hostname);
+
+CREATE TABLE IF NOT EXISTS legacy_category_conflicts (
+    product_id INTEGER PRIMARY KEY REFERENCES products(id),
+    legacy_category TEXT NOT NULL,
+    authoritative_category TEXT NOT NULL CHECK(authoritative_category IN ('KEYBOARD', 'MOUSE')),
+    official_source_url TEXT NOT NULL,
+    rationale TEXT NOT NULL,
+    detected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 """

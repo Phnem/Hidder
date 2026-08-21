@@ -1,0 +1,721 @@
+Ajazz
+  Keyboards
+    - Ajazz AK832
+      - Ajazz AK832 Pro
+    - Ajazz AK870
+      - Ajazz AK870 V2
+    - Ajazz AK980
+    - Ajazz NK68
+    - AK029
+    - AK650
+    - AK820
+      - AK820 Max
+      - AK820 Pro
+      - AK820 V2
+    - AKL680
+    - AKP05E
+      - AKP05E PRO
+    - AKP815
+  Mice
+    - AJ039
+    - AJ139P
+      - AJ139P V3 MC
+    - AJ159
+    - AJ199 Carbon Fiber
+    - Ajazz AJ139P
+      - Ajazz AJ139P V3 Max
+    - Ajazz AJ179
+    - Ajazz AJ358
+Akko
+  Keyboards
+    - Akko ACR 87
+  Mice
+    - Akko Cat Theme
+    - Dash
+ATK
+  Keyboards
+    - ATK RS7
+    - ATK68
+    - ATK75
+  Mice
+    - ATK Blazing Sky F1
+    - ATK Blazing Sky F1 Ultimate
+    - ATK X1
+Attack Shark
+  Keyboards
+    - Attack Shark K86
+    - Attack Shark M87
+    - Attack Shark X85
+      - Attack Shark X85 Pro
+    - M86
+    - M87PRO
+    - X65
+      - X65 HE
+    - X66
+    - X820
+      - X820 ULTRA
+    - X82PRO
+      - X82PRO HE
+    - X87
+      - X87 ULTRA
+    - X98PRO
+  Mice
+    - Attack Shark G6
+    - Attack Shark X11
+    - Attack Shark X2
+      - Attack Shark X2 Pro
+    - G3
+      - G3 PRO
+    - R1
+    - V3
+    - V3PRO
+    - V5
+    - V6
+    - V8
+    - X1
+    - X11
+      - X11 PRO V2
+    - X11SE
+    - X5
+    - X8
+    - X8PLUS
+    - X8PRO
+AULA
+  Keyboards
+    - AULA F65
+    - AULA F75
+      - AULA F75 Max
+    - AULA F87
+      - AULA F87 Pro
+    - AULA F99
+      - AULA F99 Pro
+    - AULA Hero 68HE
+    - AULA Hero 84HE
+    - F2088
+    - F75
+    - F98
+    - F99
+  Mice
+    - AULA SC580
+    - AULA SC680
+    - SC620
+    - SC800
+Chilkey
+  Keyboards
+    - Chilkey ND65
+    - ND TKL
+    - ND104
+    - ND65 CS
+      - ND65 CS HE
+    - ND75 LP
+    - SF60
+      - SF60 HE
+    - Slice68
+      - Slice68 HE
+    - Slice75
+      - Slice75 HE
+  Mice
+    - Glacier LW
+      - Glacier LW 8K L
+      - Glacier LW 8K M
+Chosfox
+  Keyboards
+    - Fox65 Prebuilt
+    - Leo80 Prebuilt
+    - Vero75 Low-Profile
+  Mice
+Cidoo
+  Keyboards
+    - ABM081 Stellar
+    - C60
+      - C60 HE
+    - Cidoo ABM098
+    - QK61
+      - QK61 V2
+    - QK75
+    - V87
+  Mice
+Dareu
+  Keyboards
+    - Dareu A98
+    - Dareu EK87
+      - Dareu EK87 Pro
+  Mice
+    - A950
+    - Dareu EM901X
+DrunkDeer
+  Keyboards
+    - X60 Future
+    - X60HE
+  Mice
+Endgame Gear
+  Keyboards
+  Mice
+    - Endgame Gear XM2
+      - Endgame Gear XM2 8k
+    - Endgame Gear XM2w
+      - Endgame Gear XM2w 4K
+    - Endgame Gear XM2we
+    - OP1
+      - OP1 8K V2
+    - OP1w
+      - OP1w 4K V2
+    - OP1we
+    - XM2
+      - XM2 8K V2
+    - XM2w
+      - XM2w 4K V2
+EPOMAKER
+  Keyboards
+    - Carbon60
+    - EK21
+    - Epomaker DynaTab 75X
+    - Epomaker EK68
+    - Epomaker Galaxy70
+    - Epomaker HE80
+    - Epomaker RT100
+    - Epomaker Shadow-X
+    - Epomaker TH80
+      - Epomaker TH80 Pro V2
+    - G84
+      - G84 HE
+    - Galaxy100 Lite
+    - Glyph
+    - Hack70
+    - HE108
+    - HE30
+    - HE75
+      - HE75 V2
+    - Magcore87
+    - QK108
+    - RT100
+      - RT100 PRO
+    - RT82
+    - RT85
+    - RT98
+    - Split70
+    - TH108
+      - TH108 PRO
+      - TH108 V2 PRO
+    - TH33
+    - TH40
+    - TH87
+    - TH99
+      - TH99 PRO
+  Mice
+    - Carbonis
+    - CarbonX
+    - Click
+    - Click Lite
+    - Nex
+      - Nex Pro
+    - Nex Lite
+Fantech
+  Keyboards
+    - ATOM X63 MK611
+    - ATOM X66 MK614
+    - Fantech MaxFit67
+  Mice
+    - BLAKE WGC5
+    - CRUISER II WG11V2RD
+    - CRYPTO II VX7
+      - CRYPTO II VX7 V2
+    - CRYPTO II WG7V2RD
+    - Fantech Cruiser WG11
+    - Fantech Crypto VX7
+    - Fantech Helios UX3
+      - Fantech Helios UX3 V2
+    - Fantech Helios XD3
+      - Fantech Helios XD3 V2
+    - Fantech Raigor II WG10
+    - Fantech Thor X9
+    - KANATA WG9
+    - KANATA WG9RD
+Feker
+  Keyboards
+    - Feker Alice80
+  Mice
+Finalmouse
+  Keyboards
+  Mice
+    - Finalmouse Scream One
+    - Finalmouse Starlight
+      - Finalmouse Starlight Pro TenZ
+    - Finalmouse Starlight-12 Achilles
+    - Finalmouse Starlight-12 Ares
+    - Finalmouse Starlight-12 Hades
+    - Finalmouse Starlight-12 Pegasus
+    - Finalmouse Starlight-12 Phantom
+    - Finalmouse Starlight-12 Poseidon
+    - Finalmouse Starlight-12 Zeus
+    - Finalmouse Ultralight 2 - Cape Town
+    - Finalmouse Ultralight Phantom
+    - Finalmouse Ultralight Sunset
+    - Finalmouse UltralightX Guardian
+    - Finalmouse UltralightX Phantom
+    - Starlight
+      - Starlight Pro The Last Legend
+    - ULX
+      - ULX Pro
+Fnatic Gear
+  Keyboards
+    - Fnatic STREAK
+    - Fnatic STREAK65
+  Mice
+Gamakay
+  Keyboards
+    - Gamakay CK87
+    - LK70
+  Mice
+    - HXSJ A904
+    - HXSJ T300
+Glorious
+  Keyboards
+  Mice
+    - Glorious Model I 2
+HyperX
+  Keyboards
+    - Alloy Origins
+    - Alloy Origins 60
+    - Alloy Origins 65
+    - Alloy Origins Core
+    - HyperX Alloy Elite 2
+    - HyperX Alloy Rise
+    - HyperX Alloy Rise 75
+  Mice
+    - HyperX Pulsefire Haste 2
+      - HyperX Pulsefire Haste 2 Mini
+    - Pulsefire Core
+    - Pulsefire Fuse
+    - Pulsefire Haste 2
+      - Pulsefire Haste 2 Pro - 4K
+    - Pulsefire Haste 2 Core
+    - Pulsefire Haste 2 S
+    - Pulsefire Saga
+      - Pulsefire Saga Pro
+    - Pulsefire Surge
+KBDfans
+  Keyboards
+    - Athena 1800
+    - Tofu60 3.0
+  Mice
+Kemove
+  Keyboards
+  Mice
+    - M2SE
+Keychron
+  Keyboards
+    - B33
+    - B36
+    - K10
+      - K10 HE
+    - K4
+      - K4 HE
+    - K6
+      - K6 HE
+    - Keychron
+      - Keychron V1 Max
+    - Keychron K2
+      - Keychron K2 HE
+      - Keychron K2 Pro
+    - Keychron K3
+      - Keychron K3 Pro
+    - Keychron K4
+      - Keychron K4 Pro
+    - Keychron Q1
+      - Keychron Q1 Max
+    - Keychron Q10
+    - Keychron Q3
+      - Keychron Q3 Max
+    - Q1
+      - Q1 HE 8K
+    - Q16
+      - Q16 HE 8K
+    - Q2
+      - Q2 HE 8K
+    - Q3
+      - Q3 HE 8K
+    - Q5
+      - Q5 HE 8K
+    - Q6
+      - Q6 HE 8K
+    - V1
+      - V1 Ultra 8K
+  Mice
+    - BM22
+    - BM24
+    - BM25
+    - G4
+    - Keychron M1
+    - Keychron M3
+    - Keychron M5
+    - Keychron M6
+Keycult
+  Keyboards
+    - Keycult No. 2 Rev. 1
+    - Keycult No. 2/65
+    - Keycult No.1 65%
+    - No. 1 Rev. 2 TKL
+    - No. 2 Classic Stainless
+  Mice
+Lamzu
+  Keyboards
+    - Jet75
+    - LAMZU Atlantis
+      - LAMZU Atlantis Pro
+  Mice
+    - Atlantis
+      - Atlantis Mini
+    - Atlantis OG
+      - Atlantis OG V2 Pro
+    - LAMZU Atlantis
+      - LAMZU Atlantis Mini 4K
+      - LAMZU Atlantis Mini Pro
+    - LAMZU Atlantis OG
+      - LAMZU Atlantis OG V2 4K
+    - LAMZU Inca
+    - LAMZU Maya
+      - LAMZU Maya 4K
+    - LAMZU Paro
+    - LAMZU Tachi
+    - LAMZU Thorn
+      - LAMZU Thorn 4K
+    - Lamzu Thorn
+      - Lamzu Thorn V2
+    - Maya
+    - Maya X
+    - Paro Aurora
+      - Paro Aurora SE
+    - X Aimlabs Maya X
+Lemokey
+  Keyboards
+    - L1 QMK/VIA
+    - L3 QMK/VIA
+    - L4 QMK
+    - L5
+      - L5 HE
+    - Lemokey L1
+      - Lemokey L1 HE
+    - Lemokey P1
+      - Lemokey P1 HE
+    - P1 QMK/VIA
+    - P2
+      - P2 HE
+    - P3
+      - P3 HE
+  Mice
+    - Lemokey G1
+    - Lemokey G2
+Leobog
+  Keyboards
+    - Hi75
+    - Hi8SE
+    - K21
+    - Leobog A75
+    - Leobog K81
+  Mice
+Machenike
+  Keyboards
+    - AIR50 Low Profile
+    - CKM3
+    - K500
+    - K500-B61W
+    - K500B B87
+    - K500E-B108
+    - K500W
+    - K600G-B97W
+    - K600T
+    - KG87
+    - KG98
+    - Machenike CK600
+    - Machenike GK80
+    - Machenike K500-B61
+    - Machenike K520
+    - Machenike K600G
+    - Machenike K600S
+    - Machenike KT68
+    - Machenike KT84
+  Mice
+    - M5
+    - M720
+    - M8
+      - M8 Gen2
+    - Machenike L8
+      - Machenike L8 Max
+      - Machenike L8 Pro
+    - Machenike L8 Air
+    - Machenike M7
+      - Machenike M7 Pro
+    - Machenike M8
+MCHOSE
+  Keyboards
+    - G98
+      - G98 Pro
+    - K99
+      - K99 V3
+    - MCHOSE G75
+      - MCHOSE G75 Pro
+    - MCHOSE K99
+  Mice
+    - G3
+      - G3 V2
+    - MCHOSE L7
+Meletrix
+  Keyboards
+    - Meletrix Zoom65
+      - Meletrix Zoom65 V3
+    - Meletrix Zoom75
+    - Meletrix Zoom98
+  Mice
+MelGeek
+  Keyboards
+    - MADE68
+      - MADE68 Ultra V2
+    - MADE68 Ultra+
+    - MADE84
+      - MADE84 Pro
+    - MelGeek Made68
+    - MelGeek Mojo68 Plastic
+    - MelGeek Mojo84 Plastic
+    - Mojo68 Pigeon
+    - Mojo84 Vaporwave
+    - O2
+    - REAL81
+  Mice
+MonsGeek
+  Keyboards
+    - MonsGeek FUN60
+    - MonsGeek MG108
+    - MonsGeek MG75
+  Mice
+Ninjutso
+  Keyboards
+  Mice
+    - Ten
+NuPhy
+  Keyboards
+    - Air100
+      - Air100 V3
+    - Air60
+      - Air60 HE
+    - Air65
+      - Air65 V3
+    - Air75
+      - Air75 HE
+      - Air75 V3
+    - Field75
+      - Field75 HE V2
+    - Halo IO
+    - Halo65
+      - Halo65 V2
+    - NuPhy Air60
+      - NuPhy Air60 V2
+    - NuPhy Air75
+      - NuPhy Air75 V2
+    - NuPhy Air96
+      - NuPhy Air96 V2
+    - NuPhy Halo75
+      - NuPhy Halo75 V2
+    - NuPhy Halo96
+      - NuPhy Halo96 V2
+    - NuPhyX BH65
+    - WH80
+  Mice
+NZXT
+  Keyboards
+  Mice
+    - NZXT Lift
+Pulsar Gaming Gears
+  Keyboards
+    - PCMK 3
+      - PCMK 3 HE TKL
+    - Pulsar
+    - XBOARD MS
+    - XBOARD QS
+  Mice
+    - Pulsar
+    - X2F 5th Anniversary
+    - X2H Medium
+    - X2N CrazyLight
+      - X2N CrazyLight Mini
+    - X2V2
+      - X2V2 Mini
+    - X2V2 Medium
+    - Xlite
+      - Xlite V3 Large
+Qwertykeys
+  Keyboards
+    - Neo Ergo
+    - Neo60 CU
+    - Neo65
+    - Neo65 CU
+    - Neo75
+    - Neo75 CU
+    - Neo80 CU
+    - Neo98
+    - QK101
+    - QK80 MK2
+  Mice
+Razer
+  Keyboards
+    - Razer Tartarus
+  Mice
+Royal Kludge
+  Keyboards
+    - R87
+      - R87 PRO TKL
+    - RK61
+  Mice
+    - MG5
+Scyrox
+  Keyboards
+    - Xpunk Esports
+  Mice
+    - Scyrox
+      - Scyrox V6
+Sikakeyb
+  Keyboards
+    - Castle HM66
+    - CK75
+    - CK75US
+    - FORT68
+    - FORT75
+    - HM80HE
+    - Sikakeyb Castle CK75
+    - Sikakeyb HM66
+    - x Gateron FORT68
+  Mice
+SteelSeries
+  Keyboards
+    - Apex
+      - Apex Pro
+      - Apex Pro TKL
+      - Apex Pro TKL 2023
+    - Apex 3
+    - Apex 5
+    - Apex 7
+    - SteelSeries Apex 3 TKL
+    - SteelSeries Apex 7 TKL
+    - SteelSeries Apex 9
+      - SteelSeries Apex 9 Mini
+    - SteelSeries Apex 9 TKL
+  Mice
+    - Prime
+    - Rival 3
+    - SteelSeries Prime+
+Turtle Beach
+  Keyboards
+    - Turtle Beach Vulcan II
+  Mice
+    - Turtle Beach Kone XP Air
+Varmilo
+  Keyboards
+    - Minilo75
+      - Minilo75 Pro
+    - Minilo98
+      - Minilo98 Pro
+    - Varmilo Minilo 75%
+  Mice
+VXE
+  Keyboards
+  Mice
+    - VXE Dragonfly R1
+WLMOUSE
+  Keyboards
+    - HUAN63
+      - HUAN63 HE Magnesium Alloys
+    - YING75
+      - YING75 HE Forged Carbon Fiber
+  Mice
+    - BEAST G
+    - Beast Miao Magnesium
+    - Beast X
+      - Beast X Max Magnesium
+      - Beast X Mini Pro Magnesium
+      - Beast X Pro Magnesium
+    - HUAN Stainless Magnesium Alloy
+    - Strider Magnesium
+    - Sword X Magnesium
+WOBKEY
+  Keyboards
+    - WOBKEY Rainy 75
+  Mice
+Womier
+  Keyboards
+    - M68
+      - M68 HE 65% Topographic Themed Hall Effect
+      - M68 HE V2 65% Themed Hall Effect
+    - M68HE
+      - M68HE PRO 60%
+    - M98 96%
+    - M99 98% VIA Support
+    - SK61
+      - SK61 HE 60% Hall Effect
+    - SK80
+      - SK80 Pro Themed 75%
+    - WK98 98% Multimedia Screen
+  Mice
+    - G57 Coral Sea Theme
+    - G58
+    - G59
+    - G705 Kanagawa Themed
+    - G706 Black
+Wooting
+  Keyboards
+    - Wooting One
+  Mice
+Wuque Studio
+  Keyboards
+    - Balance
+    - Wuque Studio Ikki68
+    - Wuque Studio Mammoth75
+  Mice
+X-Bows
+  Keyboards
+    - Surfing Split
+    - X-Bows Crystal
+    - X-Bows Knight
+      - X-Bows Knight Plus
+    - X-Bows Lite
+    - X-Bows Nature
+  Mice
+YMDK
+  Keyboards
+    - YMDK Wings
+  Mice
+Yunzii
+  Keyboards
+    - AL66 Knob CNC Aluminum
+    - AL68 QMK/VIA
+    - B75
+      - B75 Pro
+      - B75 Pro Green
+      - B75 PRO MAX QMK/VIA Knob TFT Screen
+    - C68 Hi-Fi
+    - Yunzii ACTTO B303
+    - Yunzii AL66
+    - Yunzii B98
+    - Yunzii Royalaxe Y68
+    - Yunzii Royalaxe Y87
+    - Yunzii YZ75
+      - Yunzii YZ75 Pro
+    - Yunzii YZ87
+    - Yunzii YZ98
+  Mice
+    - C1 Silicone
+    - M1 Lightweight
+    - M2 Dual
+      - M2 Dual 8K
+ZOWIE
+  Keyboards
+  Mice
+    - ZOWIE EC1
+    - ZOWIE EC2
+    - ZOWIE EC3-C
+    - ZOWIE FK1+
+    - ZOWIE FK2
+    - ZOWIE S1
+    - ZOWIE S2
+    - ZOWIE ZA11
+    - ZOWIE ZA12
+    - ZOWIE ZA13

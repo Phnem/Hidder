@@ -26,10 +26,20 @@ UPLOAD_RE = re.compile(r"\[[^]]*\]\((?P<markdown>/uploads/[^)]+|https?://[^)]+/u
 def _public_url(issue: dict, attachment: str) -> str:
     if attachment.startswith("http"):
         return attachment
-    web_url = issue.get("web_url", "")
-    marker = "/-/work_items/"
-    project = web_url.split(marker, 1)[0] if marker in web_url else "https://gitlab.com/signalrgb/signal-plugins"
-    return f"{project}/-/{attachment.lstrip('/')}"
+    # GitLab stores uploads outside the project namespace.  Markdown in issue
+    # descriptions only contains ``/uploads/<secret>/<filename>``; resolving
+    # it relative to the issue URL produces a non-existent
+    # ``<namespace>/<project>/-/uploads/...`` path.  The API issue payload
+    # carries the immutable numeric project ID required by the public upload
+    # route instead.
+    web_url = urlsplit(issue.get("web_url", ""))
+    origin = f"{web_url.scheme}://{web_url.netloc}" if web_url.scheme and web_url.netloc else "https://gitlab.com"
+    project_id = issue.get("project_id")
+    if project_id:
+        return f"{origin}/-/project/{project_id}/{attachment.lstrip('/')}"
+    # Retain a deterministic fallback for legacy issue exports that omit the
+    # project ID. It is useful metadata but is not assumed downloadable.
+    return f"{origin}/{attachment.lstrip('/')}"
 
 
 def _safe_name(value: str) -> str:
@@ -134,6 +144,15 @@ def ingest_signalrgb_attachments(db_path: Path, issues_path: Path, output_root: 
                  entry["attachment_url"], entry["filename"], entry["kind"], entry["status"],
                  entry.get("sha256"), entry.get("size"), entry.get("content_type"),
                  entry.get("error"), entry.get("created_at")))
+        # Versions before the numeric-project URL fix recorded a false
+        # ``access_blocked_auth`` result for the impossible project-relative
+        # upload path.  Remove only those obsolete rows after their corrected
+        # counterparts have been recorded; no downloaded evidence is removed.
+        conn.execute("""DELETE FROM external_attachments
+                        WHERE source_name='SignalRGB USBData'
+                          AND status='access_blocked_auth'
+                          AND attachment_url LIKE
+                              'https://gitlab.com/signalrgb/signal-plugins/-/uploads/%'""")
         conn.commit()
     finally:
         conn.close()
