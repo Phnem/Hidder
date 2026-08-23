@@ -1,96 +1,169 @@
-# AULA KB V3 — End-to-End A-Gate: Identity + Remap slice
+# AULA KB V3 — End-to-End A-Gate
 
-**Status: CLOSED, accepted 2026-08-23.**
+**Last recomputed 2026-08-24.** The rank below is not stored anywhere; it is
+computed by `crates/pproto/src/aula_bytech_rank.rs` from the ACL's own command
+classes and the generated product catalogue, and printed by
+`cargo run -p pproto --example rank_matrix`. Nothing in this document can be
+raised without changing what is known.
 
 ```
-HERO84 Identity = PRODUCTION_PHYSICAL_VALIDATED
-HERO84 Remap    = PRODUCTION_PHYSICAL_VALIDATED
-
-read_keymap = safe_read
-set_remap   = safe_write
-
-FINAL RANK_A = 0/15   (unchanged by this slice, deliberately)
+FINAL RANK_A = 0/15
 ```
 
-Scope, deliberately narrowed 2026-08-23: **only** identity (device UUID →
-exact product resolution) and PrtSc remap (`read_keymap`/`set_remap`,
-plain-value form). The other 11 planned operations (macro, profiles/device
-settings, HE actuation write, RT, deadzone, RGB, polling/reconnect, full
-React UI) are **not** in this gate and are not claimed here. See
-`Vetro hud/.claude/worktrees/gracious-haslett-7cac7b/docs/decisions/0002-aula-bytech-kb-v3-wired-convergence.md`
-for why this work extends the existing `aula-bytech` engine rather than a
-new one, and
-`.../docs/hardware/aula-bytech-exchange-008-identity-remap-physical.md` for
-the full physical record this gate is built on.
+## What is closed, and what closed it
 
-## Gate status
-
-| Gate | Status | Evidence |
+| Capability | State | How |
 |---|---|---|
-| `BACKEND_READY` | **PASS** | `crates/pcore`/`psafety`/`pproto` in the Peripheral worktree; `read_keymap`/`set_remap` promoted to `safe_read`/`safe_write` in `data/protocols/aula-bytech.toml`; `cargo test --workspace` green (pproto 81/81, psafety 108/108, pcore 24/24, peripheral-app 33/33, tools/emu 25/25) |
-| `APP_INTEGRATED` | **PASS** | Real Tauri desktop app (`npm run tauri dev`), Rust IPC commands `read_prtsc_binding`/`set_prtsc_remap` registered in `app/src-tauri/src/lib.rs`, exercised via a temporary `window.prtscDebug` DevTools hook (`app/src/main.tsx`) — no full screen built, per explicit scope |
-| `PHYSICAL_E2E_VALIDATED` | **PASS** | HERO 84 HE, device id `925765694`, `modelId` `18691697672197`. Two passes: one against the bootstrap doors (promoted the ACL), one against the production `SafetyGate::read`/`SafetyGate::write` path after promotion forced a refactor — see exchange 008. Two real defects found and fixed by the second pass (missing `record_backup`, a cadence collision from an internal read-before-write) |
-| `RANK_A` | **NOT CLAIMED** | Rank A means the full planned operation surface, physically validated, across the catalogued product line. This gate covers 2 of ~13 planned operations on 1 of 15 catalogued products |
+| Identity | **CLOSED** | `read_model_id` `safe_read`. Exact product resolution through the catalogue, not through VID/PID — 14 of the 15 rows share `0x372E:0x103E`. |
+| Remap | **CLOSED** | `read_keymap` `safe_read`, `set_remap` `safe_write`. Two physical passes, 2026-08-23 (exchange 008). |
+| Macro | **CLOSED** | `set_macro_table` `safe_write`, assignment through `set_remap`. Two physical passes, 2026-08-23 (exchange 009), including witnessed playback. |
+| HE actuation | **CLOSED**, with a caveat | `read_key_travel` `safe_read`, `set_key_travel` `slow_flash`. Physically validated 2026-08-19 (exchanges 005/006). See the open incident below. |
+| Profiles | candidate | `read_profile_index` / `set_profile_index` at the bootstrap doors. |
+| Polling | candidate | `read_polling_rate` / `set_polling_rate` at the doors. Transaction contract written and tested (`psafety::reconnect`); never exercised on hardware from here. |
+| Device settings | candidate | Four registers, both directions, at the doors. |
+| RGB | candidate | `read_light_mode` / `set_light_mode` at the doors. The weakest-evidenced entry in the ACL — no capture of a `0x04:0x01` write exists on either research path. |
+| HE rapid trigger | candidate | `read_rapid_trigger` / `set_rapid_trigger` at the doors. |
+| HE dead zone | candidate | `read_deadzone` / `set_deadzone` at the doors. |
+| Per-key HE | candidate | Closed exactly when the three analog writes are; open while any is not. |
 
-## HERO84: PASS (Identity + Remap only)
+"Candidate" means typed, tested against the emulator, and holding no
+`SafeCommandId`. Nothing on a product surface can reach one, by construction.
 
-- Identity: enumeration → `connect_device` → `read_model_id` → exact product
-  resolution, all through the production stack, `modelId` resolves
-  byte-exact to `"HERO 84 HE"`.
-- Remap: baseline read (`0x46`, PrintScreen), write to `0x40`, read-back
-  confirms, physical key press independently confirmed as F7 (browser
-  key-event decode of HID usage `0x40`), rollback to `0x46`, read-back
-  confirms.
-- No runtime bug, UI bug, product-data bug, safety bug, or protocol
-  contradiction encountered against real hardware in this slice. Two
-  implementation bugs were found and fixed *before* physical success (see
-  exchange 008) — neither reflects a wrong protocol fact; both were gaps in
-  this project's own safety-plumbing wiring, caught by the physical pass
-  doing exactly what it exists to do. **Both are now closed as regressions**,
-  not just as one-off fixes: `tools/emu/src/aula.rs` gained real
-  `read_keymap`/`set_remap` emulator answers for PrtSc (byte-exact against
-  `physical_macro_assignment_20260823.jsonl` where captured, checksum
-  cross-checked against two more real captures), and six new tests in
-  `tools/emu/tests/session_lifetime.rs` name the exact failures:
-  `reading_prtsc_is_what_records_the_backup_and_arms_the_write` (the missing
-  `record_backup` call) and `a_prtsc_write_needs_exactly_one_cadence_wait_after_its_own_read`
-  (the internal-read cadence collision), plus refusal and full-round-trip
-  coverage. `cargo test --workspace` green throughout.
+## The bootstrap doors, 2026-08-24
 
-## FAMILY BACKEND (aula-bytech): PASS
+Sixteen reads and nine writes are waiting for a first exchange. That is the
+largest batch this family's ACL has ever taken at once, and it is deliberate:
+the surface was ported in one pass so that one physical session can close as
+much of it as the evidence allows.
 
-`data/protocols/aula-bytech.toml` now carries 7 verified commands for this
-family (`read_model_id`, `read_key_travel`, `set_key_travel`, `read_keymap`,
-`set_remap`, `start_key_travel_monitor`, `stop_key_travel_monitor`), all with
-hardware evidence, none on `vendor_artifact` alone. `psafety`'s guardrail
-tests (`the_aula_family_has_exactly_the_seven_commands_it_earned`,
-`every_write_in_the_registry_is_one_somebody_decided_to_allow`) hold this
-list exact rather than open-ended.
+Empty is still the doors' resting state. `psafety`'s own guardrails
+(`exactly_the_planned_batch_is_awaiting_a_first_exchange`,
+`the_door_holds_exactly_the_commands_that_are_mid_promotion`) hold the contents
+exact rather than merely non-empty, so a command appearing that nobody put there
+fails the build.
 
-## 15 PRODUCT SPECS
+## Never generated, and staying that way
 
-| Product | Status |
-|---|---|
-| HERO 84 HE | **PASS** (Identity + Remap only, physically validated) |
-| Other 14 catalogued `aula-bytech` products | **UNVALIDATED** — UUIDs and layouts known from the `DB` tree's `kb_by_v3_wired` research (`aula_bytech_models::EXACT_PRODUCTS`), never physically touched by Peripheral. Emulator-based smoke coverage for these is explicitly deferred, per scope, to after this gate |
+`reset_group` (0x11), `start_full_calibration` (0x94) and
+`remove_advanced_key` (0x12) are classified `destructive` in the ACL. The
+generator emits no command id of any kind for that class, so there is no value
+in the program that names them, through any door.
 
-**1 / 15 physically validated, and only for 2 of the ~13 planned operations.**
+Group 0x11 has an entry specifically because `payload[3]` — not the subcommand —
+decides between a layer reset and a **factory reset**, and every other write in
+this family carries a constant `1` there. Anything that treats byte 3 as
+boilerplate and reuses a template eventually emits a factory reset.
 
-## FINAL RANK_A: N/15 = 0/15
+`set_auto_calibrate` (register 25) is **not** the calibration procedure. It is a
+one-byte flag, reversible in one write. The two share a word in their names and
+nothing else, and both ACL entries say so.
 
-Not claimed, and not close: this gate deliberately covers a 2-operation
-vertical slice on a single product to prove the production chain end to end
-before widening. Rank A requires the operation surface listed in the
-expansion order below, physically validated per product (or defensibly
-covered by structural/emulator evidence where physical access is not
-possible), across all 15.
+## Open contradictions
 
-## What happens next, in order (per prior agreement — not started)
+Two disagreements between this project's own two research paths block every
+product row, which is deliberate: a rank that came out clean while they stood
+would be the wrong rank. Both are written up with the frames on all sides in
+`Vetro hud/.claude/worktrees/.../docs/hardware/aula-bytech-request-shape-contradictions.md`.
 
-1. Promote `read_keymap`/`set_remap` is **done** (this gate). Next: macro →
-   profiles/device settings → HE actuation/RT/deadzone → RGB →
-   polling/reconnect → full React UI, one slice at a time, each ending in a
-   physical A-gate the same shape as this one.
-2. The old HE-actuation incident (`W 51→75→51` read back as `202/149`) is
-   **not** part of this gate and does not block it; it is a separate,
-   documented future blocker for the HE actuation write slice specifically.
+1. **Byte 5 of an actuation record: pad byte, or per-key scope flag.** Three
+   independent observations — the vendor's single-key frames, the vendor's
+   whole-board sweeps, and this board's own read replies — agree that `01`
+   means "this key has its own value" and `00` means "it follows the board's".
+   Peripheral writes `00`. This is now the leading explanation for the
+   unresolved `W 51→75→51 → 202/149` incident, and there is a three-step test
+   that settles it without waiting for the failure to recur.
+
+2. **The profile-name "unnamed" sentinel.** One account says a length byte of
+   `0xFF`; the only captured reply carries length `0x38` and fifty-six `0xFF`
+   bytes. The decoder recognises both and records which arrived rather than
+   picking one.
+
+Two further disagreements were found in the same pass and are settled by
+capture: the `0x84` request length byte is not uniform across registers, and
+register 1 is seven bytes rather than three.
+
+## The 15 products
+
+Every row: family semantics established on hardware (once, on the reference
+unit), and the vendor's own per-product layout data. One row has anything more.
+
+| Product | Model id | Validation states | Blockers |
+|---|---|---|---|
+| HERO 84 HE | 18691697672197 | FAMILY_HARDWARE, PRODUCT_BINDING, PRODUCT_LAYOUT, PRODUCT_CAPS | 12 |
+| HERO 68 HE | 18691697672195 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 14 |
+| HERO 68 AIR | 18691697672212 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 14 |
+| WIN68HE Ultra | 18691697672213 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 14 |
+| HERO 68 MINI | 18691697672207 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 14 |
+| HERO 68 HE wireless | 19791209299969 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 15 |
+| HERO 68 HE wireless | 21990232555523 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 15 |
+| HERO 99 | 18691697672210 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 14 |
+| HERO 87 HE | 18691697672214 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 14 |
+| HERO 68 HE NEO | 18691697672218 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 14 |
+| HERO 68 HE JIS | 18691697672232 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 14 |
+| HERO 100 | 18691697672216 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 15 |
+| HERO 99 HE | 18691697672255 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 14 |
+| HERO 100 | 21990232555521 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 15 |
+| HERO 84 HE JIS | 18691697672245 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 14 |
+
+The extra blocker on the four rows at 15 is a firmware caveat their own
+catalogue entry carries: two rows share a display name with a different model
+id, and two share one with a different product id. Not proven interchangeable,
+so not treated as such.
+
+The shape of this table is the shape the evidence should produce. The board
+somebody owns has the fewest blockers; the fourteen nobody has touched each
+carry two more — their own identity binding, and a capability set inherited from
+the family rather than established for them.
+
+### What the four validation states mean, kept apart
+
+- `FAMILY_HARDWARE_VERIFIED` — the family's semantics were established on real
+  hardware. A family fact; every row may carry it.
+- `PRODUCT_BINDING_VERIFIED` — a board answered with this model id **here**. One
+  row.
+- `PRODUCT_LAYOUT_VERIFIED` — the layers and key positions are this product's
+  own vendor data, not a neighbour's. Every row.
+- `PRODUCT_CAPS_VERIFIED` — the capability set was established for this product.
+  One row; the rest carry `inherited_unconfirmed` capabilities, which is
+  precisely not a per-product claim.
+
+Collapsing these into one flag is how a board nobody has touched inherits a
+physical result. They are four separate fields in `pcaps::ProductValidation` for
+that reason, and `exactly_one_product_carries_a_per_product_verification` is the
+test that holds it.
+
+## Rank A: what it takes, and why nothing has it
+
+Every clause has to hold at once — an `AND`, not a score, because a scoring
+function lets a product with nine strong areas average its way past the one hole
+a user would actually hit:
+
+automatic exact identity · verified protocol family · family hardware semantics ·
+a known layout · **every** mandatory capability closed · every exposed operation
+production-safe · known bounds · bounded firmware constraints · known
+persistence and read-back semantics · classified dangerous operations · no
+unresolved contradiction · no manual learning required.
+
+`hiding_a_capability_cannot_produce_a_rank` is the test for the specific failure
+this design exists to prevent: an unmentioned capability counts as `Absent`, not
+as skipped, and only `NotPresent` **with evidence** excuses a board from one.
+
+## Data products
+
+- `crates/pproto/src/aula_bytech_catalog.rs` — the generated Rust catalogue.
+- `data/devices/aula-bytech-catalog.json` — the same facts as data.
+- Both are produced by `python -m aula_kb_v3.emit_peripheral_catalog <worktree>`
+  from `aula_kb_v3/registry_data.py`, deterministically, and the projection
+  carries no research corpus: no vendor executables, no decompiled sources, no
+  raw opcode catalogue. A consumer holding it can build a product surface and
+  cannot assemble a frame. `tests/aula_kb_v3/test_projection_is_deterministic.py`
+  asserts both halves.
+
+## What happens next
+
+The eighteen commands at the doors need one physical session on the HERO 84 HE.
+Only what actually passes gets promoted; anything that echoes, refuses or
+disagrees stays where it is, with the finding recorded.
+
+The actuation incident's three-step test runs in the same session and is cheap:
+read W's record and note byte 5, write once, read again.
