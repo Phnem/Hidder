@@ -1,0 +1,143 @@
+{
+  "schema": "aula-kb-v3-end-to-end-a-gate/1",
+  "status": "CLOSED",
+  "accepted_date": "2026-08-23",
+  "status_labels": {
+    "hero84_identity": "PRODUCTION_PHYSICAL_VALIDATED",
+    "hero84_remap": "PRODUCTION_PHYSICAL_VALIDATED",
+    "read_keymap_class": "safe_read",
+    "set_remap_class": "safe_write"
+  },
+  "scope": {
+    "slice": "identity+remap",
+    "operations_covered": ["identity_resolution", "read_keymap", "set_remap"],
+    "operations_deferred": [
+      "macro",
+      "profiles_device_settings",
+      "he_actuation_write",
+      "rt",
+      "deadzone",
+      "rgb",
+      "polling_reconnect",
+      "full_react_ui"
+    ],
+    "note": "Scope narrowed 2026-08-23 by explicit instruction: only Identity + Remap, one product, before widening."
+  },
+  "date": "2026-08-23",
+  "board": {
+    "product": "HERO 84 HE",
+    "vid_pid": "372E:103E",
+    "device_id": 925765694,
+    "model_id": 18691697672197,
+    "exact_product_resolved": "HERO 84 HE"
+  },
+  "gates": {
+    "BACKEND_READY": {
+      "status": "PASS",
+      "evidence": "crates/pcore,psafety,pproto in the Peripheral worktree; read_keymap/set_remap promoted to safe_read/safe_write in data/protocols/aula-bytech.toml; cargo test --workspace green"
+    },
+    "APP_INTEGRATED": {
+      "status": "PASS",
+      "evidence": "Real Tauri app (npm run tauri dev); IPC commands read_prtsc_binding/set_prtsc_remap; exercised via temporary window.prtscDebug DevTools hook, no full screen built (explicit scope)"
+    },
+    "PHYSICAL_E2E_VALIDATED": {
+      "status": "PASS",
+      "evidence": "docs/hardware/aula-bytech-exchange-008-identity-remap-physical.md in the Peripheral worktree. Two passes: bootstrap-door pass (promoted the ACL), production-gate pass (post-promotion, exercises SafetyGate::read/write). Two implementation defects found and fixed by the second pass: missing record_backup call, cadence collision from internal read-before-write."
+    },
+    "RANK_A": {
+      "status": "NOT_CLAIMED",
+      "reason": "covers 2 of ~13 planned operations on 1 of 15 catalogued products"
+    }
+  },
+  "hero84": {
+    "status": "PASS",
+    "scope": "identity+remap only",
+    "identity_chain": "enumeration -> connect_device -> read_model_id -> exact product resolution, all through production stack",
+    "remap_cycle": {
+      "baseline": { "value": 70, "hex": "0x46", "hid_meaning": "PrintScreen" },
+      "written": { "value": 64, "hex": "0x40", "hid_meaning": "F7" },
+      "readback_after_write": 64,
+      "physical_confirmation": {
+        "method": "browser key-event inspector, physical PrtSc key pressed after remap",
+        "observed": { "key": "F7", "code": "F7", "keyCode": 118 },
+        "note": "corrects a pre-existing 'Num Lock' mislabel for 0x40 present in both the DB tree's PHYSICAL_VALIDATION_PASS.md and this project's own first ACL note; 0x40 is F7 on the standard USB HID keyboard usage table, Num Lock is 0x53"
+      },
+      "rollback": { "value": 70, "hex": "0x46" },
+      "readback_after_rollback": 70
+    },
+    "bugs_found_and_fixed_before_physical_success": [
+      {
+        "symptom": "Refused(NoBackup)",
+        "cause": "DeviceSession::read_prtsc_binding did not call SafetyGate::record_backup",
+        "fix": "added the call, mirroring DeviceSession::read's actuation arm",
+        "status": "closed_by_regression_test",
+        "regression_test": "tools/emu/tests/session_lifetime.rs::reading_prtsc_is_what_records_the_backup_and_arms_the_write"
+      },
+      {
+        "symptom": "Refused(RateLimited { wait_ms: 1000 })",
+        "cause": "set_prtsc_remap re-read PrtSc internally immediately before writing; the family's cadence clock is one clock per device, shared across commands",
+        "fix": "gave set_prtsc_remap the same fresh_prtsc-armed-by-a-prior-read invariant write_actuation already uses for fresh_actuation, instead of re-reading internally",
+        "status": "closed_by_regression_test",
+        "regression_test": "tools/emu/tests/session_lifetime.rs::a_prtsc_write_needs_exactly_one_cadence_wait_after_its_own_read"
+      }
+    ],
+    "additional_regression_coverage": [
+      "tools/emu/tests/session_lifetime.rs::a_prtsc_write_is_refused_until_this_session_has_read_it",
+      "tools/emu/tests/session_lifetime.rs::a_prtsc_write_is_refused_while_bound_to_a_macro",
+      "tools/emu/tests/session_lifetime.rs::prtsc_round_trips_through_the_production_gate",
+      "tools/emu/src/aula.rs's own unit tests, including checksum cross-validation against real captured checksums"
+    ],
+    "classification": "none of the above are protocol contradictions or product-data bugs; both are gaps in this project's own safety-plumbing wiring, caught by the physical pass as designed, and both are now closed by regression tests rather than merely by the fix that was applied at the time"
+  },
+  "family_backend": {
+    "family": "aula-bytech",
+    "status": "PASS",
+    "verified_commands": [
+      "read_model_id",
+      "read_key_travel",
+      "set_key_travel",
+      "read_keymap",
+      "set_remap",
+      "start_key_travel_monitor",
+      "stop_key_travel_monitor"
+    ],
+    "guardrail_tests": [
+      "psafety::forbidden_commands::the_aula_family_has_exactly_the_seven_commands_it_earned",
+      "psafety::forbidden_commands::every_write_in_the_registry_is_one_somebody_decided_to_allow",
+      "pproto::aula_bytech_he::write_tests::the_writable_commands_in_this_family_are_the_ones_that_were_verified",
+      "pproto::aula_bytech_kb::tests::the_bootstrap_doors_can_no_longer_name_these_commands"
+    ]
+  },
+  "product_specs": {
+    "total_catalogued": 15,
+    "physically_validated": 1,
+    "physically_validated_products": ["HERO 84 HE"],
+    "unvalidated_products_count": 14,
+    "unvalidated_note": "UUIDs and layouts known from the DB tree's kb_by_v3_wired research (aula_bytech_models::EXACT_PRODUCTS); never physically touched by Peripheral. Emulator smoke coverage deferred to after this gate, per scope."
+  },
+  "final_rank_a": {
+    "n": 0,
+    "of": 15,
+    "claimed": false,
+    "reason": "deliberate: this gate proves the production chain end to end on a vertical slice before widening, per explicit instruction"
+  },
+  "cross_validation": {
+    "adr": "Vetro hud/.claude/worktrees/gracious-haslett-7cac7b/docs/decisions/0002-aula-bytech-kb-v3-wired-convergence.md",
+    "finding": "aula-bytech (static SDK analysis) and kb_by_v3_wired (hero.aulastar.com web configurator observation) are independent research paths that converged byte-for-byte on model-id framing, actuation framing, key ids, checksum construction, and family-behavior signals; treated as one ProtocolFamily, extending the existing AulaBytechEngine rather than creating a second one"
+  },
+  "expansion_order_next": [
+    "macro",
+    "profiles_device_settings",
+    "he_actuation_rt_deadzone",
+    "rgb",
+    "polling_reconnect",
+    "full_react_ui"
+  ],
+  "deferred_not_blocking": {
+    "he_actuation_readback_incident": {
+      "description": "W 51->75->51 read back as 202/149 in an earlier session",
+      "status": "documented separately as a future HE-actuation-slice blocker",
+      "blocks_this_gate": false
+    }
+  }
+}
