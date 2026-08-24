@@ -8,6 +8,10 @@ Last completed ticket: TICKET-13 (Tauri UI — Devices + HE + Journal, read-only
 Next eligible ticket: **TICKET-15** (verified write + Analog Monitor). Параллельно доступны TICKET-05 (research track) и shell-трек TICKET-20.
 Last updated: 2026-08-19
 
+**Дополнение 2026-08-24 (блок выше не переписан — он про состояние на 19-е и с тех пор устарел; сверяться с git-историей, а не с ним).** Работа по `aula-bytech` ушла далеко вперёд в worktree `.claude/worktrees/gracious-haslett-7cac7b` (ветка `ticket-15-20/product-ui`): exchanges 001–016, ADR-0002, и **HERO 84 HE заморожен на A Preview** — см. `docs/hardware/AULA_BYTECH_RESEARCH_FREEZE_20260824.md` и машиночитаемый `docs/hardware/aula-hero-84-he-rank.yaml`. У него ровно одна hardware-shaped дыра (`rapid_trigger_units_crosscheck`), намеренно оставленная как benchmark для Vetro Probe; закрывать её руками нельзя.
+
+Открыт новый трек: **TICKET-23..26 (MCHOSE + калибровочный гейт)** — см. «Трек MCHOSE» в Ticket overview. Готовы к работе: **TICKET-23** и **TICKET-26** (параллельно, друг друга не блокируют).
+
 Реализация начата 2026-08-17 (пользователь: «раздели план на фазы и начинай фазу 1»). Phase 1 по разбивке ниже — документационные тикеты (03/01) + инфраструктурный скелет (07).
 
 ## Execution phases
@@ -284,6 +288,28 @@ Hardware-in-the-loop чеклист ведётся на AULA Hero 84 HE (еди�
 | TICKET-20 | EPIC: System Tray + `dev.power.*`/`dev.connection` | PENDING — shell-трек **разблокирован** (TICKET-13 выполнен) | TICKET-19 (реальные battery-данные) | — | — |
 | TICKET-21 | Изучить инженерные методы sharkfin по исходникам | **DONE** | — | — | самопроверка, блокеров нет |
 | TICKET-22 | HID-инвентарь VXE Dragonfly R1 SE+ (2.4/wired/BT) | **DONE_WITH_DEVIATIONS** | TICKET-07 (done), TICKET-08 (done) | `f7f997a` | самопроверка, блокеров нет |
+| TICKET-23 | MCHOSE — приобретение артефактов, провенанс, границы семей | **READY** | — | — | — |
+| TICKET-24 | MCHOSE — STATIC LANE: кодек, читатель ответов, опасные пути | PENDING | TICKET-23 | — | — |
+| TICKET-25 | MCHOSE — ORACLE + LAYOUT + IDENTITY (живая семантика без железа) | PENDING | TICKET-23 (жёстко), TICKET-24 (мягко) | — | — |
+| TICKET-26 | Калибровочный гейт: починить движок инференса, сдать вслепую на AULA | **READY — параллельно** | — | — | — |
+
+### Трек MCHOSE (открыт 2026-08-24)
+
+Второй бренд и первая семья, которая должна пройти **через конвейер**, а не через ручную работу. Исполняется по `VETRO_D_TO_A_PREVIEW_EXECUTION_PLAYBOOK_V4.md`; каждый тикет ссылается на конкретные параграфы и ловушки.
+
+```text
+TICKET-23 (pre-flight: CAS, каталог, ADR-0003)
+   ├── TICKET-24 (static lane: codec + response_reader + destructive)
+   └── TICKET-25 (oracle + layout + identity -> IR, Preview, hardware_shaped_hole)
+
+TICKET-26 (калибровочный гейт на AULA) — параллельно, ничего из 23–25 не блокирует
+```
+
+**Гейт-зависимость, которую нельзя потерять.** Playbook §3: калибровочный гейт на AULA — обязательный шаг **перед первым signed bundle любой новой семьи**. Замер 2026-08-24: гейт **красный и никогда не сдавался** (слепые режимы A/B: `HIGH_CONFIDENCE_WRONG` = 1 у v1 и 3 у v2 при требовании строго 0; `EXACT_PACKET_MATCH` 0/18 при требовании ≥ 0.9).
+
+> TICKET-23/24/25 могут довести MCHOSE до полного IR и per-capability Preview, но **A Preview для MCHOSE не выдаётся, пока TICKET-26 не зелёный**. Это не формальность: §0.4 — если конвейер не выводит факт про AULA из одних вендорских артефактов, его уверенность на MCHOSE ложная.
+
+Решения по скоупу (пользователь, 2026-08-24) зафиксированы в TICKET-23 и выносятся в ADR-0003: HID-реверс покрывает HE-клавиатуры + механику + мышей; **QMK/VIA-платы — отдельная семья `origin: open_spec`, не реверсится**; audio (HEADSET/SPEAKER, ось `audioRuntimeType`) припаркован отдельным ADR, не выброшен.
 
 Примечание по «нескольким READY одновременно»: TICKET-01, TICKET-03 и TICKET-07 не блокируют друг друга и могут выполняться в любом порядке или параллельно (разные типы работы — чтение/конспект vs инфраструктура). Правило «один тикет в основном дереве одновременно» (skill's "One ticket at a time") относится к *коду в общем working tree*; TICKET-01/02/03/05/06 — исследовательские/закупочные, не код, поэтому не конкурируют за одно и то же дерево с TICKET-07. При старте Phase 8 реализация всё равно ведётся по одному code-тикету за раз.
 
