@@ -41,3 +41,6 @@ Thumbs.db
 desktop.ini
 $RECYCLE.BIN/
 .DS_Store
+
+# Vetro Probe schemas are tracked (exception to *.json)
+!community/vetro_probe/schema/*.json

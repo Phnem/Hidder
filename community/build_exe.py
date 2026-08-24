@@ -146,7 +146,41 @@ def build_variant(name: str, entry_point: Path, search_paths: list[Path], assets
     return exe_path
 
 
-def generate_build_manifest(ru_exe: Path, en_exe: Path, helper_dll: Path) -> Path:
+def generate_build_manifest(ru_exe: Path, en_exe: Path, helper_dll: Path, vetro_ru: Path | None = None, vetro_en: Path | None = None) -> Path:
+    binaries: dict[str, dict] = {
+        "PeripheralResearch_ru.exe": {
+            "size_bytes": ru_exe.stat().st_size,
+            "sha256": compute_sha256(ru_exe),
+            "defender_scan": scan_with_defender(ru_exe),
+            "has_pe_metadata": True,
+        },
+        "PeripheralResearch_en.exe": {
+            "size_bytes": en_exe.stat().st_size,
+            "sha256": compute_sha256(en_exe),
+            "defender_scan": scan_with_defender(en_exe),
+            "has_pe_metadata": True,
+        },
+        "Hidder.NativeObserver.x64.dll": {
+            "size_bytes": helper_dll.stat().st_size,
+            "sha256": compute_sha256(helper_dll),
+            "defender_scan": scan_with_defender(helper_dll),
+            "has_pe_metadata": True,
+        },
+    }
+    if vetro_ru is not None and vetro_ru.is_file():
+        binaries["VetroProbe_ru.exe"] = {
+            "size_bytes": vetro_ru.stat().st_size,
+            "sha256": compute_sha256(vetro_ru),
+            "defender_scan": scan_with_defender(vetro_ru),
+            "has_pe_metadata": True,
+        }
+    if vetro_en is not None and vetro_en.is_file():
+        binaries["VetroProbe_en.exe"] = {
+            "size_bytes": vetro_en.stat().st_size,
+            "sha256": compute_sha256(vetro_en),
+            "defender_scan": scan_with_defender(vetro_en),
+            "has_pe_metadata": True,
+        }
     manifest = {
         "project": "Hidder",
         "version": "0.3.0",
@@ -158,26 +192,7 @@ def generate_build_manifest(ru_exe: Path, en_exe: Path, helper_dll: Path) -> Pat
             "rust_edition": "2021",
             "c_compiler": "MSVC cl 14.5",
         },
-        "binaries": {
-            "PeripheralResearch_ru.exe": {
-                "size_bytes": ru_exe.stat().st_size,
-                "sha256": compute_sha256(ru_exe),
-                "defender_scan": scan_with_defender(ru_exe),
-                "has_pe_metadata": True,
-            },
-            "PeripheralResearch_en.exe": {
-                "size_bytes": en_exe.stat().st_size,
-                "sha256": compute_sha256(en_exe),
-                "defender_scan": scan_with_defender(en_exe),
-                "has_pe_metadata": True,
-            },
-            "Hidder.NativeObserver.x64.dll": {
-                "size_bytes": helper_dll.stat().st_size,
-                "sha256": compute_sha256(helper_dll),
-                "defender_scan": scan_with_defender(helper_dll),
-                "has_pe_metadata": True,
-            },
-        },
+        "binaries": binaries,
     }
     
     manifest_path = dist_dir / "build_manifest.json"
@@ -190,7 +205,7 @@ def main() -> None:
     # 0. Build native Rust hook DLL first
     helper_dll = build_rust_hook_dll()
 
-    # 1. Build Russian Edition
+    # 1. Build Russian Edition (legacy observer)
     ru_exe = build_variant(
         name="PeripheralResearch_ru",
         entry_point=community_dir / "PeripheralResearch.py",
@@ -198,16 +213,30 @@ def main() -> None:
         assets_path=community_dir / "probe" / "assets",
     )
     
-    # 2. Build English Edition
+    # 2. Build English Edition (legacy observer)
     en_exe = build_variant(
         name="PeripheralResearch_en",
         entry_point=en_dir / "PeripheralResearch.py",
         search_paths=[en_dir, community_dir, project_root],
         assets_path=en_dir / "probe" / "assets",
     )
+
+    # 3. Build VetroProbe editions (isolated validator)
+    vetro_ru = build_variant(
+        name="VetroProbe_ru",
+        entry_point=community_dir / "VetroProbe.py",
+        search_paths=[community_dir, project_root],
+        assets_path=community_dir / "probe" / "assets",
+    )
+    vetro_en = build_variant(
+        name="VetroProbe_en",
+        entry_point=en_dir / "VetroProbe.py",
+        search_paths=[en_dir, community_dir, project_root],
+        assets_path=en_dir / "probe" / "assets",
+    )
     
-    # 3. Generate cryptographic build manifest
-    manifest_path = generate_build_manifest(ru_exe, en_exe, helper_dll)
+    # 4. Generate cryptographic build manifest
+    manifest_path = generate_build_manifest(ru_exe, en_exe, helper_dll, vetro_ru, vetro_en)
 
     # Clean temporary build folders and specs
     if build_dir.is_dir():
@@ -217,8 +246,10 @@ def main() -> None:
         
     print("\n====================================================")
     print("All hardened production builds completed successfully!")
-    print(f"Russian edition: {ru_exe} ({compute_sha256(ru_exe)})")
-    print(f"English edition: {en_exe} ({compute_sha256(en_exe)})")
+    print(f"PeripheralResearch_ru: {ru_exe} ({compute_sha256(ru_exe)})")
+    print(f"PeripheralResearch_en: {en_exe} ({compute_sha256(en_exe)})")
+    print(f"VetroProbe_ru: {vetro_ru} ({compute_sha256(vetro_ru)})")
+    print(f"VetroProbe_en: {vetro_en} ({compute_sha256(vetro_en)})")
     print(f"Build manifest:  {manifest_path}")
     print("====================================================")
 
