@@ -1,7 +1,7 @@
 # AULA KB V3 — End-to-End A-Gate
 
-**Last recomputed 2026-08-24, after the knowledge-closure batch's physical
-pass.** The rank below is not stored anywhere; it is computed by
+**Last recomputed 2026-08-24, after the knowledge-closure batch's *second*
+physical pass.** The rank below is not stored anywhere; it is computed by
 `crates/pproto/src/aula_bytech_rank.rs` from the ACL's own command classes and
 the generated product catalogue, and printed by
 `cargo run -p pproto --example rank_matrix`. Nothing in this document can be
@@ -13,11 +13,10 @@ FINAL RANK_A = 0/15
 
 ## What is closed, and what closed it
 
-All eleven mandatory capabilities are now closed for the reference unit.
-"Closed" here means: production-safe commands exist for it in the ACL. It does
-**not** yet mean a second physical pass through that production code has
-happened — see "What 'closed' does and does not mean" below before reading
-this table as more settled than it is.
+All eleven mandatory capabilities are now closed for the reference unit, and as
+of exchange 011 every one of them has had the second physical pass this
+project's discipline requires — see "What 'closed' does and does not mean"
+below for what that does and does not buy.
 
 | Capability | State | How |
 |---|---|---|
@@ -25,12 +24,12 @@ this table as more settled than it is.
 | Remap | **CLOSED** | `read_keymap` `safe_read`, `set_remap` `safe_write`. Two physical passes, 2026-08-23 (exchange 008). |
 | Macro | **CLOSED** | `set_macro_table` `safe_write`, assignment through `set_remap`. Two physical passes, 2026-08-23 (exchange 009), including witnessed playback. |
 | HE actuation | **CLOSED**, with a caveat | `read_key_travel` `safe_read`, `set_key_travel` `slow_flash`. Physically validated 2026-08-19 (exchanges 005/006). See the open incident below. |
-| Profiles | **CLOSED** | `read_profile_index`/`set_profile_index` `safe_read`/`safe_write`. One bootstrap-door pass, 2026-08-24 (exchange 010) — full round trip, visible RGB change on switch. |
-| Polling | **CLOSED** | `read_polling_rate`/`set_polling_rate` `safe_read`/`safe_write`. One bootstrap-door pass, both directions, across the reconnect the write forces — the only command in this family whose write is never acknowledged. |
-| Device settings | **CLOSED** | `read_os_mode`/`set_os_mode`, `read_win_lock`/`set_win_lock`, `read_key_combo`/`set_key_combo` `safe_read`/`safe_write`. One bootstrap-door pass each. |
-| RGB | **CLOSED** | `read_light_mode`/`set_light_mode` `safe_read`/`safe_write`. One bootstrap-door pass settled the entry's own former weakest-evidence caveat — the real board answered all seven bytes and a real write frame was captured for the first time. |
-| HE rapid trigger | **CLOSED** | `read_rapid_trigger`/`set_rapid_trigger` `safe_read`/`safe_write`. One full cycle on W. |
-| HE dead zone | **CLOSED** | `read_deadzone`/`set_deadzone` `safe_read`/`safe_write`. One full cycle on W. |
+| Profiles | **CLOSED** | `read_profile_index`/`set_profile_index` `safe_read`/`safe_write`. Two passes, 2026-08-24 (exchanges 010, 011) — full round trip both times, visible RGB change on switch. |
+| Polling | **CLOSED** | `read_polling_rate`/`set_polling_rate` `safe_read`/`safe_write`. Two passes, both directions each time, across the reconnect the write forces — the only command in this family whose write is never acknowledged. |
+| Device settings | **CLOSED** | `read_os_mode`/`set_os_mode`, `read_win_lock`/`set_win_lock`, `read_key_combo`/`set_key_combo` `safe_read`/`safe_write`. Two passes each. |
+| RGB | **CLOSED** | `read_light_mode`/`set_light_mode` `safe_read`/`safe_write`. The first pass settled the entry's own former weakest-evidence caveat — the real board answered all seven bytes and a real write frame was captured for the first time; the second round-tripped one unit of red through the production gate. |
+| HE rapid trigger | **CLOSED** | `read_rapid_trigger`/`set_rapid_trigger` `safe_read`/`safe_write`. Two full cycles on W. |
+| HE dead zone | **CLOSED** | `read_deadzone`/`set_deadzone` `safe_read`/`safe_write`. Two full cycles on W. |
 | Per-key HE | **CLOSED** | Closes exactly when all three per-key analog writes do; all three do now. |
 
 Also promoted, off-rank: `read_profile_name_slot0/1/2` (`safe_read`, read-only
@@ -41,18 +40,30 @@ with no vendor table yet to name it against), `set_auto_calibrate`
 ### What "closed" does and does not mean here
 
 `capability_status` reads "Closed" the moment a command exists as
-`safe_read`/`safe_write` in the ACL for the *family* — it does not track
-whether that specific promoted code has had its own second physical pass.
-This project's own established discipline (see exchange 008's NoBackup and
-cadence-collision bugs, both found only *after* promotion, by the pass that
-exercised the actually-refactored production code) says promotion is not the
-end of the story: **a second physical pass through the production
-`SafetyGate` — not the bootstrap-door pass that justified promotion — is what
-this project has always required before calling a capability closed in the
-fuller sense.** That second pass has not happened for any of the eight
-capabilities promoted on 2026-08-24. Read "Closed" in this table as "on a
-production-safe path, evidenced once" rather than "fully validated twice",
-until that pass runs.
+`safe_read`/`safe_write` in the ACL for the *family*. That is a statement about
+the ACL, and it is the same statement whether the code behind it has been run
+on a board once, twice, or never — the rank evaluator cannot see physical
+passes and should not pretend to.
+
+What backs the table above is therefore the exchange record, not the word
+"Closed". This project's discipline (exchange 008's `NoBackup` and
+cadence-collision bugs were both found only *after* promotion, by the pass that
+exercised the actually-refactored production code) requires **two** physical
+passes: the bootstrap-door pass that justifies promoting the ACL class, then a
+second pass through the production `SafetyGate` the promotion produces.
+
+As of exchange 011
+(`docs/hardware/aula-bytech-exchange-011-second-pass-production.md` in the
+Peripheral tree) that second pass has run for all twenty-two commands promoted
+on 2026-08-24 — 32 checks, 32 passes, board byte-identical at the end. The same
+two defect classes appeared again during this promotion, were caught against
+the emulator, and did not reproduce on hardware.
+
+**Still not what it means:** this is one board. Every row of the table is
+evidenced on the single HERO 84 HE somebody owns, and the fourteen other
+catalogued products inherit their capability set from the family rather than
+having it established. That is a separate blocker and it is why fourteen rows
+carry `manual learning still required`.
 
 ## The bootstrap doors, after 2026-08-24
 
@@ -225,19 +236,32 @@ than merely declared.
 
 ## What happens next
 
-1. **The second physical pass.** Every capability promoted 2026-08-24 needs a
-   pass through the actually-refactored production `SafetyGate` code before
-   this project would call it closed in the fuller sense — the same
-   requirement identity+remap and macro both satisfied, and the one that found
-   two real bugs neither bootstrap-door pass could have caught. Not yet run.
-2. **The request-shape fix** for `read_firmware_version`/`read_rt_precision`/
+~~1. **The second physical pass.**~~ **Done, exchange 011.** All twenty-two
+   promoted commands re-exercised through the refactored production
+   `SafetyGate`: 13 reads, 8 write round-trips with rollback and a second
+   read-back, `set_polling_rate` both directions. 32/32, board byte-identical
+   at the end. Runner: `cargo run -p pcore --example second_physical_pass`.
+
+1. **The request-shape fix** for `read_firmware_version`/`read_rt_precision`/
    `read_supported_switches` — widen the request the way `read_model_id`'s
-   already does, then a short follow-up read.
-3. **The reconnect-path bug** in `Worker::scan()` — diagnose properly (the
-   `Peripheral::connect()` re-lookup finding a match for a path theory says
-   should be gone is the loose thread) and fix, or find the real cause if the
-   staleness theory is wrong.
+   already does, then a short follow-up read. This is now the *only* thing
+   standing between the reference unit and two of its four blockers: the
+   switch-table bound and the rapid-trigger unit scalar both resolve on it.
+2. **The reconnect-path bug** in `Worker::scan()` — exchange 011 narrowed it
+   without fixing it. Three fresh-process reconnects across the polling write
+   succeeded first time, so this is long-lived-process state rather than a
+   device or backend fault. The `Peripheral::connect()` re-lookup finding a
+   match for a path the staleness theory says should be gone is still the
+   loose thread.
+3. **The journal renders a pending write as a refusal.** `SafetyGate::write`
+   reuses `Refusal::NeedsConfirmation` as its before-the-wire placeholder, so a
+   hardware transcript reads `refused: NeedsConfirmation` for a write that was
+   authorised and sent. No emulator test reads the journal's rendering, which
+   is how it reached a transcript. Cosmetic, actively misleading, unfixed.
 4. **The actuation contradiction** needs a key this project can read/write
    that is not already at `trailing: 0` — none exists on the current W/A/S/D
-   surface. Widening that surface, or finding another way to observe the
-   byte's behaviour, is what would move it.
+   surface. Exchange 011 added corroboration from a sibling record (W's
+   rapid-trigger scope byte is a live `01` and survives a round trip intact),
+   which makes the byte meaningful somewhere without testing the command in
+   question. Widening the production actuation surface is still what would
+   move it.
