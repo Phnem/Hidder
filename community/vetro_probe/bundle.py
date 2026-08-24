@@ -112,17 +112,21 @@ def parse_bundle(data: dict[str, Any]) -> Bundle:
 
 
 def example_hero84_bundle() -> Bundle:
-    """Minimal HERO84 B Preview for vertical slice and tests."""
+    """Legacy minimal bundle for unit tests (synthetic, not production).
+
+    Production code must use bundle_export.export_bundle_for_uuid().
+    Keeping this for fast offline tests without registry checkout.
+    """
     data: dict[str, Any] = {
         "schema": "vetro.preview-bundle.v1",
-        "id": "aula-hero84-he-v1",
+        "id": "aula-hero84-he-v1-synthetic",
         "version": 1,
-        "product": {"vid": "0x372E", "pid": "0x103E", "name": "AULA HERO84 HE", "uuid": "aula-hero84-he"},
-        "family": "aula_he_v3",
+        "product": {"vid": "0x372E", "pid": "0x103E", "name": "AULA HERO84 HE", "uuid": "18691697672197"},
+        "family": "aula_kb_v3_wired",
         "connection": {"mode": "wired"},
-        "firmware": {"branch": "1.17"},
+        "firmware": {"branch": "unknown"},
         "capabilities": {
-            "rgb": True,
+            "rgb_core": True,
             "polling": True,
             "actuation": True,
             "rapid_trigger": True,
@@ -130,16 +134,32 @@ def example_hero84_bundle() -> Bundle:
         },
         "bounds": {
             "he.actuation": {"min": 0.1, "max": 3.4, "unit": "mm", "safe_values": [0.4, 0.6, 0.8, 1.0]},
-            "he.rt.enabled": {"min": 0, "max": 1},
+            "he.rt": {"min": 0, "max": 1},
             "keyboard.polling": {"min": 125, "max": 8000, "unit": "hz", "safe_values": [1000, 2000]},
-            "light.brightness": {"min": 0, "max": 100, "safe_values": [50]},
+            "light.rgb_core": {"min": 0, "max": 0xFFFFFF, "safe_values": [0xFF0000]},
+            "keyboard.profile": {"min": 0, "max": 2, "safe_values": [1]},
         },
         "operations": {
             "he.actuation": {"id": "he.actuation", "kind": "set", "reversible": True, "readback": True, "cadence_ms": 150},
-            "he.rt.enabled": {"id": "he.rt.enabled", "kind": "toggle", "reversible": True, "readback": True},
+            "he.rt": {"id": "he.rt", "kind": "set", "reversible": True, "readback": True},
             "keyboard.polling": {"id": "keyboard.polling", "kind": "set", "reversible": True, "readback": True, "requires_reconnect": True},
-            "light.brightness": {"id": "light.brightness", "kind": "set", "reversible": True, "readback": True},
+            "light.rgb_core": {"id": "light.rgb_core", "kind": "set", "reversible": True, "readback": True},
+            "keyboard.profile": {"id": "keyboard.profile", "kind": "set", "reversible": True, "readback": True},
             "input.he.analog_w": {"id": "input.he.analog_w", "kind": "observable", "reversible": False, "readback": False, "needs_observable": True},
         },
+        "knowledge_revision": "synthetic",
     }
     return parse_bundle(data)
+
+
+def production_bundle_for_hero84() -> Bundle:
+    """Load production bundle from compiled registry (no hardcoded opcode)."""
+    try:
+        from .bundle_export import export_bundle_for_uuid
+
+        data = export_bundle_for_uuid()
+        return parse_bundle(data)
+    except Exception as e:
+        # Fall back to synthetic for CI without DB checkout, but mark as such
+        # Tests that require production truth should skip if registry unavailable
+        raise RuntimeError(f"production bundle unavailable (registry not compiled?): {e}") from e

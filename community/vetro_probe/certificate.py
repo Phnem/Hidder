@@ -25,6 +25,8 @@ class Certificate:
     contradictions: list[str] = field(default_factory=list)
     coverage: dict[str, Any] = field(default_factory=dict)
     verdict: str = "FAIL"  # PASS / FAIL
+    knowledge_revision: str = ""
+    timings: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -32,6 +34,8 @@ class Certificate:
             "tool_version": self.tool_version,
             "identity": self.identity,
             "bundle": self.bundle,
+            "knowledge_revision": self.knowledge_revision,
+            "timings": self.timings,
             "baseline_hash": self.baseline_hash,
             "final_hash": self.final_hash,
             "baseline_restored": self.baseline_restored,
@@ -56,6 +60,8 @@ def build_certificate(
     tests: list[TestEvidence],
     contradictions: list[str],
     coverage: dict[str, Any],
+    knowledge_revision: str = "",
+    timings: dict[str, Any] | None = None,
 ) -> Certificate:
     verdict = "PASS" if (identity_verdict.passed and baseline_restored and all(t.status == "PASS" for t in tests) and not contradictions) else "FAIL"
     # If any test BLOCKED due to missing baseline etc, verdict is FAIL per Final Restore Gate spec
@@ -64,6 +70,12 @@ def build_certificate(
         verdict = "FAIL"
     if not baseline_restored:
         verdict = "FAIL"
+    if not knowledge_revision:
+        # try bundle's own knowledge_revision field
+        try:
+            knowledge_revision = bundle.raw.get("knowledge_revision", "") or ""
+        except Exception:
+            knowledge_revision = ""
 
     cert = Certificate(
         identity={
@@ -77,6 +89,8 @@ def build_certificate(
             "exact_identity_pass": identity_verdict.passed,
         },
         bundle={"id": bundle.id, "version": bundle.version, "hash": bundle.hash},
+        knowledge_revision=knowledge_revision,
+        timings=timings or {},
         baseline_hash=baseline_hash,
         final_hash=final_hash,
         baseline_restored=baseline_restored,

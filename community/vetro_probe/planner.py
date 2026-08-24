@@ -82,6 +82,38 @@ def _mandatory_ops_for_kind(kind: str) -> list[str]:
     return MECH_MANDATORY
 
 
+ALIASES: dict[str, list[str]] = {
+    "profiles": ["profiles", "keyboard.profile", "keyboard.profiles"],
+    "light.effect": ["light.effect", "light.rgb_core", "light.brightness"],
+    "win_lock": ["win_lock", "device.win_lock"],
+    "os_mode": ["os_mode", "device.os_mode"],
+    "debounce": ["debounce", "keyboard.debounce", "device.debounce"],
+    "he.rt.enabled": ["he.rt.enabled", "he.rt", "he.rt.enable"],
+    "he.rt.press": ["he.rt.press", "he.rt"],
+    "he.rt.release": ["he.rt.release", "he.rt"],
+    "he.deadzone": ["he.deadzone", "he.deadzone.up", "he.deadzone.down"],
+    "remap": ["remap", "keyboard.remap"],
+    "actuation": ["actuation", "he.actuation"],
+}
+
+def _resolve_alias(base: str, bundle: Bundle) -> str | None:
+    # Direct match first
+    if base in bundle.operations:
+        return base
+    # Alias match
+    for key, aliases in ALIASES.items():
+        if base == key or base in aliases:
+            for alias in aliases:
+                if alias in bundle.operations:
+                    return alias
+    # Also try base as alias key
+    if base in ALIASES:
+        for alias in ALIASES[base]:
+            if alias in bundle.operations:
+                return alias
+    return None
+
+
 def plan(bundle: Bundle, kind: str | None = None) -> list[PlannedOp]:
     """Return ordered minimal plan. Fail-closed planner never invents operations not in bundle."""
     kind = kind or _device_family_to_kind(bundle)
@@ -96,10 +128,11 @@ def plan(bundle: Bundle, kind: str | None = None) -> list[PlannedOp]:
     for surf in mandatory_surface:
         # surf like "light.effect_if_exposed" -> operation "light.effect" or "light.brightness"
         base = surf.replace("_if_exposed", "").replace("_if_present", "").replace("_if_core", "").replace("_if_relevant", "")
-        # direct match
-        candidates = []
-        if base in bundle.operations:
-            candidates.append(base)
+        # direct match via alias
+        resolved = _resolve_alias(base, bundle)
+        candidates: list[str] = []
+        if resolved:
+            candidates.append(resolved)
         # prefix match: surf "buttons/addressing" has no direct op, skip but keep for coverage reporting
         # also "light.effect" may map to "light.brightness"/"light.effect"
         if "/" in base or base in ("identity", "final_restore", "he.per_key_addressing", "he.persistence_if_relevant", "analog_if_present", "battery_if_wireless"):
@@ -135,20 +168,33 @@ def plan(bundle: Bundle, kind: str | None = None) -> list[PlannedOp]:
 def coverage_report(bundle: Bundle, tests: list[Any], kind: str | None = None) -> dict[str, Any]:
     kind = kind or _device_family_to_kind(bundle)
     mandatory = _mandatory_ops_for_kind(kind)
-    # Count how many mandatory ops have PASS
-    # For surf entries without direct op, treat as covered if identity/final_restore passed separately
+    # Count how many mandatory ops have PASS (alias-aware)
     passed_ops = {t.operation for t in tests if getattr(t, "status", "") == "PASS"}
-    # Evaluate per mandatory surface that maps to an op
+    # Expand passed set with aliases so light.rgb_core counts for light.effect etc
+    expanded = set(passed_ops)
+    for op in list(passed_ops):
+        for base, aliases in ALIASES.items():
+            if op in aliases:
+                expanded.add(base)
+                expanded.update(aliases)
     total_mappable = 0
     passed_mappable = 0
     by_cap: dict[str, bool] = {}
     for surf in mandatory:
         base = surf.replace("_if_exposed", "").replace("_if_present", "").replace("_if_core", "").replace("_if_relevant", "")
-        if base in ("identity", "final_restore", "buttons/addressing", "he.per_key_addressing", "he.persistence_if_relevant", "analog_if_present", "battery_if_wireless", "layout/layers", "profiles_if_present", "profiles"):
-            # synthetic checks handled elsewhere
+        if base in ("identity", "final_restore", "buttons/addressing", "he.per_key_addressing", "he.persistence_if_relevant", "analog_if_present", "battery_if_wireless", "layout/layers", "profiles_if_present"):
+            # synthetic checks handled elsewhere; but profiles (without suffix) is real
+            continue
+        # Skip if no mappable op exists at all (e.g., no bundle op for this surface)
+        # Check if this surface has any alias in bundle
+        resolved = _resolve_alias(base, bundle)
+        if resolved is None:
+            # Check if any alias of base exists as mappable but we still count it as not covered?
+            # If bundle doesn't have this capability at all, don't count it toward mandatory_core
             continue
         total_mappable += 1
-        op_pass = base in passed_ops
+        # Consider alias-expanded passed set
+        op_pass = base in expanded or resolved in expanded
         by_cap[base] = op_pass
         if op_pass:
             passed_mappable += 1

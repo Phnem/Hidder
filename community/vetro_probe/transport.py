@@ -112,24 +112,24 @@ class FakeTransport(DeviceTransport):
 
 
 class HidTransport(DeviceTransport):
-    """Placeholder for real HID transport. Not used in headless slice.
+    """Typed production HidTransport placeholder.
 
-    When implemented, it will:
-    - resolve typed operation -> serializer -> frame via bundle
-    - send via hidapi
-    - never accept raw bytes from caller
+    Real implementation is AulaHidTransport in aula_transport.py which wraps
+    HidRawTransport (hidapi) or simulator and dispatches typed operation_ids
+    through aula_kb_v3.operations + SafetyGate. Never accepts raw bytes.
+    This stub is kept for backward imports; use AulaHidTransport directly.
     """
 
     def __init__(self, instance: Any | None = None) -> None:
         self._session_id = 1
-        self._valid = True
+        self._valid = False
         self._instance = instance
 
     def get(self, operation_id: str) -> tuple[Any, TransportResult]:
-        return None, TransportResult(False, error="HID transport not connected (headless)")
+        return None, TransportResult(False, error="HidTransport stub: use AulaHidTransport.open_real() or FakeTransport")
 
     def set(self, operation_id: str, semantic_value: Any) -> TransportResult:
-        return TransportResult(False, error="HID transport not connected (headless)")
+        return TransportResult(False, error="HidTransport stub: use AulaHidTransport.open_real()")
 
     def is_connected(self) -> bool:
         return False
@@ -139,3 +139,10 @@ class HidTransport(DeviceTransport):
 
     def current_session_id(self) -> int:
         return self._session_id
+
+
+# Re-export production transport for convenience
+try:
+    from .aula_transport import AulaHidTransport  # noqa: F401
+except Exception:
+    AulaHidTransport = HidTransport  # type: ignore

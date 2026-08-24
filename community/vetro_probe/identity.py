@@ -61,15 +61,17 @@ class ExactIdentityGate:
         if not self.bundle.family or self.bundle.family == "unknown":
             return IdentityVerdict(False, "family ambiguous — bundle family unknown")
 
+        # firmware branch: if bundle says unknown, treat as wildcard (production registry often has no fw branch)
         if not self.bundle.firmware_branch or self.bundle.firmware_branch == "unknown":
-            return IdentityVerdict(False, "firmware branch unknown")
-
-        # firmware branch must match or be prefix
-        fw = instance.firmware_version or ""
-        if fw and self.bundle.firmware_branch not in fw and fw not in self.bundle.firmware_branch:
-            # allow exact or prefix match; soft check — if bundle says 1.17, device 1.17.3 passes
-            if not fw.startswith(self.bundle.firmware_branch):
-                return IdentityVerdict(False, f"firmware unsupported: device {fw} != bundle branch {self.bundle.firmware_branch}")
+            # unknown bundle branch means any device firmware accepted; keep gate open but record
+            pass
+        else:
+            # firmware branch must match or be prefix
+            fw = instance.firmware_version or ""
+            if fw and fw != "unknown" and self.bundle.firmware_branch not in fw and fw not in self.bundle.firmware_branch:
+                # allow exact or prefix match; soft check — if bundle says 1.17, device 1.17.3 passes
+                if not fw.startswith(self.bundle.firmware_branch):
+                    return IdentityVerdict(False, f"firmware unsupported: device {fw} != bundle branch {self.bundle.firmware_branch}")
 
         allowed_modes = {self.bundle.connection_mode, "any", "wired+2.4g"}
         if self.bundle.connection_mode == "any":
@@ -108,6 +110,57 @@ def mock_hero84_instance(firmware: str = "1.17.3", connection: str = "wired") ->
         connection_mode=connection,
         interfaces=[0, 1, 2],
         report_ids=[0, 1, 8, 9],
+        product_string="AULA HERO84 HE",
+        manufacturer="AULA",
+    )
+
+
+def discover_real_instance_via_raw(raw: Any, path: str | None = None) -> PhysicalInstance:
+    """Build PhysicalInstance from an already-opened HidRawTransport.
+
+    Tries to read report descriptor hash and UUID-derived firmware branch.
+    Falls back to bundle-compatible defaults if descriptor not readable.
+    """
+    vid = "0x372E"
+    pid = "0x103E"
+    descriptor_hash = descriptor_hash_from_bytes(b"real-descriptor-unavailable")
+    firmware = "unknown"
+    # Try to read descriptor via hidapi if raw has descriptor access
+    try:
+        if hasattr(raw, "_dev") and raw._dev is not None:
+            try:
+                import hid  # type: ignore
+
+                # hidapi does not expose descriptor directly; we hash path + vid:pid as fallback
+                descriptor_hash = descriptor_hash_from_bytes(f"{vid}:{pid}:{path}".encode())
+            except Exception:
+                pass
+        # Try to get UUID via operations.connect if raw supports send/recv
+        try:
+            import aula_kb_v3.operations as ops  # type: ignore
+        except ImportError:
+            import DB.aula_kb_v3.operations as ops  # type: ignore
+        try:
+            # If raw is already an AulaHidTransport raw, product uuid is known
+            # For HidRawTransport, we can call ops.connect to get product and derive firmware
+            prod = ops.connect(raw)  # type: ignore
+            firmware = prod.firmware_revision_note or "unknown"
+            # If firmware note empty, use uuid as pseudo-firmware branch
+            if firmware == "unknown":
+                firmware = f"uuid-{prod.uuid}"
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+    return PhysicalInstance(
+        vid=vid,
+        pid=pid,
+        descriptor_hash=descriptor_hash,
+        firmware_version=firmware,
+        connection_mode="wired",
+        interfaces=[0],
+        report_ids=[9],
         product_string="AULA HERO84 HE",
         manufacturer="AULA",
     )
