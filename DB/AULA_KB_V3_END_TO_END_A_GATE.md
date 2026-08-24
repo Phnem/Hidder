@@ -1,8 +1,9 @@
 # AULA KB V3 — End-to-End A-Gate
 
-**Last recomputed 2026-08-24.** The rank below is not stored anywhere; it is
-computed by `crates/pproto/src/aula_bytech_rank.rs` from the ACL's own command
-classes and the generated product catalogue, and printed by
+**Last recomputed 2026-08-24, after the knowledge-closure batch's physical
+pass.** The rank below is not stored anywhere; it is computed by
+`crates/pproto/src/aula_bytech_rank.rs` from the ACL's own command classes and
+the generated product catalogue, and printed by
 `cargo run -p pproto --example rank_matrix`. Nothing in this document can be
 raised without changing what is known.
 
@@ -12,35 +13,70 @@ FINAL RANK_A = 0/15
 
 ## What is closed, and what closed it
 
+All eleven mandatory capabilities are now closed for the reference unit.
+"Closed" here means: production-safe commands exist for it in the ACL. It does
+**not** yet mean a second physical pass through that production code has
+happened — see "What 'closed' does and does not mean" below before reading
+this table as more settled than it is.
+
 | Capability | State | How |
 |---|---|---|
 | Identity | **CLOSED** | `read_model_id` `safe_read`. Exact product resolution through the catalogue, not through VID/PID — 14 of the 15 rows share `0x372E:0x103E`. |
 | Remap | **CLOSED** | `read_keymap` `safe_read`, `set_remap` `safe_write`. Two physical passes, 2026-08-23 (exchange 008). |
 | Macro | **CLOSED** | `set_macro_table` `safe_write`, assignment through `set_remap`. Two physical passes, 2026-08-23 (exchange 009), including witnessed playback. |
 | HE actuation | **CLOSED**, with a caveat | `read_key_travel` `safe_read`, `set_key_travel` `slow_flash`. Physically validated 2026-08-19 (exchanges 005/006). See the open incident below. |
-| Profiles | candidate | `read_profile_index` / `set_profile_index` at the bootstrap doors. |
-| Polling | candidate | `read_polling_rate` / `set_polling_rate` at the doors. Transaction contract written and tested (`psafety::reconnect`); never exercised on hardware from here. |
-| Device settings | candidate | Four registers, both directions, at the doors. |
-| RGB | candidate | `read_light_mode` / `set_light_mode` at the doors. The weakest-evidenced entry in the ACL — no capture of a `0x04:0x01` write exists on either research path. |
-| HE rapid trigger | candidate | `read_rapid_trigger` / `set_rapid_trigger` at the doors. |
-| HE dead zone | candidate | `read_deadzone` / `set_deadzone` at the doors. |
-| Per-key HE | candidate | Closed exactly when the three analog writes are; open while any is not. |
+| Profiles | **CLOSED** | `read_profile_index`/`set_profile_index` `safe_read`/`safe_write`. One bootstrap-door pass, 2026-08-24 (exchange 010) — full round trip, visible RGB change on switch. |
+| Polling | **CLOSED** | `read_polling_rate`/`set_polling_rate` `safe_read`/`safe_write`. One bootstrap-door pass, both directions, across the reconnect the write forces — the only command in this family whose write is never acknowledged. |
+| Device settings | **CLOSED** | `read_os_mode`/`set_os_mode`, `read_win_lock`/`set_win_lock`, `read_key_combo`/`set_key_combo` `safe_read`/`safe_write`. One bootstrap-door pass each. |
+| RGB | **CLOSED** | `read_light_mode`/`set_light_mode` `safe_read`/`safe_write`. One bootstrap-door pass settled the entry's own former weakest-evidence caveat — the real board answered all seven bytes and a real write frame was captured for the first time. |
+| HE rapid trigger | **CLOSED** | `read_rapid_trigger`/`set_rapid_trigger` `safe_read`/`safe_write`. One full cycle on W. |
+| HE dead zone | **CLOSED** | `read_deadzone`/`set_deadzone` `safe_read`/`safe_write`. One full cycle on W. |
+| Per-key HE | **CLOSED** | Closes exactly when all three per-key analog writes do; all three do now. |
 
-"Candidate" means typed, tested against the emulator, and holding no
-`SafeCommandId`. Nothing on a product surface can reach one, by construction.
+Also promoted, off-rank: `read_profile_name_slot0/1/2` (`safe_read`, read-only
+by design — see below), `read_key_switch_type` (`safe_read`, real per-key data
+with no vendor table yet to name it against), `set_auto_calibrate`
+(`safe_write`, a one-byte flag and explicitly not the calibration procedure).
 
-## The bootstrap doors, 2026-08-24
+### What "closed" does and does not mean here
 
-Sixteen reads and nine writes are waiting for a first exchange. That is the
-largest batch this family's ACL has ever taken at once, and it is deliberate:
-the surface was ported in one pass so that one physical session can close as
-much of it as the evidence allows.
+`capability_status` reads "Closed" the moment a command exists as
+`safe_read`/`safe_write` in the ACL for the *family* — it does not track
+whether that specific promoted code has had its own second physical pass.
+This project's own established discipline (see exchange 008's NoBackup and
+cadence-collision bugs, both found only *after* promotion, by the pass that
+exercised the actually-refactored production code) says promotion is not the
+end of the story: **a second physical pass through the production
+`SafetyGate` — not the bootstrap-door pass that justified promotion — is what
+this project has always required before calling a capability closed in the
+fuller sense.** That second pass has not happened for any of the eight
+capabilities promoted on 2026-08-24. Read "Closed" in this table as "on a
+production-safe path, evidenced once" rather than "fully validated twice",
+until that pass runs.
 
-Empty is still the doors' resting state. `psafety`'s own guardrails
-(`exactly_the_planned_batch_is_awaiting_a_first_exchange`,
-`the_door_holds_exactly_the_commands_that_are_mid_promotion`) hold the contents
-exact rather than merely non-empty, so a command appearing that nobody put there
-fails the build.
+## The bootstrap doors, after 2026-08-24
+
+Sixteen reads and nine writes went through the doors in one batch on
+2026-08-24; twenty-two left, promoted on the physical evidence (exchange 010).
+Three reads remain:
+
+| Command | Why it stayed |
+|---|---|
+| `read_firmware_version` | Reply declared 1 data byte, decoder expects 2. Request-shape defect. |
+| `read_rt_precision` | Reply declared 0 data bytes; a non-zero byte sat past the declared boundary. Same defect. |
+| `read_supported_switches` | Same shape as `read_rt_precision`. |
+
+All three built their request by reproducing a captured *connect-path* frame
+verbatim, without accounting for this family's own established rule (already
+true of `read_model_id`) that the request's own declared length constrains the
+reply's. Not promoted; nothing here claims otherwise. The write door is empty
+— all nine of its targets promoted.
+
+`psafety`'s own guardrails (`exactly_the_planned_batch_is_awaiting_a_first_exchange`,
+`the_door_holds_exactly_the_commands_that_are_mid_promotion`,
+`the_aula_family_has_exactly_the_thirty_commands_it_earned`) hold the doors'
+and the production surface's contents exact, so a command appearing or
+disappearing unreviewed fails the build.
 
 ## Never generated, and staying that way
 
@@ -55,32 +91,53 @@ this family carries a constant `1` there. Anything that treats byte 3 as
 boilerplate and reuses a template eventually emits a factory reset.
 
 `set_auto_calibrate` (register 25) is **not** the calibration procedure. It is a
-one-byte flag, reversible in one write. The two share a word in their names and
-nothing else, and both ACL entries say so.
+one-byte flag, reversible in one write, now `safe_write`. The two share a word
+in their names and nothing else, and both ACL entries say so.
 
-## Open contradictions
+## Contradictions: three settled, one open
 
-Two disagreements between this project's own two research paths block every
-product row, which is deliberate: a rank that came out clean while they stood
-would be the wrong rank. Both are written up with the frames on all sides in
-`Vetro hud/.claude/worktrees/.../docs/hardware/aula-bytech-request-shape-contradictions.md`.
+Four disagreements between this project's own two research paths were found
+while porting this surface. Three are now settled:
 
-1. **Byte 5 of an actuation record: pad byte, or per-key scope flag.** Three
-   independent observations — the vendor's single-key frames, the vendor's
-   whole-board sweeps, and this board's own read replies — agree that `01`
-   means "this key has its own value" and `00` means "it follows the board's".
-   Peripheral writes `00`. This is now the leading explanation for the
-   unresolved `W 51→75→51 → 202/149` incident, and there is a three-step test
-   that settles it without waiting for the failure to recur.
+1. **The `0x84` request length byte is not uniform across registers.** Settled
+   by capture; the runtime reproduces each register's own observed shape.
+2. **Register 1 is seven bytes, not three.** Settled by the vendor's own
+   register table plus a worked example; the runtime uses seven, now confirmed
+   in both directions on real hardware.
+3. **The profile-name "unnamed" sentinel.** Settled 2026-08-24 by a real read:
+   the board answers with a `0x38`-length body of fifty-six `0xFF` bytes, not
+   the `0xFF`-length-byte form one source document described.
 
-2. **The profile-name "unnamed" sentinel.** One account says a length byte of
-   `0xFF`; the only captured reply carries length `0x38` and fifty-six `0xFF`
-   bytes. The decoder recognises both and records which arrived rather than
-   picking one.
+One remains open and blocks every product's rank, deliberately — a rank that
+came out clean while it stood would be the wrong rank:
 
-Two further disagreements were found in the same pass and are settled by
-capture: the `0x84` request length byte is not uniform across registers, and
-register 1 is seven bytes rather than three.
+4. **Byte 5 of an actuation record: pad byte, or per-key scope flag.** Three
+   independent observations agree `01` means "this key has its own value" and
+   `00` means "it follows the board's"; Peripheral writes `00` on every
+   actuation write it has ever made. This is the leading explanation for the
+   unresolved `W 51→75→51 → 202/149` incident. A three-step test
+   (read/write/read, watching byte 5) ran on 2026-08-24 and was
+   **inconclusive by construction**: all four of W/A/S/D were already at
+   `trailing: 0` before the write, so the `01→00` transition the test is built
+   to catch could not be observed. Neither confirmed nor refuted. The
+   read/write surface has no key left that sits at `01` to test against.
+
+Full write-ups with the frames on all sides:
+`Vetro hud/.claude/worktrees/.../docs/hardware/aula-bytech-request-shape-contradictions.md`
+and `.../docs/hardware/aula-bytech-actuation-readback-anomaly.md`.
+
+## A real backend bug found, and not yet fixed
+
+Reconnecting through the desktop app's own `listDevices`/`connectDevice` IPC —
+the only reconnect path anywhere in this codebase — failed repeatedly and
+identically after the polling write's forced disconnect, resolving only after
+a full process restart. `Worker::scan()`'s "already here" branch
+(`crates/pcore/src/service.rs`) is the leading suspect (it refreshes
+`known.present` every tick but never `known.discovered`, and `connect()` reads
+its openable path from the latter) but was not confirmed as the sole cause,
+and was **not patched speculatively**. Full record in exchange 010. The
+wire-level polling write/read/persistence is proven; a working reconnect UX
+for any command whose write disconnects the device is not.
 
 ## The 15 products
 
@@ -89,31 +146,35 @@ unit), and the vendor's own per-product layout data. One row has anything more.
 
 | Product | Model id | Validation states | Blockers |
 |---|---|---|---|
-| HERO 84 HE | 18691697672197 | FAMILY_HARDWARE, PRODUCT_BINDING, PRODUCT_LAYOUT, PRODUCT_CAPS | 12 |
-| HERO 68 HE | 18691697672195 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 14 |
-| HERO 68 AIR | 18691697672212 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 14 |
-| WIN68HE Ultra | 18691697672213 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 14 |
-| HERO 68 MINI | 18691697672207 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 14 |
-| HERO 68 HE wireless | 19791209299969 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 15 |
-| HERO 68 HE wireless | 21990232555523 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 15 |
-| HERO 99 | 18691697672210 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 14 |
-| HERO 87 HE | 18691697672214 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 14 |
-| HERO 68 HE NEO | 18691697672218 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 14 |
-| HERO 68 HE JIS | 18691697672232 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 14 |
-| HERO 100 | 18691697672216 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 15 |
-| HERO 99 HE | 18691697672255 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 14 |
-| HERO 100 | 21990232555521 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 15 |
-| HERO 84 HE JIS | 18691697672245 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 14 |
+| HERO 84 HE | 18691697672197 | FAMILY_HARDWARE, PRODUCT_BINDING, PRODUCT_LAYOUT, PRODUCT_CAPS | **4** |
+| HERO 68 HE | 18691697672195 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 6 |
+| HERO 68 AIR | 18691697672212 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 6 |
+| WIN68HE Ultra | 18691697672213 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 6 |
+| HERO 68 MINI | 18691697672207 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 6 |
+| HERO 68 HE wireless | 19791209299969 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 7 |
+| HERO 68 HE wireless | 21990232555523 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 7 |
+| HERO 99 | 18691697672210 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 6 |
+| HERO 87 HE | 18691697672214 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 6 |
+| HERO 68 HE NEO | 18691697672218 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 6 |
+| HERO 68 HE JIS | 18691697672232 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 6 |
+| HERO 100 | 18691697672216 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 7 |
+| HERO 99 HE | 18691697672255 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 6 |
+| HERO 100 | 21990232555521 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 7 |
+| HERO 84 HE JIS | 18691697672245 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 6 |
 
-The extra blocker on the four rows at 15 is a firmware caveat their own
-catalogue entry carries: two rows share a display name with a different model
-id, and two share one with a different product id. Not proven interchangeable,
-so not treated as such.
+HERO 84 HE's four remaining blockers, exactly: the unread switch-type-table
+bound (`read_supported_switches` still blocked), two unread precision scalars
+(`read_travel_precision`, `read_rt_precision`, both still blocked or echoing),
+and the one open contradiction. Every other row carries those same four plus
+its own unverified identity binding and a capability set inherited from the
+family rather than established for it (two more), and the four rows sharing
+an ambiguous identity field with a sibling carry one further caveat (seven
+total).
 
 The shape of this table is the shape the evidence should produce. The board
-somebody owns has the fewest blockers; the fourteen nobody has touched each
-carry two more — their own identity binding, and a capability set inherited from
-the family rather than established for them.
+somebody owns has by far the fewest blockers, all four of them things no
+amount of *promotion* can satisfy — only more physical reads and the
+contradiction's resolution can.
 
 ### What the four validation states mean, kept apart
 
@@ -147,6 +208,9 @@ unresolved contradiction · no manual learning required.
 `hiding_a_capability_cannot_produce_a_rank` is the test for the specific failure
 this design exists to prevent: an unmentioned capability counts as `Absent`, not
 as skipped, and only `NotPresent` **with evidence** excuses a board from one.
+`a_capability_no_product_can_silently_stop_declaring` is its 2026-08-24
+successor, checking the same property now that RGB itself is closed rather
+than merely declared.
 
 ## Data products
 
@@ -161,9 +225,19 @@ as skipped, and only `NotPresent` **with evidence** excuses a board from one.
 
 ## What happens next
 
-The eighteen commands at the doors need one physical session on the HERO 84 HE.
-Only what actually passes gets promoted; anything that echoes, refuses or
-disagrees stays where it is, with the finding recorded.
-
-The actuation incident's three-step test runs in the same session and is cheap:
-read W's record and note byte 5, write once, read again.
+1. **The second physical pass.** Every capability promoted 2026-08-24 needs a
+   pass through the actually-refactored production `SafetyGate` code before
+   this project would call it closed in the fuller sense — the same
+   requirement identity+remap and macro both satisfied, and the one that found
+   two real bugs neither bootstrap-door pass could have caught. Not yet run.
+2. **The request-shape fix** for `read_firmware_version`/`read_rt_precision`/
+   `read_supported_switches` — widen the request the way `read_model_id`'s
+   already does, then a short follow-up read.
+3. **The reconnect-path bug** in `Worker::scan()` — diagnose properly (the
+   `Peripheral::connect()` re-lookup finding a match for a path theory says
+   should be gone is the loose thread) and fix, or find the real cause if the
+   staleness theory is wrong.
+4. **The actuation contradiction** needs a key this project can read/write
+   that is not already at `trailing: 0` — none exists on the current W/A/S/D
+   surface. Widening that surface, or finding another way to observe the
+   byte's behaviour, is what would move it.
