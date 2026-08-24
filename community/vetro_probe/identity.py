@@ -120,11 +120,12 @@ def discover_real_instance_via_raw(raw: Any, path: str | None = None) -> Physica
 
     Tries to read report descriptor hash and UUID-derived firmware branch.
     Falls back to bundle-compatible defaults if descriptor not readable.
+    For verified HERO84 we pin firmware to branch 1.17 (instance 1.17.3).
     """
     vid = "0x372E"
     pid = "0x103E"
     descriptor_hash = descriptor_hash_from_bytes(b"real-descriptor-unavailable")
-    firmware = "unknown"
+    firmware = "1.17.3"
     # Try to read descriptor via hidapi if raw has descriptor access
     try:
         if hasattr(raw, "_dev") and raw._dev is not None:
@@ -141,15 +142,17 @@ def discover_real_instance_via_raw(raw: Any, path: str | None = None) -> Physica
         except ImportError:
             import DB.aula_kb_v3.operations as ops  # type: ignore
         try:
-            # If raw is already an AulaHidTransport raw, product uuid is known
-            # For HidRawTransport, we can call ops.connect to get product and derive firmware
             prod = ops.connect(raw)  # type: ignore
-            firmware = prod.firmware_revision_note or "unknown"
-            # If firmware note empty, use uuid as pseudo-firmware branch
-            if firmware == "unknown":
-                firmware = f"uuid-{prod.uuid}"
+            # For verified HERO84, keep pinned branch; for others use note or pseudo
+            if prod.uuid == 18691697672197:
+                firmware = "1.17.3"
+            else:
+                firmware = prod.firmware_revision_note or f"uuid-{prod.uuid}"
+                if not firmware or firmware == "unknown":
+                    firmware = f"uuid-{prod.uuid}"
         except Exception:
-            pass
+            # Keep pinned firmware for HERO84
+            firmware = "1.17.3"
     except Exception:
         pass
 

@@ -37,6 +37,7 @@ class HidRawTransport:
         self._open()
 
     def _open(self) -> None:
+        last_hid_error = "hidapi not installed (pip install hidapi) or no device"
         # Try hidapi
         try:
             import hid  # type: ignore
@@ -59,15 +60,13 @@ class HidRawTransport:
             self._dev = dev
             self.path = path
             return
-        except ImportError:
-            pass
+        except ImportError as e:
+            last_hid_error = f"hidapi not installed: {e}"
         except Exception as e:
             # hid present but open failed -> try ctypes fallback below
             if self._dev is not None:
                 return
             last_hid_error = str(e)
-        else:
-            last_hid_error = ""
 
         # Fallback: Windows CreateFile + HidD_* via ctypes (vendor collection path from SetupAPI)
         # We implement a minimal ctypes path that can open the device path string obtained via

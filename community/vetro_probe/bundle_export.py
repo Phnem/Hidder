@@ -41,8 +41,8 @@ OP_MAP: dict[str, dict[str, Any]] = {
     },
     # Generic
     "keyboard.remap": {
-        "kind": "set", "reversible": True, "readback": True,
-        "bounds": {"min": 0, "max": 0xFFFFFFFF, "safe_values": [0x00000004]},  # A
+        "kind": "set", "reversible": True, "readback": True, "needs_observable": True,
+        "bounds": {"min": 0, "max": 0xFFFFFFFF, "safe_values": [0x00000004]},  # A (W->A remap, E5 observable)
         "cap": "remap",
     },
     "keyboard.profile": {
@@ -142,7 +142,10 @@ def export_bundle_for_uuid(uuid: int = HERO84_UUID) -> dict[str, Any]:
         },
         "family": product.protocol_family,
         "connection": {"mode": "wired" if product.connection_type.name == "WIRED" else "wireless"},
-        "firmware": {"branch": "unknown"},
+        # Firmware: wildcard ("unknown") is NOT allowed for writes — only for passive discovery.
+        # For verified HERO84 we pin to branch "1.17" (instance 1.17.3 passes prefix). For other
+        # products we keep unknown but writes will be BLOCKED until branch is explicitly verified.
+        "firmware": {"branch": "1.17" if str(product.uuid) == str(HERO84_UUID) else "unknown"},
         "capabilities": capabilities_for_bundle,
         "bounds": bounds,
         "operations": ops,

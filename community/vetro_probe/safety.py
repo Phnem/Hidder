@@ -28,8 +28,23 @@ class SafetyDecision:
 
 
 class SafetyGate:
-    def __init__(self, bundle: Bundle) -> None:
+    def __init__(self, bundle: Bundle, instance_firmware: str | None = None) -> None:
         self.bundle = bundle
+        self.instance_firmware = instance_firmware
+
+    def _check_firmware_for_write(self) -> SafetyDecision | None:
+        # Wildcard ("unknown") is allowed only for passive discovery/read.
+        # Write requires explicit verified branch or exact match.
+        branch = self.bundle.firmware_branch
+        if not branch or branch == "unknown":
+            return SafetyDecision(False, "firmware branch unknown — write requires explicitly verified branch (see bundle firmware.branch)")
+        fw = (self.instance_firmware or "").strip()
+        if not fw or fw == "unknown":
+            return SafetyDecision(False, "instance firmware unknown — write requires exact firmware (discovery must have read firmware)")
+        # Exact or prefix compatible (branch "1.17" matches "1.17.3")
+        if branch not in fw and fw not in branch and not fw.startswith(branch):
+            return SafetyDecision(False, f"firmware mismatch: device {fw!r} not compatible with bundle branch {branch!r}")
+        return None
 
     def authorize(self, operation_id: str, requested_value: Any | None = None) -> SafetyDecision:
         # 1. typed operation must exist
@@ -44,7 +59,12 @@ class SafetyGate:
             return SafetyDecision(False, "raw bytes not allowed as semantic value")
         if isinstance(requested_value, dict) and any(k in requested_value for k in ("raw_bytes", "opcode", "report_id")):
             return SafetyDecision(False, "raw frame dict not allowed")
-        # 4. bounds required for writes
+        # 4. firmware check for writes (wildcard only for passive discovery/read, not for writes)
+        if op.kind in ("set", "toggle", "transaction"):
+            fw_decision = self._check_firmware_for_write()
+            if fw_decision is not None:
+                return fw_decision
+        # 5. bounds required for writes
         if op.kind in ("set", "toggle", "transaction"):
             if operation_id not in self.bundle.bounds:
                 return SafetyDecision(False, f"no bounds for {operation_id} — cannot choose safe value")
@@ -95,6 +115,11 @@ class SafetyGate:
         op = self.bundle.get_operation(operation_id)
         if op is None:
             return SafetyDecision(False, f"unknown operation: {operation_id}")
+        # Firmware check for writes (wildcard not allowed)
+        if op.kind in ("set", "toggle", "transaction"):
+            fw_decision = self._check_firmware_for_write()
+            if fw_decision is not None:
+                return fw_decision
         bounds = self.bundle.bounds.get(operation_id)
         if bounds is None:
             return SafetyDecision(False, f"no bounds for {operation_id}")

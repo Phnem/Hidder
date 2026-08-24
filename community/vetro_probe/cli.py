@@ -27,7 +27,7 @@ from .executor import ExecutorContext, execute_single
 from .planner import plan, coverage_report
 from .certificate import build_certificate
 from .reconnect import ReconnectManager
-from .observable import FakeObservableListener
+from .observable import FakeObservableListener, RealCompositeListener
 
 
 def _load_bundle_with_fallback(bundle_path: Path | None, operation_id: str):
@@ -172,7 +172,10 @@ def run_batch(
         raise RuntimeError("READ_PATH FAIL")
 
     recovery = RecoveryJournal(snap)
-    safety = SafetyGate(bundle)
+    safety = SafetyGate(bundle, instance_firmware=instance.firmware_version)
+
+    # Observable: real hardware uses Win32 listeners, fake/sim use Fake
+    observable = RealCompositeListener() if use_real else FakeObservableListener(auto_pass=True)
 
     # Need per-op reconnect handling: create a ReconnectManager that can be reused
     # For sim/real, we need to handle polling specially; for fake, auto-simulate
@@ -242,7 +245,7 @@ def run_batch(
             baseline=snap,
             recovery=recovery,
             reconnect=op_reconnect,
-            observable=FakeObservableListener(auto_pass=True),
+            observable=observable,
             firmware_branch=instance.firmware_version,
             connection_mode=instance.connection_mode,
         )
@@ -396,8 +399,10 @@ def run_headless(
     # 5. RecoveryJournal armed
     recovery = RecoveryJournal(snap)
 
-    # 6. SafetyGate
-    safety = SafetyGate(bundle)
+    # 6. SafetyGate (firmware strict for writes)
+    safety = SafetyGate(bundle, instance_firmware=instance.firmware_version)
+
+    observable = RealCompositeListener() if use_real else FakeObservableListener(auto_pass=True)
 
     # 7. Executor context
     ctx = ExecutorContext(
@@ -407,7 +412,7 @@ def run_headless(
         baseline=snap,
         recovery=recovery,
         reconnect=reconnect,
-        observable=FakeObservableListener(auto_pass=True),
+        observable=observable,
         firmware_branch=instance.firmware_version,
         connection_mode=instance.connection_mode,
     )

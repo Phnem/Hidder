@@ -9,7 +9,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+import sys
+from pathlib import Path
+
 from .bundle import Bundle
+
+# Ensure DB on path for registry import (for knowledge completeness)
+_DB = Path(__file__).resolve().parents[2] / "DB"
+if str(_DB) not in sys.path:
+    sys.path.insert(0, str(_DB))
 
 
 @dataclass(frozen=True)
@@ -165,6 +173,130 @@ def plan(bundle: Bundle, kind: str | None = None) -> list[PlannedOp]:
     return plan_ops
 
 
+def _knowledge_completeness(bundle: Bundle) -> dict[str, Any]:
+    """How complete is the bundle vs registry's production knowledge for this product.
+    Returns {ratio, bundle_ops, registry_caps, missing}
+    """
+    try:
+        import aula_kb_v3.registry as reg  # type: ignore
+
+        uuid = None
+        try:
+            uuid = int(bundle.product.uuid) if bundle.product.uuid else None
+        except Exception:
+            uuid = None
+        if uuid is not None:
+            try:
+                product = reg.resolve_by_uuid(uuid)
+                # All capabilities that are production_safe and supported
+                total_caps = [c for c in product.capabilities if c.supported]
+                # How many of those have a bundle operation covering them?
+                # Map cap name to whether bundle has op for it via alias
+                covered = 0
+                missing: list[str] = []
+                for cap in total_caps:
+                    # Find if any bundle op maps to this cap via OP_MAP cap field
+                    # We check if any bundle op's cap == cap.name
+                    # For simplicity, check if any op's alias maps
+                    found = False
+                    for op_id, op in bundle.operations.items():
+                        # Use ALIASES to see if op covers cap
+                        # Quick: if cap.name in bundle.capabilities and op cap mapping
+                        # We have no direct op->cap map here, so check bundle.capabilities
+                        pass
+                    # Simpler: check bundle.capabilities dict
+                    if cap.name in bundle.capabilities and bundle.capabilities[cap.name]:
+                        # Check if at least one op exists for this cap via OP_MAP
+                        # For now, if cap is in bundle.capabilities, consider covered if any op with that cap exists
+                        # We approximate by checking if any op's id contains cap substring
+                        has_op = any(cap.name in op_id or op_id in cap.name or cap.name.replace("_", ".") in op_id for op_id in bundle.operations)
+                        # Fallback: if cap is actuation and bundle has he.actuation, consider covered
+                        if cap.name == "actuation" and "he.actuation" in bundle.operations:
+                            has_op = True
+                        if cap.name == "profiles" and "keyboard.profile" in bundle.operations:
+                            has_op = True
+                        if cap.name == "rgb_core" and "light.rgb_core" in bundle.operations:
+                            has_op = True
+                        if cap.name == "device_settings" and "device.win_lock" in bundle.operations:
+                            has_op = True
+                        if cap.name == "polling" and "keyboard.polling" in bundle.operations:
+                            has_op = True
+                        if cap.name == "remap" and "keyboard.remap" in bundle.operations:
+                            has_op = True
+                        if cap.name in ("rapid_trigger", "deadzone") and any(x in bundle.operations for x in ("he.rt", "he.deadzone")):
+                            has_op = True
+                        if has_op:
+                            covered += 1
+                        else:
+                            missing.append(cap.name)
+                    else:
+                        missing.append(cap.name)
+                # Also count bundle ops that are not in registry (should not happen)
+                total = len(total_caps)
+                ratio = (covered / total) if total else 1.0
+                return {"ratio": round(ratio, 4), "covered": covered, "total": total, "missing": missing}
+            except Exception:
+                pass
+    except Exception:
+        pass
+    # Fallback if registry unavailable: use bundle ops vs bundle capabilities
+    total = len(bundle.capabilities)
+    covered = len([op for op in bundle.operations if bundle.operations[op].kind != "observable"])
+    ratio = (covered / total) if total else 1.0
+    return {"ratio": round(ratio, 4), "covered": covered, "total": total, "missing": []}
+
+
+def _hardware_shaped_holes(bundle: Bundle, tests: list[Any]) -> dict[str, Any]:
+    """Hardware-shaped holes: where bundle says supported but no validation, or where
+    hardware capability exists but bundle missing.
+    For now: list of bundle capabilities without a covering test PASS, and
+    list of registry caps not in bundle.
+    """
+    # Bundle caps without PASS
+    passed_ops = {t.operation for t in tests if getattr(t, "status", "") == "PASS"}
+    # Expand with aliases
+    expanded = set(passed_ops)
+    for op in list(passed_ops):
+        for base, aliases in ALIASES.items():
+            if op in aliases:
+                expanded.update(aliases)
+                expanded.add(base)
+    holes: list[str] = []
+    for cap_name, supported in bundle.capabilities.items():
+        if not supported:
+            continue
+        # Find if any op for this cap had PASS
+        # Map cap to op ids via simple heuristic
+        cap_to_ops = {
+            "actuation": ["he.actuation"],
+            "rapid_trigger": ["he.rt", "he.rt.enabled"],
+            "deadzone": ["he.deadzone"],
+            "remap": ["keyboard.remap", "remap"],
+            "profiles": ["keyboard.profile", "profiles"],
+            "rgb_core": ["light.rgb_core", "light.effect"],
+            "device_settings": ["device.win_lock", "win_lock"],
+            "polling": ["keyboard.polling"],
+        }
+        ops_for_cap = cap_to_ops.get(cap_name, [cap_name])
+        has_pass = any(op in expanded for op in ops_for_cap)
+        if not has_pass:
+            holes.append(cap_name)
+    # Also registry missing
+    registry_missing: list[str] = []
+    try:
+        import aula_kb_v3.registry as reg  # type: ignore
+
+        uuid = int(bundle.product.uuid) if bundle.product.uuid else None
+        if uuid is not None:
+            product = reg.resolve_by_uuid(uuid)
+            for cap in product.capabilities:
+                if cap.supported and cap.name not in bundle.capabilities:
+                    registry_missing.append(cap.name)
+    except Exception:
+        pass
+    return {"unvalidated_bundle_caps": holes, "registry_caps_not_in_bundle": registry_missing, "count": len(holes)}
+
+
 def coverage_report(bundle: Bundle, tests: list[Any], kind: str | None = None) -> dict[str, Any]:
     kind = kind or _device_family_to_kind(bundle)
     mandatory = _mandatory_ops_for_kind(kind)
@@ -199,4 +331,21 @@ def coverage_report(bundle: Bundle, tests: list[Any], kind: str | None = None) -
         if op_pass:
             passed_mappable += 1
     mandatory_core = (passed_mappable / total_mappable) if total_mappable else 1.0
-    return {"mandatory_core": round(mandatory_core, 4), "by_capability": by_cap, "kind": kind}
+    # Additional split coverage per requirement: validation plan vs knowledge vs hardware holes
+    knowledge = _knowledge_completeness(bundle)
+    holes = _hardware_shaped_holes(bundle, tests)
+    # Build distinct sections
+    return {
+        "mandatory_core": round(mandatory_core, 4),
+        "by_capability": by_cap,
+        "kind": kind,
+        "validation_plan": {
+            "planned": total_mappable,
+            "passed": passed_mappable,
+            "ratio": round(mandatory_core, 4),
+            "note": "validation plan coverage (planned ops that passed)",
+        },
+        "knowledge_completeness": knowledge,
+        "hardware_shaped_holes": holes,
+        "a_preview_note": "mandatory_core=1.0 alone does not imply A Preview/A; A requires knowledge_completeness=1.0 and hardware_shaped_holes=0 and quorum",
+    }

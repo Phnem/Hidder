@@ -24,7 +24,8 @@ from community.vetro_probe.certificate import build_certificate
 
 
 def _ctx(bundle, transport, reconnect=None, ops=None):
-    safety = SafetyGate(bundle)
+    # Firmware strict for writes: pass instance firmware 1.17.3 to match bundle branch 1.17
+    safety = SafetyGate(bundle, instance_firmware="1.17.3")
     collector = BaselineCollector(transport)
     target_ops = ops or [p.operation_id for p in plan(bundle)] + ["he.actuation"]
     # dedup preserve order
@@ -88,7 +89,7 @@ def test_failed_rollback_is_fail_closed():
 def test_partial_baseline_blocked():
     bundle = example_hero84_bundle()
     trans = FakeTransport(initial_state={})  # no baseline for he.actuation
-    safety = SafetyGate(bundle)
+    safety = SafetyGate(bundle, instance_firmware="1.17.3")
     collector = BaselineCollector(trans)
     snap = collector.collect(["he.actuation"])
     assert "he.actuation" not in snap.values
@@ -104,7 +105,7 @@ def test_stale_session_blocked():
     bundle = example_hero84_bundle()
     trans = FakeTransport(initial_state={"he.actuation": 0.5})
     trans.invalidate()
-    safety = SafetyGate(bundle)
+    safety = SafetyGate(bundle, instance_firmware="1.17.3")
     collector = BaselineCollector(trans)
     snap = collector.collect(["he.actuation"])
     # stale session yields no baseline
@@ -140,7 +141,7 @@ def test_malicious_bundle_raw_opcode_blocked():
 
 def test_unknown_operation_blocked_by_safety():
     bundle = example_hero84_bundle()
-    gate = SafetyGate(bundle)
+    gate = SafetyGate(bundle, instance_firmware="1.17.3")
     dec = gate.authorize("unknown.op", 123)
     assert not dec.allowed
     assert "unknown operation" in dec.reason
@@ -148,7 +149,7 @@ def test_unknown_operation_blocked_by_safety():
 
 def test_raw_bytes_value_blocked():
     bundle = example_hero84_bundle()
-    gate = SafetyGate(bundle)
+    gate = SafetyGate(bundle, instance_firmware="1.17.3")
     dec = gate.authorize("he.actuation", b"\x00\x01")
     assert not dec.allowed
 
@@ -162,7 +163,7 @@ def test_calibration_blocked():
         "operations": {**bundle.raw["operations"], "calibration.full": {"id": "calibration.full", "kind": "set", "reversible": False, "readback": False}},
         "bounds": {**bundle.raw.get("bounds", {}), "calibration.full": {"min": 0, "max": 1}},
     })
-    gate = SafetyGate(bundle)
+    gate = SafetyGate(bundle, instance_firmware="1.17.3")
     dec = gate.authorize("calibration.full", 0)
     assert not dec.allowed
     assert "forbidden" in dec.reason
@@ -178,7 +179,7 @@ def test_reconnect_session_invalidation():
     collector = BaselineCollector(trans)
     snap = collector.collect(["keyboard.polling"])
     rec = RecoveryJournal(snap)
-    safety = SafetyGate(bundle)
+    safety = SafetyGate(bundle, instance_firmware="1.17.3")
 
     def enumerate_fn():
         return inst
@@ -209,7 +210,7 @@ def test_final_state_mismatch_fail_closed():
     collector = BaselineCollector(trans)
     snap = collector.collect(["he.actuation"])
     rec = RecoveryJournal(snap)
-    safety = SafetyGate(bundle)
+    safety = SafetyGate(bundle, instance_firmware="1.17.3")
     ctx = ExecutorContext(bundle, trans, safety, snap, rec, None, FakeObservableListener(), "1.17.3", "wired")
     ev = execute_single("he.actuation", ctx)
     # external tamper before final snapshot
@@ -231,7 +232,7 @@ def test_certificate_never_promotes():
     collector = BaselineCollector(trans)
     snap = collector.collect(["he.actuation"])
     rec = RecoveryJournal(snap)
-    ctx = ExecutorContext(bundle, trans, SafetyGate(bundle), snap, rec, None, FakeObservableListener(), "1.17.3", "wired")
+    ctx = ExecutorContext(bundle, trans, SafetyGate(bundle, instance_firmware="1.17.3"), snap, rec, None, FakeObservableListener(), "1.17.3", "wired")
     ev = execute_single("he.actuation", ctx)
     final = collector.collect(["he.actuation"])
     cov = coverage_report(bundle, [ev])
@@ -263,7 +264,7 @@ def test_timeout_on_reconnect():
         return None
 
     rm = ReconnectManager(trans, gate, never_enumerate, timeout_ms=200, poll_ms=50)
-    ctx = ExecutorContext(bundle, trans, SafetyGate(bundle), snap, rec, rm, FakeObservableListener(), "1.17.3", "wired")
+    ctx = ExecutorContext(bundle, trans, SafetyGate(bundle, instance_firmware="1.17.3"), snap, rec, rm, FakeObservableListener(), "1.17.3", "wired")
     ev = execute_single("keyboard.polling", ctx)
     assert ev.status == "FAIL"
     assert "reconnect" in ev.error.lower()
