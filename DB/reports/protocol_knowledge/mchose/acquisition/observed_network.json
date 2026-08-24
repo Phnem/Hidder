@@ -1,0 +1,322 @@
+{
+  "_what": "MCHOSE M HUB Web observed network set, TICKET-23",
+  "_note": "no device was connected; the app stops at its own connect gate",
+  "target": "https://www.mchose.com.cn/#/home",
+  "observed_at": "2026-08-24T18:22:22.311786+00:00",
+  "request_count": 48,
+  "by_host": {
+    "www.mchose.com.cn": 25,
+    "cdn.mchose.com.cn": 15,
+    "": 6,
+    "chat.maicong.cn": 1,
+    "www.maicong.cn": 1
+  },
+  "requests": [
+    {
+      "url": "blob:https://www.mchose.com.cn/52a45d25-67f1-441f-a7c6-6498dc91ad80",
+      "status": 200,
+      "type": "script",
+      "method": "GET"
+    },
+    {
+      "url": "blob:https://www.mchose.com.cn/58ea05b0-e0ce-4c84-aec7-e2a9f616cc29",
+      "status": 200,
+      "type": "script",
+      "method": "GET"
+    },
+    {
+      "url": "blob:https://www.mchose.com.cn/7d88c7c2-cd5c-4dfd-adfc-ab48a1ff6d30",
+      "status": 200,
+      "type": "script",
+      "method": "GET"
+    },
+    {
+      "url": "blob:https://www.mchose.com.cn/a3607699-372d-47f6-924e-07bd78f7266b",
+      "status": 200,
+      "type": "script",
+      "method": "GET"
+    },
+    {
+      "url": "blob:https://www.mchose.com.cn/a9ce4e8d-0e67-4dba-ab7a-7ecc9663c2b2",
+      "status": 200,
+      "type": "script",
+      "method": "GET"
+    },
+    {
+      "url": "blob:https://www.mchose.com.cn/b396aff5-ff69-494d-b984-ad7fd7579785",
+      "status": 200,
+      "type": "script",
+      "method": "GET"
+    },
+    {
+      "url": "https://cdn.mchose.com.cn/OTA/PC/prod/otaFile/otaConfigApp_prod.json?hash=57b321aae9",
+      "status": 200,
+      "type": "fetch",
+      "method": "GET"
+    },
+    {
+      "url": "https://cdn.mchose.com.cn/configCenter/config/globalLoader.js",
+      "status": 200,
+      "type": "script",
+      "method": "GET"
+    },
+    {
+      "url": "https://cdn.mchose.com.cn/configCenter/custom/cardList.json?hash=d4b8e6e0e0",
+      "status": 200,
+      "type": "fetch",
+      "method": "GET"
+    },
+    {
+      "url": "https://cdn.mchose.com.cn/configCenter/custom/keyboardConfig.json?hash=c54aab872c",
+      "status": 200,
+      "type": "fetch",
+      "method": "GET"
+    },
+    {
+      "url": "https://cdn.mchose.com.cn/configCenter/custom/keyboardPreset.json?hash=5e9d0c0b70",
+      "status": 200,
+      "type": "fetch",
+      "method": "GET"
+    },
+    {
+      "url": "https://cdn.mchose.com.cn/configCenter/custom/mouseConfig.json?hash=89b67ad5c0",
+      "status": 200,
+      "type": "fetch",
+      "method": "GET"
+    },
+    {
+      "url": "https://cdn.mchose.com.cn/configCenter/custom/newMouseConfig.json?hash=dcf57ae6bd",
+      "status": 200,
+      "type": "fetch",
+      "method": "GET"
+    },
+    {
+      "url": "https://cdn.mchose.com.cn/configCenter/static/files/0x3837_0x3020_104_0f8a49e490f2.json",
+      "status": 200,
+      "type": "fetch",
+      "method": "GET"
+    },
+    {
+      "url": "https://cdn.mchose.com.cn/configCenter/static/files/202604033xXs5r1I.json",
+      "status": 200,
+      "type": "fetch",
+      "method": "GET"
+    },
+    {
+      "url": "https://cdn.mchose.com.cn/configCenter/static/files/20260519JZc672N4.json",
+      "status": 200,
+      "type": "fetch",
+      "method": "GET"
+    },
+    {
+      "url": "https://cdn.mchose.com.cn/configCenter/static/files/20260519MfeKpQ22.json",
+      "status": 200,
+      "type": "fetch",
+      "method": "GET"
+    },
+    {
+      "url": "https://cdn.mchose.com.cn/configCenter/static/images/en_1b4cf427afb0.png",
+      "status": 200,
+      "type": "image",
+      "method": "GET"
+    },
+    {
+      "url": "https://cdn.mchose.com.cn/configCenter/static/images/mouse-arrow_5680b8623337.png",
+      "status": 200,
+      "type": "image",
+      "method": "GET"
+    },
+    {
+      "url": "https://cdn.mchose.com.cn/customPage/iconfont/iconfont.css",
+      "status": 200,
+      "type": "stylesheet",
+      "method": "GET"
+    },
+    {
+      "url": "https://cdn.mchose.com.cn/customPage/iconfont/iconfont.woff2?t=1786964129045",
+      "status": 200,
+      "type": "font",
+      "method": "GET"
+    },
+    {
+      "url": "https://chat.maicong.cn/register/client/node",
+      "status": 200,
+      "type": "fetch",
+      "method": "GET"
+    },
+    {
+      "url": "https://www.maicong.cn/mchose/questionnaire",
+      "status": 200,
+      "type": "fetch",
+      "method": "GET"
+    },
+    {
+      "url": "https://www.mchose.com.cn/",
+      "status": 200,
+      "type": "document",
+      "method": "GET"
+    },
+    {
+      "url": "https://www.mchose.com.cn/assets/WallpaperBackground-B_eo8clr.js",
+      "status": 200,
+      "type": "script",
+      "method": "GET"
+    },
+    {
+      "url": "https://www.mchose.com.cn/assets/WallpaperBackground-C5tVf5AH.css",
+      "status": 200,
+      "type": "stylesheet",
+      "method": "GET"
+    },
+    {
+      "url": "https://www.mchose.com.cn/assets/connectHeader-BHkPoFl3.css",
+      "status": 200,
+      "type": "stylesheet",
+      "method": "GET"
+    },
+    {
+      "url": "https://www.mchose.com.cn/assets/connectHeader-Cu1-KakZ.js",
+      "status": 200,
+      "type": "script",
+      "method": "GET"
+    },
+    {
+      "url": "https://www.mchose.com.cn/assets/el-checkbox-group-B3ldtHxN.css",
+      "status": 200,
+      "type": "stylesheet",
+      "method": "GET"
+    },
+    {
+      "url": "https://www.mchose.com.cn/assets/el-checkbox-group-BlpAelZt.js",
+      "status": 200,
+      "type": "script",
+      "method": "GET"
+    },
+    {
+      "url": "https://www.mchose.com.cn/assets/helper-C1sPqtX4.js",
+      "status": 200,
+      "type": "script",
+      "method": "GET"
+    },
+    {
+      "url": "https://www.mchose.com.cn/assets/index-BEwRBt7C.js",
+      "status": 200,
+      "type": "script",
+      "method": "GET"
+    },
+    {
+      "url": "https://www.mchose.com.cn/assets/index-DdWAJHiw.css",
+      "status": 200,
+      "type": "stylesheet",
+      "method": "GET"
+    },
+    {
+      "url": "https://www.mchose.com.cn/assets/index-DmRl_Onn.css",
+      "status": 200,
+      "type": "stylesheet",
+      "method": "GET"
+    },
+    {
+      "url": "https://www.mchose.com.cn/assets/main-BNV9-yBD.js",
+      "status": 200,
+      "type": "script",
+      "method": "GET"
+    },
+    {
+      "url": "https://www.mchose.com.cn/assets/main-DDdhV9ff.css",
+      "status": 200,
+      "type": "stylesheet",
+      "method": "GET"
+    },
+    {
+      "url": "https://www.mchose.com.cn/assets/purify-RI2iQ-Qk.css",
+      "status": 200,
+      "type": "stylesheet",
+      "method": "GET"
+    },
+    {
+      "url": "https://www.mchose.com.cn/assets/purify.es-BGo9zI_u.js",
+      "status": 200,
+      "type": "script",
+      "method": "GET"
+    },
+    {
+      "url": "https://www.mchose.com.cn/assets/theme-CPH7pw3c.js",
+      "status": 200,
+      "type": "script",
+      "method": "GET"
+    },
+    {
+      "url": "https://www.mchose.com.cn/assets/useCloudTemplateActions-BK_PX97E.js",
+      "status": 200,
+      "type": "script",
+      "method": "GET"
+    },
+    {
+      "url": "https://www.mchose.com.cn/cizhou/CZ_SHARED_DATA/asset-manifest.json?v=1",
+      "status": 200,
+      "type": "fetch",
+      "method": "GET"
+    },
+    {
+      "url": "https://www.mchose.com.cn/cizhou/CZ_SHARED_DATA/async-chunks.93c20d61426816d3db28.js",
+      "status": 200,
+      "type": "fetch",
+      "method": "GET"
+    },
+    {
+      "url": "https://www.mchose.com.cn/cizhou/CZ_SHARED_DATA/loader.js?v=3",
+      "status": 200,
+      "type": "script",
+      "method": "GET"
+    },
+    {
+      "url": "https://www.mchose.com.cn/cizhou/CZ_SHARED_DATA/lodash.a3333fdd0f93d88e660d.js",
+      "status": 200,
+      "type": "fetch",
+      "method": "GET"
+    },
+    {
+      "url": "https://www.mchose.com.cn/cizhou/CZ_SHARED_DATA/main.d9b73400da4734c3e3c2.js",
+      "status": 200,
+      "type": "fetch",
+      "method": "GET"
+    },
+    {
+      "url": "https://www.mchose.com.cn/cizhou/CZ_SHARED_DATA/runtime.bedf86144b051ec4b44d.js",
+      "status": 200,
+      "type": "fetch",
+      "method": "GET"
+    },
+    {
+      "url": "https://www.mchose.com.cn/cizhou/CZ_SHARED_DATA/vendor.d02214fc0dd23dd816d2.js",
+      "status": 200,
+      "type": "fetch",
+      "method": "GET"
+    },
+    {
+      "url": "https://www.mchose.com.cn/mchose.ico",
+      "status": 200,
+      "type": "other",
+      "method": "GET"
+    }
+  ],
+  "body_snapshot": "Разрешить браузеру подключаться к устройствам\nНажмите кнопку ниже, затем выберите устройство из появившегося списка и подключитесь\nПодключить\nwww.mchose.com.cn\n\nwww.mchose.com.cn подключается к HID-устройству\n\nИмя устройства\n1\nВыберите устройство\n2\nПодключить\nОтмена\nСоединение\nНе удаётся найти устройство? Попробуйте переподключить его\nПанель управления муз.ритмом\nМасштабирование ритма\nМасштабирование клавиатуры\nПоказ ритма\nПоказ клав.\nСброс",
+  "console_head": [
+    "log: CZ initialized: {deviceStateMap: Proxy(Map), sharedStoreMap: Proxy(Map), setupDeviceSDK: , notifyAllConfigChange: , cleanDeviceSDK: }",
+    "info: support OffscreenCanvas",
+    "error: [innerLoadCZSharedData:0] catch script error ErrorEvent",
+    "warning: [innerLoadCZSharedData:0] will call plugins.onError: ErrorEvent",
+    "warning: [innerLoadCZSharedData:0] error handled, will reload",
+    "log: [innerLoadCZSharedData:1] will call plugins.onSuccess",
+    "log: [innerLoadCZSharedData:1] got promise result undefined",
+    "log: [innerLoadCZSharedData:0] reload success, return {DeviceSDK: , createDeviceSDK: , clampDevices: , QhwSDK: , connectHID: }",
+    "log: [innerLoadCZSharedData:0] got promise result {DeviceSDK: , createDeviceSDK: , clampDevices: , QhwSDK: , connectHID: }",
+    "info: CZRemoteConfigList modify HidIndexDeviceFilters [Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Obj",
+    "info: CZRemoteConfigList modify KEYBOARD_MODELS {Ace60ProNordic: Object, G87: Object, K87S: Object, ZERO75X: Object, ACE68: Object}",
+    "info: CZRemoteConfigList modify deviceImageMap {Ace 60: Object, Ace 60 Pro: Object, Ace 60 Pro Nordic: Object, Ace 60X: Object, Ace 68: Object}",
+    "info: CZRemoteConfigList modify deviceList {keyboard: Array(21), mouse: Array(34), audio: Array(14)}",
+    "info: CZRemoteConfigList modify czDeviceName [Ace60ProNordic, Ace60ProISOFR, Ace68Turbo, Ace68Air2, Ace68Air, Ace68GT, Ace68V2, ZERO75X, Ace60, Ace68, Ace75, Jet75, Mix87, JET75, G87V2, K99V3, G75V2, G98V3, God60, K87S]",
+    "info: Slow network is detected. See https://www.chromestatus.com/feature/5636954674692096 for more details. Fallback font will be used while loading: https://cdn.mchose.com.cn/customPage/iconfont/iconfont.woff2?t=1786964129045"
+  ]
+}

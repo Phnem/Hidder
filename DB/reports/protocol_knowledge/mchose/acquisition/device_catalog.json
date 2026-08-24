@@ -1,0 +1,951 @@
+{
+  "_what": "MCHOSE device catalogue extracted from M HUB Web, TICKET-23",
+  "_caveat": "This is the catalogue the shipped bundle carries on the crawl date. It is a subset of what the vendor supports over time -- the storefront says 'More supported devices coming soon'. Absence from this table is never evidence that a device is unsupported.",
+  "entry_count": 65,
+  "per_chunk": {
+    "index-BEwRBt7C.js": {
+      "id_triple_occurrences": 8,
+      "parsed": 8
+    },
+    "main-BNV9-yBD.js": {
+      "id_triple_occurrences": 19,
+      "parsed": 19
+    },
+    "purify.es-BGo9zI_u.js": {
+      "id_triple_occurrences": 64,
+      "parsed": 64
+    },
+    "theme-CPH7pw3c.js": {
+      "id_triple_occurrences": 28,
+      "parsed": 28
+    }
+  },
+  "device_type_histogram": {
+    "<unparsed>": 46,
+    "Ee.HEADSET": 13,
+    "Ee.SPEAKER": 5,
+    "Ee.HEADSET_DOCK": 1
+  },
+  "vendor_ids": {
+    "0x0e6a": 2,
+    "0x291d": 5,
+    "0x3837": 50,
+    "0x41e4": 4,
+    "0x5253": 4
+  },
+  "product_key_vs_fields_conflicts": [],
+  "vid_pid_shared_by_multiple_names": {
+    "0x3837:0x1014": [
+      "MCHOSE A5 V3 Ultra+",
+      "MCHOSE A5 V3 Ultra+(3955)",
+      "MCHOSE A7 V3 Pro+",
+      "MCHOSE A7 V3 Ultra+",
+      "MCHOSE K7 V2 Pro+",
+      "MCHOSE K7 V2 Ultra+"
+    ],
+    "0x3837:0x1018": [
+      "MCHOSE A5 V3 Ultra+",
+      "MCHOSE A5 V3 Ultra+(3955)",
+      "MCHOSE A7 V3 Pro+",
+      "MCHOSE A7 V3 Ultra+",
+      "MCHOSE K7 V2 Pro+",
+      "MCHOSE K7 V2 Ultra+"
+    ],
+    "0x3837:0x6011": [
+      "MCHOSE G9 V2-II",
+      "MCHOSE V9 PRO 2"
+    ],
+    "0x291d:0x385d": [
+      "MCHOSE G9 PRO",
+      "MCHOSE G9 Pro",
+      "MCHOSE S9 PRO",
+      "MCHOSE V9",
+      "MCHOSE V9 PRO"
+    ],
+    "0x0e6a:0x0111": [
+      "MCHOSE G20",
+      "MCHOSE G20 PRO"
+    ],
+    "0x3837:0x6003": [
+      "MCHOSE K20 PRO",
+      "MCHOSE K20 Pro"
+    ],
+    "0x3837:0x100a": [
+      "MCHOSE A7 V2 Pro+",
+      "MCHOSE A7 V2 Ultra+"
+    ],
+    "0x3837:0x100b": [
+      "MCHOSE A7 V2 Pro+",
+      "MCHOSE A7 V2 Ultra+"
+    ],
+    "0x5253:0x1020": [
+      "MCHOSE A7 V2 Pro+",
+      "MCHOSE A7 V2 Ultra+",
+      "MCHOSE K7 Ultra"
+    ],
+    "0x3837:0x6002": [
+      "MCHOSE K9 UITRA",
+      "MCHOSE K9 ULTRA"
+    ]
+  },
+  "entries": [
+    {
+      "product_key_name": "MCHOSE G9 PRO",
+      "product_key_vid": 10525,
+      "product_key_pid": 14429,
+      "deviceType": "Ee.HEADSET",
+      "vendorId": 10525,
+      "productId": 14429,
+      "productName": "MCHOSE G9 PRO",
+      "audioRuntimeType": "Me.CMEDIA",
+      "seen_in_chunks": {
+        "main-BNV9-yBD.js": 1,
+        "theme-CPH7pw3c.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal",
+        "productKey_field"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE G9 PRO",
+      "product_key_vid": 16868,
+      "product_key_pid": 13570,
+      "deviceType": "Ee.HEADSET",
+      "vendorId": 16868,
+      "productId": 13570,
+      "productName": "MCHOSE G9 PRO",
+      "audioRuntimeType": "Me.CMEDIA",
+      "seen_in_chunks": {
+        "main-BNV9-yBD.js": 1,
+        "theme-CPH7pw3c.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal",
+        "productKey_field"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE G9 WIRED HEADSET",
+      "product_key_vid": 14391,
+      "product_key_pid": 32896,
+      "deviceType": "Ee.HEADSET",
+      "vendorId": 14391,
+      "productId": 32896,
+      "productName": "MCHOSE G9 WIRED HEADSET",
+      "audioRuntimeType": "Me.CMEDIA",
+      "seen_in_chunks": {
+        "main-BNV9-yBD.js": 1,
+        "theme-CPH7pw3c.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal",
+        "productKey_field"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE S9 PRO",
+      "product_key_vid": 10525,
+      "product_key_pid": 14429,
+      "deviceType": "Ee.HEADSET",
+      "vendorId": 10525,
+      "productId": 14429,
+      "productName": "MCHOSE S9 PRO",
+      "audioRuntimeType": "Me.CMEDIA",
+      "seen_in_chunks": {
+        "main-BNV9-yBD.js": 1,
+        "purify.es-BGo9zI_u.js": 1,
+        "theme-CPH7pw3c.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal",
+        "productKey_field"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE S9 PRO",
+      "product_key_vid": 16868,
+      "product_key_pid": 13314,
+      "deviceType": "Ee.HEADSET",
+      "vendorId": 16868,
+      "productId": 13314,
+      "productName": "MCHOSE S9 PRO",
+      "audioRuntimeType": "Me.CMEDIA",
+      "seen_in_chunks": {
+        "main-BNV9-yBD.js": 1,
+        "theme-CPH7pw3c.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal",
+        "productKey_field"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE V9",
+      "product_key_vid": 10525,
+      "product_key_pid": 14429,
+      "deviceType": "Ee.HEADSET",
+      "vendorId": 10525,
+      "productId": 14429,
+      "productName": "MCHOSE V9",
+      "audioRuntimeType": "Me.CMEDIA",
+      "seen_in_chunks": {
+        "main-BNV9-yBD.js": 1,
+        "theme-CPH7pw3c.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal",
+        "productKey_field"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE V9",
+      "product_key_vid": 16868,
+      "product_key_pid": 12801,
+      "deviceType": "Ee.HEADSET",
+      "vendorId": 16868,
+      "productId": 12801,
+      "productName": "MCHOSE V9",
+      "audioRuntimeType": "Me.CMEDIA",
+      "seen_in_chunks": {
+        "main-BNV9-yBD.js": 1,
+        "theme-CPH7pw3c.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal",
+        "productKey_field"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE V9 PRO",
+      "product_key_vid": 10525,
+      "product_key_pid": 14429,
+      "deviceType": "Ee.HEADSET",
+      "vendorId": 10525,
+      "productId": 14429,
+      "productName": "MCHOSE V9 PRO",
+      "audioRuntimeType": "Me.CMEDIA",
+      "seen_in_chunks": {
+        "main-BNV9-yBD.js": 1,
+        "theme-CPH7pw3c.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal",
+        "productKey_field"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE V9 PRO",
+      "product_key_vid": 16868,
+      "product_key_pid": 12802,
+      "deviceType": "Ee.HEADSET",
+      "vendorId": 16868,
+      "productId": 12802,
+      "productName": "MCHOSE V9 PRO",
+      "audioRuntimeType": "Me.CMEDIA",
+      "seen_in_chunks": {
+        "main-BNV9-yBD.js": 1,
+        "theme-CPH7pw3c.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal",
+        "productKey_field"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE V9 PRO 2",
+      "product_key_vid": 14391,
+      "product_key_pid": 24593,
+      "seen_in_chunks": {
+        "index-BEwRBt7C.js": 1,
+        "main-BNV9-yBD.js": 1,
+        "theme-CPH7pw3c.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal",
+        "productKey_field"
+      ],
+      "deviceType": "Ee.HEADSET",
+      "vendorId": 14391,
+      "productId": 24593,
+      "productName": "MCHOSE V9 PRO 2",
+      "audioRuntimeType": "Me.THX"
+    },
+    {
+      "product_key_name": "MCHOSE V9 TURBO",
+      "product_key_vid": 14391,
+      "product_key_pid": 24589,
+      "deviceType": "Ee.HEADSET",
+      "vendorId": 14391,
+      "productId": 24589,
+      "productName": "MCHOSE V9 TURBO",
+      "audioRuntimeType": "Me.CMEDIA",
+      "seen_in_chunks": {
+        "main-BNV9-yBD.js": 1,
+        "theme-CPH7pw3c.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal",
+        "productKey_field"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE V9 TURBO+",
+      "product_key_vid": 14391,
+      "product_key_pid": 24586,
+      "deviceType": "Ee.HEADSET",
+      "vendorId": 14391,
+      "productId": 24586,
+      "productName": "MCHOSE V9 TURBO+",
+      "audioRuntimeType": "Me.CMEDIA",
+      "seen_in_chunks": {
+        "main-BNV9-yBD.js": 1,
+        "theme-CPH7pw3c.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal",
+        "productKey_field"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE X9",
+      "product_key_vid": 14391,
+      "product_key_pid": 24645,
+      "deviceType": "Ee.HEADSET",
+      "vendorId": 14391,
+      "productId": 24645,
+      "productName": "MCHOSE X9",
+      "audioRuntimeType": "Me.CMEDIA",
+      "seen_in_chunks": {
+        "main-BNV9-yBD.js": 1,
+        "purify.es-BGo9zI_u.js": 1,
+        "theme-CPH7pw3c.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal",
+        "productKey_field"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE V9 TURBO HEADSET",
+      "product_key_vid": 14391,
+      "product_key_pid": 24585,
+      "deviceType": "Ee.HEADSET_DOCK",
+      "vendorId": 14391,
+      "productId": 24585,
+      "productName": "MCHOSE V9 TURBO HEADSET",
+      "seen_in_chunks": {
+        "main-BNV9-yBD.js": 1,
+        "theme-CPH7pw3c.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal",
+        "productKey_field"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE G20",
+      "product_key_vid": 3690,
+      "product_key_pid": 273,
+      "deviceType": "Ee.SPEAKER",
+      "vendorId": 3690,
+      "productId": 273,
+      "productName": "MCHOSE G20",
+      "audioRuntimeType": "Me.CMEDIA",
+      "seen_in_chunks": {
+        "main-BNV9-yBD.js": 1,
+        "purify.es-BGo9zI_u.js": 1,
+        "theme-CPH7pw3c.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal",
+        "productKey_field"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE G20 PRO",
+      "product_key_vid": 3690,
+      "product_key_pid": 273,
+      "deviceType": "Ee.SPEAKER",
+      "vendorId": 3690,
+      "productId": 273,
+      "productName": "MCHOSE G20 PRO",
+      "audioRuntimeType": "Me.CMEDIA",
+      "seen_in_chunks": {
+        "main-BNV9-yBD.js": 1,
+        "purify.es-BGo9zI_u.js": 1,
+        "theme-CPH7pw3c.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal",
+        "productKey_field"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE K20",
+      "product_key_vid": 14391,
+      "product_key_pid": 24772,
+      "deviceType": "Ee.SPEAKER",
+      "vendorId": 14391,
+      "productId": 24772,
+      "productName": "MCHOSE K20",
+      "audioRuntimeType": "Me.CMEDIA",
+      "seen_in_chunks": {
+        "main-BNV9-yBD.js": 1,
+        "purify.es-BGo9zI_u.js": 1,
+        "theme-CPH7pw3c.js": 2
+      },
+      "occurrence_kinds": [
+        "bare_literal",
+        "productKey_field"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE K20 GT",
+      "product_key_vid": 14391,
+      "product_key_pid": 24774,
+      "deviceType": "Ee.SPEAKER",
+      "vendorId": 14391,
+      "productId": 24774,
+      "productName": "MCHOSE K20 GT",
+      "audioRuntimeType": "Me.CMEDIA",
+      "seen_in_chunks": {
+        "main-BNV9-yBD.js": 1,
+        "purify.es-BGo9zI_u.js": 2,
+        "theme-CPH7pw3c.js": 2
+      },
+      "occurrence_kinds": [
+        "bare_literal",
+        "productKey_field"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE K20 PRO",
+      "product_key_vid": 14391,
+      "product_key_pid": 24579,
+      "deviceType": "Ee.SPEAKER",
+      "vendorId": 14391,
+      "productId": 24579,
+      "productName": "MCHOSE K20 PRO",
+      "audioRuntimeType": "Me.CMEDIA",
+      "seen_in_chunks": {
+        "main-BNV9-yBD.js": 1,
+        "theme-CPH7pw3c.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal",
+        "productKey_field"
+      ]
+    },
+    {
+      "product_key_name": "Ace 75",
+      "product_key_vid": 14391,
+      "product_key_pid": 12348,
+      "seen_in_chunks": {
+        "index-BEwRBt7C.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "Ace 75",
+      "product_key_vid": 14391,
+      "product_key_pid": 12317,
+      "seen_in_chunks": {
+        "index-BEwRBt7C.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "God 60",
+      "product_key_vid": 14391,
+      "product_key_pid": 12320,
+      "seen_in_chunks": {
+        "index-BEwRBt7C.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE 2.4G Wireless-G87_V2",
+      "product_key_vid": 14391,
+      "product_key_pid": 8219,
+      "seen_in_chunks": {
+        "purify.es-BGo9zI_u.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE A5 V3 Ultra+",
+      "product_key_vid": 14391,
+      "product_key_pid": 16422,
+      "seen_in_chunks": {
+        "purify.es-BGo9zI_u.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE A5 V3 Ultra+",
+      "product_key_vid": 14391,
+      "product_key_pid": 4116,
+      "seen_in_chunks": {
+        "purify.es-BGo9zI_u.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE A5 V3 Ultra+",
+      "product_key_vid": 14391,
+      "product_key_pid": 4120,
+      "seen_in_chunks": {
+        "purify.es-BGo9zI_u.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE A5 V3 Ultra+(3955)",
+      "product_key_vid": 14391,
+      "product_key_pid": 16436,
+      "seen_in_chunks": {
+        "purify.es-BGo9zI_u.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE A5 V3 Ultra+(3955)",
+      "product_key_vid": 14391,
+      "product_key_pid": 4116,
+      "seen_in_chunks": {
+        "purify.es-BGo9zI_u.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE A5 V3 Ultra+(3955)",
+      "product_key_vid": 14391,
+      "product_key_pid": 4120,
+      "seen_in_chunks": {
+        "purify.es-BGo9zI_u.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE A7 V2 Pro+",
+      "product_key_vid": 14391,
+      "product_key_pid": 16419,
+      "seen_in_chunks": {
+        "purify.es-BGo9zI_u.js": 2
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE A7 V2 Pro+",
+      "product_key_vid": 14391,
+      "product_key_pid": 4106,
+      "seen_in_chunks": {
+        "purify.es-BGo9zI_u.js": 2
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE A7 V2 Pro+",
+      "product_key_vid": 14391,
+      "product_key_pid": 4107,
+      "seen_in_chunks": {
+        "purify.es-BGo9zI_u.js": 2
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE A7 V2 Pro+",
+      "product_key_vid": 21075,
+      "product_key_pid": 4128,
+      "seen_in_chunks": {
+        "purify.es-BGo9zI_u.js": 2
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE A7 V2 Ultra+",
+      "product_key_vid": 14391,
+      "product_key_pid": 16417,
+      "seen_in_chunks": {
+        "purify.es-BGo9zI_u.js": 2
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE A7 V2 Ultra+",
+      "product_key_vid": 14391,
+      "product_key_pid": 4106,
+      "seen_in_chunks": {
+        "purify.es-BGo9zI_u.js": 2
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE A7 V2 Ultra+",
+      "product_key_vid": 14391,
+      "product_key_pid": 4107,
+      "seen_in_chunks": {
+        "purify.es-BGo9zI_u.js": 2
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE A7 V2 Ultra+",
+      "product_key_vid": 21075,
+      "product_key_pid": 4128,
+      "seen_in_chunks": {
+        "purify.es-BGo9zI_u.js": 2
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE A7 V3 Pro+",
+      "product_key_vid": 14391,
+      "product_key_pid": 16434,
+      "seen_in_chunks": {
+        "purify.es-BGo9zI_u.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE A7 V3 Pro+",
+      "product_key_vid": 14391,
+      "product_key_pid": 4116,
+      "seen_in_chunks": {
+        "purify.es-BGo9zI_u.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE A7 V3 Pro+",
+      "product_key_vid": 14391,
+      "product_key_pid": 4120,
+      "seen_in_chunks": {
+        "purify.es-BGo9zI_u.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE A7 V3 Ultra+",
+      "product_key_vid": 14391,
+      "product_key_pid": 16435,
+      "seen_in_chunks": {
+        "index-BEwRBt7C.js": 1,
+        "purify.es-BGo9zI_u.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE A7 V3 Ultra+",
+      "product_key_vid": 14391,
+      "product_key_pid": 4116,
+      "seen_in_chunks": {
+        "index-BEwRBt7C.js": 1,
+        "purify.es-BGo9zI_u.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE A7 V3 Ultra+",
+      "product_key_vid": 14391,
+      "product_key_pid": 4120,
+      "seen_in_chunks": {
+        "index-BEwRBt7C.js": 1,
+        "purify.es-BGo9zI_u.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE G87 V2 (1K)",
+      "product_key_vid": 14391,
+      "product_key_pid": 8218,
+      "seen_in_chunks": {
+        "purify.es-BGo9zI_u.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE G9 Pro",
+      "product_key_vid": 10525,
+      "product_key_pid": 14429,
+      "seen_in_chunks": {
+        "purify.es-BGo9zI_u.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE G9 V2",
+      "product_key_vid": 14391,
+      "product_key_pid": 24713,
+      "seen_in_chunks": {
+        "theme-CPH7pw3c.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE G9 V2-II",
+      "product_key_vid": 14391,
+      "product_key_pid": 24593,
+      "seen_in_chunks": {
+        "theme-CPH7pw3c.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE K20 Pro",
+      "product_key_vid": 14391,
+      "product_key_pid": 24579,
+      "seen_in_chunks": {
+        "purify.es-BGo9zI_u.js": 1,
+        "theme-CPH7pw3c.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE K7 Ultra",
+      "product_key_vid": 14391,
+      "product_key_pid": 4097,
+      "seen_in_chunks": {
+        "purify.es-BGo9zI_u.js": 4
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE K7 Ultra",
+      "product_key_vid": 14391,
+      "product_key_pid": 16720,
+      "seen_in_chunks": {
+        "purify.es-BGo9zI_u.js": 2
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE K7 Ultra",
+      "product_key_vid": 21075,
+      "product_key_pid": 4129,
+      "seen_in_chunks": {
+        "purify.es-BGo9zI_u.js": 2
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE K7 Ultra",
+      "product_key_vid": 21075,
+      "product_key_pid": 4128,
+      "seen_in_chunks": {
+        "purify.es-BGo9zI_u.js": 2
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE K7 V2 Pro+",
+      "product_key_vid": 14391,
+      "product_key_pid": 16423,
+      "seen_in_chunks": {
+        "purify.es-BGo9zI_u.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE K7 V2 Pro+",
+      "product_key_vid": 14391,
+      "product_key_pid": 4116,
+      "seen_in_chunks": {
+        "purify.es-BGo9zI_u.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE K7 V2 Pro+",
+      "product_key_vid": 14391,
+      "product_key_pid": 4120,
+      "seen_in_chunks": {
+        "purify.es-BGo9zI_u.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE K7 V2 Ultra+",
+      "product_key_vid": 14391,
+      "product_key_pid": 16424,
+      "seen_in_chunks": {
+        "purify.es-BGo9zI_u.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE K7 V2 Ultra+",
+      "product_key_vid": 14391,
+      "product_key_pid": 4116,
+      "seen_in_chunks": {
+        "purify.es-BGo9zI_u.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE K7 V2 Ultra+",
+      "product_key_vid": 14391,
+      "product_key_pid": 4120,
+      "seen_in_chunks": {
+        "purify.es-BGo9zI_u.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE K9",
+      "product_key_vid": 14391,
+      "product_key_pid": 24647,
+      "seen_in_chunks": {
+        "theme-CPH7pw3c.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE K9 UITRA",
+      "product_key_vid": 14391,
+      "product_key_pid": 24578,
+      "seen_in_chunks": {
+        "theme-CPH7pw3c.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE K9 ULTRA",
+      "product_key_vid": 14391,
+      "product_key_pid": 24578,
+      "seen_in_chunks": {
+        "theme-CPH7pw3c.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE K9 ULTRA HEADSET",
+      "product_key_vid": 14391,
+      "product_key_pid": 24577,
+      "seen_in_chunks": {
+        "theme-CPH7pw3c.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE MagDock",
+      "product_key_vid": 14391,
+      "product_key_pid": 4114,
+      "seen_in_chunks": {
+        "purify.es-BGo9zI_u.js": 5
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "MCHOSE V9 PRO 2 HEADSET",
+      "product_key_vid": 14391,
+      "product_key_pid": 24592,
+      "seen_in_chunks": {
+        "index-BEwRBt7C.js": 1
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    },
+    {
+      "product_key_name": "V9 Turbo",
+      "product_key_vid": 14391,
+      "product_key_pid": 24584,
+      "seen_in_chunks": {
+        "purify.es-BGo9zI_u.js": 4
+      },
+      "occurrence_kinds": [
+        "bare_literal"
+      ]
+    }
+  ]
+}

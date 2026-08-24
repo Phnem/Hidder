@@ -1,0 +1,1531 @@
+{
+  "_what": "MCHOSE merged device catalogue, TICKET-23",
+  "_caveat": "A union with provenance, not a resolved identity graph. Sources key by (vid,pid) or by marketing name and the mapping between them is not total; collapsing them would invent an identity graph the vendor's data does not support. Absence here is never evidence a device is unsupported.",
+  "distinct_vid_pid": 77,
+  "vendor_ids": {
+    "0x3837": 59,
+    "0x41e4": 14,
+    "0x291d": 1,
+    "0x0e6a": 1,
+    "0x5253": 2
+  },
+  "hid_usage_pairs_from_cardList": {
+    "0x0001:0x0000": 5,
+    "0xff00:0x0001": 5
+  },
+  "webdriver_enum_histogram": {
+    "{\"deviceType\": 1, \"subType\": 2}": 10
+  },
+  "storefront_vs_artifacts": {
+    "mice": {
+      "claimed": 15,
+      "not_matched_in_any_artifact": [
+        "K7 V2 Series",
+        "G7 Series",
+        "G3 A",
+        "G3 Ultra",
+        "G3 V2",
+        "G3 V2 Pro",
+        "AX5 V2"
+      ],
+      "why_unmatched_may_be_misleading": "mouse sources are partly name-keyed, so a miss here is more meaningful"
+    },
+    "hall_effect_keyboards": {
+      "claimed": 8,
+      "not_matched_in_any_artifact": [
+        "Ace 60 Series",
+        "Ace 68 Series",
+        "Ace 68 Air",
+        "Ace 68 Turbo",
+        "Ace 68 GT",
+        "Jet 75 Series",
+        "ZERO 75X",
+        "Mix 87 Series"
+      ],
+      "why_unmatched_may_be_misleading": "keyboard sources are id-keyed and nameless; a name has nothing to match"
+    },
+    "mechanical_keyboards": {
+      "claimed": 11,
+      "not_matched_in_any_artifact": [
+        "UT98",
+        "K99 Series",
+        "G98 Series",
+        "G87 Series",
+        "K87S",
+        "X75 Series",
+        "GX87S",
+        "KX75",
+        "K87",
+        "Z75S",
+        "G75 Pro"
+      ],
+      "why_unmatched_may_be_misleading": "keyboard sources are id-keyed and nameless; a name has nothing to match"
+    }
+  },
+  "name_to_id_mapping": {
+    "state": "OPEN",
+    "keyboard_ids_without_names": [
+      "0x3837:0x1015",
+      "0x3837:0x200e",
+      "0x3837:0x2015",
+      "0x3837:0x2020",
+      "0x3837:0x2021",
+      "0x3837:0x2025",
+      "0x3837:0x3002",
+      "0x3837:0x3003",
+      "0x3837:0x300a",
+      "0x3837:0x300d",
+      "0x3837:0x3024",
+      "0x3837:0x3026",
+      "0x3837:0x3028",
+      "0x3837:0x302d",
+      "0x3837:0x3030",
+      "0x3837:0x3033",
+      "0x3837:0x303e",
+      "0x41e4:0x2101",
+      "0x41e4:0x2103",
+      "0x41e4:0x2112",
+      "0x41e4:0x2116",
+      "0x41e4:0x2118",
+      "0x41e4:0x211a",
+      "0x41e4:0x211c",
+      "0x41e4:0x2120",
+      "0x41e4:0x2122",
+      "0x41e4:0x2132"
+    ],
+    "closed_by": "observing the name the app shows for a connected device (TICKET-25)"
+  },
+  "named_in_artifacts_but_not_on_storefront": [
+    "A6 ultra test",
+    "Ace 68 Turbo 16K",
+    "Ace 75",
+    "Ace 75 8K",
+    "G98 V3",
+    "God 60",
+    "MCHOSE 2.4G Wireless-G87_V2",
+    "MCHOSE A5 V3 Pro",
+    "MCHOSE A5 V3 Ultra+",
+    "MCHOSE A5 V3 Ultra+(3955)",
+    "MCHOSE A7 Pro",
+    "MCHOSE A7 Ultra",
+    "MCHOSE A7 Ultra(RE)",
+    "MCHOSE A7 V2 Pro",
+    "MCHOSE A7 V2 Pro+",
+    "MCHOSE A7 V2 Ultra",
+    "MCHOSE A7 V2 Ultra+",
+    "MCHOSE A7 V3",
+    "MCHOSE A7 V3 Pro",
+    "MCHOSE A7 V3 Pro+",
+    "MCHOSE A7 V3 Ultra+",
+    "MCHOSE AX5 V2 new",
+    "MCHOSE AX5 V2 old",
+    "MCHOSE G20",
+    "MCHOSE G20 PRO",
+    "MCHOSE G3 Ultra 4K",
+    "MCHOSE G3 Ultra 8K",
+    "MCHOSE G3 V3",
+    "MCHOSE G87 V2 (1K)",
+    "MCHOSE G9 PRO",
+    "MCHOSE G9 Pro",
+    "MCHOSE G9 V2",
+    "MCHOSE G9 V2-II",
+    "MCHOSE G9 WIRED HEADSET",
+    "MCHOSE K20",
+    "MCHOSE K20 GT",
+    "MCHOSE K20 PRO",
+    "MCHOSE K20 Pro",
+    "MCHOSE K7 V2 Pro+",
+    "MCHOSE K7 V2 Ultra+",
+    "MCHOSE K9",
+    "MCHOSE K9 UITRA",
+    "MCHOSE K9 ULTRA",
+    "MCHOSE K9 ULTRA HEADSET",
+    "MCHOSE L7 Pro",
+    "MCHOSE L7 Pro+",
+    "MCHOSE L7 Ultra",
+    "MCHOSE L7 Ultra+",
+    "MCHOSE M7 Pro",
+    "MCHOSE M7 Ultra",
+    "MCHOSE MagDock",
+    "MCHOSE S9 PRO",
+    "MCHOSE V7",
+    "MCHOSE V9",
+    "MCHOSE V9 PRO",
+    "MCHOSE V9 PRO 2",
+    "MCHOSE V9 PRO 2 HEADSET",
+    "MCHOSE V9 TURBO",
+    "MCHOSE V9 TURBO HEADSET",
+    "MCHOSE V9 TURBO+",
+    "MCHOSE X9",
+    "V9 Turbo"
+  ],
+  "name_keyed_sources": {
+    "keyboardConfig": [
+      "G98 V3",
+      "God 60",
+      "Ace 68 Turbo 16K",
+      "Ace 75 8K"
+    ],
+    "newMouseConfig": [
+      "MCHOSE A5 V3 Pro",
+      "MCHOSE A5 V3 Ultra+",
+      "MCHOSE A5 V3 Ultra+(3955)",
+      "MCHOSE K7 V2 Pro+",
+      "MCHOSE K7 V2 Ultra+",
+      "MCHOSE A7 V3",
+      "MCHOSE A7 V3 Pro",
+      "MCHOSE A7 V3 Pro+",
+      "MCHOSE A7 V3 Ultra+",
+      "MCHOSE G3 V3",
+      "MCHOSE V7"
+    ],
+    "mouseConfig": [
+      "MCHOSE M7",
+      "MCHOSE M7 Pro",
+      "MCHOSE M7 Ultra",
+      "MCHOSE L7",
+      "MCHOSE L7 Pro",
+      "MCHOSE L7 Pro+",
+      "MCHOSE L7 Ultra",
+      "MCHOSE L7 Ultra+",
+      "MCHOSE A7",
+      "MCHOSE A7 Pro",
+      "MCHOSE A7 Ultra",
+      "MCHOSE A7 Ultra(RE)",
+      "MCHOSE A7 V2 Pro",
+      "MCHOSE A7 V2 Pro+",
+      "MCHOSE A7 V2 Ultra",
+      "MCHOSE A7 V2 Ultra+",
+      "MCHOSE A7X Ultra",
+      "MCHOSE AX5 V2 old",
+      "MCHOSE AX5 V2 new",
+      "MCHOSE K7 Ultra",
+      "MCHOSE A5 V3",
+      "MCHOSE A5 V2 Ultra",
+      "A5 ultra",
+      "MCHOSE G3 Ultra 8K",
+      "MCHOSE G3 Ultra 4K",
+      "A6 ultra test"
+    ],
+    "mouseConfig_numeric_pid_keys": [
+      "4097",
+      "4105",
+      "4106",
+      "4107",
+      "4108",
+      "4128",
+      "4129",
+      "4354",
+      "18274"
+    ],
+    "bundle": [
+      "Ace 75",
+      "God 60",
+      "MCHOSE 2.4G Wireless-G87_V2",
+      "MCHOSE A5 V3 Ultra+",
+      "MCHOSE A5 V3 Ultra+(3955)",
+      "MCHOSE A7 V2 Pro+",
+      "MCHOSE A7 V2 Ultra+",
+      "MCHOSE A7 V3 Pro+",
+      "MCHOSE A7 V3 Ultra+",
+      "MCHOSE G20",
+      "MCHOSE G20 PRO",
+      "MCHOSE G87 V2 (1K)",
+      "MCHOSE G9 PRO",
+      "MCHOSE G9 Pro",
+      "MCHOSE G9 V2",
+      "MCHOSE G9 V2-II",
+      "MCHOSE G9 WIRED HEADSET",
+      "MCHOSE K20",
+      "MCHOSE K20 GT",
+      "MCHOSE K20 PRO",
+      "MCHOSE K20 Pro",
+      "MCHOSE K7 Ultra",
+      "MCHOSE K7 V2 Pro+",
+      "MCHOSE K7 V2 Ultra+",
+      "MCHOSE K9",
+      "MCHOSE K9 UITRA",
+      "MCHOSE K9 ULTRA",
+      "MCHOSE K9 ULTRA HEADSET",
+      "MCHOSE MagDock",
+      "MCHOSE S9 PRO",
+      "MCHOSE V9",
+      "MCHOSE V9 PRO",
+      "MCHOSE V9 PRO 2",
+      "MCHOSE V9 PRO 2 HEADSET",
+      "MCHOSE V9 TURBO",
+      "MCHOSE V9 TURBO HEADSET",
+      "MCHOSE V9 TURBO+",
+      "MCHOSE X9",
+      "V9 Turbo"
+    ]
+  },
+  "identities": [
+    {
+      "vendor_id": "0x0e6a",
+      "product_id": "0x0111",
+      "sources": {
+        "bundle": [
+          {
+            "name": "MCHOSE G20",
+            "device_type": "Ee.SPEAKER"
+          },
+          {
+            "name": "MCHOSE G20 PRO",
+            "device_type": "Ee.SPEAKER"
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x291d",
+      "product_id": "0x385d",
+      "sources": {
+        "bundle": [
+          {
+            "name": "MCHOSE G9 PRO",
+            "device_type": "Ee.HEADSET"
+          },
+          {
+            "name": "MCHOSE S9 PRO",
+            "device_type": "Ee.HEADSET"
+          },
+          {
+            "name": "MCHOSE V9",
+            "device_type": "Ee.HEADSET"
+          },
+          {
+            "name": "MCHOSE V9 PRO",
+            "device_type": "Ee.HEADSET"
+          },
+          {
+            "name": "MCHOSE G9 Pro",
+            "device_type": null
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x1001",
+      "sources": {
+        "bundle": [
+          {
+            "name": "MCHOSE K7 Ultra",
+            "device_type": null
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x100a",
+      "sources": {
+        "bundle": [
+          {
+            "name": "MCHOSE A7 V2 Pro+",
+            "device_type": null
+          },
+          {
+            "name": "MCHOSE A7 V2 Ultra+",
+            "device_type": null
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x100b",
+      "sources": {
+        "bundle": [
+          {
+            "name": "MCHOSE A7 V2 Pro+",
+            "device_type": null
+          },
+          {
+            "name": "MCHOSE A7 V2 Ultra+",
+            "device_type": null
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x1012",
+      "sources": {
+        "bundle": [
+          {
+            "name": "MCHOSE MagDock",
+            "device_type": null
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x1014",
+      "sources": {
+        "bundle": [
+          {
+            "name": "MCHOSE A5 V3 Ultra+",
+            "device_type": null
+          },
+          {
+            "name": "MCHOSE A5 V3 Ultra+(3955)",
+            "device_type": null
+          },
+          {
+            "name": "MCHOSE A7 V3 Pro+",
+            "device_type": null
+          },
+          {
+            "name": "MCHOSE A7 V3 Ultra+",
+            "device_type": null
+          },
+          {
+            "name": "MCHOSE K7 V2 Pro+",
+            "device_type": null
+          },
+          {
+            "name": "MCHOSE K7 V2 Ultra+",
+            "device_type": null
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x1015",
+      "sources": {
+        "keyboardConfig": [
+          {
+            "suffix": "MCHOSE G98 V3 2.4G"
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x1018",
+      "sources": {
+        "bundle": [
+          {
+            "name": "MCHOSE A5 V3 Ultra+",
+            "device_type": null
+          },
+          {
+            "name": "MCHOSE A5 V3 Ultra+(3955)",
+            "device_type": null
+          },
+          {
+            "name": "MCHOSE A7 V3 Pro+",
+            "device_type": null
+          },
+          {
+            "name": "MCHOSE A7 V3 Ultra+",
+            "device_type": null
+          },
+          {
+            "name": "MCHOSE K7 V2 Pro+",
+            "device_type": null
+          },
+          {
+            "name": "MCHOSE K7 V2 Ultra+",
+            "device_type": null
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x200e",
+      "sources": {
+        "keyboardPreset": [
+          {
+            "firmware": "135"
+          },
+          {
+            "firmware": "140"
+          },
+          {
+            "firmware": "142"
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x2015",
+      "sources": {
+        "keyboardPreset": [
+          {
+            "firmware": "117"
+          },
+          {
+            "firmware": "118"
+          },
+          {
+            "firmware": "119"
+          },
+          {
+            "firmware": "124"
+          }
+        ],
+        "keyboardConfig": [
+          {
+            "suffix": null
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x201a",
+      "sources": {
+        "bundle": [
+          {
+            "name": "MCHOSE G87 V2 (1K)",
+            "device_type": null
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x201b",
+      "sources": {
+        "bundle": [
+          {
+            "name": "MCHOSE 2.4G Wireless-G87_V2",
+            "device_type": null
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x2020",
+      "sources": {
+        "keyboardPreset": [
+          {
+            "firmware": "109"
+          },
+          {
+            "firmware": "111"
+          },
+          {
+            "firmware": "115"
+          },
+          {
+            "firmware": "117"
+          },
+          {
+            "firmware": "118"
+          },
+          {
+            "firmware": "120"
+          },
+          {
+            "firmware": "126"
+          },
+          {
+            "firmware": "127a"
+          },
+          {
+            "firmware": "128"
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x2021",
+      "sources": {
+        "keyboardPreset": [
+          {
+            "firmware": "105"
+          },
+          {
+            "firmware": "110"
+          },
+          {
+            "firmware": "113"
+          },
+          {
+            "firmware": "114"
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x2025",
+      "sources": {
+        "keyboardConfig": [
+          {
+            "suffix": null
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x3002",
+      "sources": {
+        "keyboardPreset": [
+          {
+            "firmware": "107"
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x3003",
+      "sources": {
+        "keyboardPreset": [
+          {
+            "firmware": "107"
+          },
+          {
+            "firmware": "110"
+          },
+          {
+            "firmware": "111"
+          },
+          {
+            "firmware": "113"
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x3007",
+      "sources": {
+        "cardList": [
+          {
+            "desc": "Ace 68 GT 磁轴键盘（有线）",
+            "usage_page": "0x0001",
+            "usage": "0x0000",
+            "priority": 2,
+            "webdriver_enum": {
+              "deviceType": 1,
+              "subType": 2
+            }
+          }
+        ],
+        "keyboardPreset": [
+          {
+            "firmware": "106"
+          },
+          {
+            "firmware": "110"
+          },
+          {
+            "firmware": "113"
+          },
+          {
+            "firmware": "117"
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x3009",
+      "sources": {
+        "cardList": [
+          {
+            "desc": "Ace 68 GT 磁轴键盘（有线）",
+            "usage_page": "0xff00",
+            "usage": "0x0001",
+            "priority": 1,
+            "webdriver_enum": {
+              "deviceType": 1,
+              "subType": 2
+            }
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x300a",
+      "sources": {
+        "keyboardPreset": [
+          {
+            "firmware": "114"
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x300d",
+      "sources": {
+        "keyboardPreset": [
+          {
+            "firmware": "118"
+          },
+          {
+            "firmware": "121"
+          },
+          {
+            "firmware": "122"
+          },
+          {
+            "firmware": "123"
+          },
+          {
+            "firmware": "125"
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x301a",
+      "sources": {
+        "cardList": [
+          {
+            "desc": "God 60 配置",
+            "usage_page": "0xff00",
+            "usage": "0x0001",
+            "priority": 2,
+            "webdriver_enum": {
+              "deviceType": 1,
+              "subType": 2
+            }
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x301d",
+      "sources": {
+        "cardList": [
+          {
+            "desc": "Ace 75 磁轴键盘（8K 已发布, 16K 未发布）",
+            "usage_page": "0x0001",
+            "usage": "0x0000",
+            "priority": 2,
+            "webdriver_enum": {
+              "deviceType": 1,
+              "subType": 2
+            }
+          }
+        ],
+        "bundle": [
+          {
+            "name": "Ace 75",
+            "device_type": null
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x301f",
+      "sources": {
+        "cardList": [
+          {
+            "desc": "Ace 75 磁轴键盘（8K 已发布, 16K 未发布）",
+            "usage_page": "0xff00",
+            "usage": "0x0001",
+            "priority": 1,
+            "webdriver_enum": {
+              "deviceType": 1,
+              "subType": 2
+            }
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x3020",
+      "sources": {
+        "cardList": [
+          {
+            "desc": "God 60 配置",
+            "usage_page": "0x0001",
+            "usage": "0x0000",
+            "priority": 1,
+            "webdriver_enum": {
+              "deviceType": 1,
+              "subType": 2
+            }
+          }
+        ],
+        "keyboardPreset": [
+          {
+            "firmware": "104"
+          },
+          {
+            "firmware": "105"
+          },
+          {
+            "firmware": "109"
+          }
+        ],
+        "keyboardConfig": [
+          {
+            "suffix": null
+          }
+        ],
+        "bundle": [
+          {
+            "name": "God 60",
+            "device_type": null
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x3024",
+      "sources": {
+        "keyboardPreset": [
+          {
+            "firmware": "107"
+          },
+          {
+            "firmware": "109"
+          },
+          {
+            "firmware": "110"
+          }
+        ],
+        "keyboardConfig": [
+          {
+            "suffix": null
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x3026",
+      "sources": {
+        "keyboardPreset": [
+          {
+            "firmware": "114"
+          },
+          {
+            "firmware": "116"
+          },
+          {
+            "firmware": "118"
+          },
+          {
+            "firmware": "122"
+          },
+          {
+            "firmware": "124"
+          },
+          {
+            "firmware": "125"
+          }
+        ],
+        "keyboardConfig": [
+          {
+            "suffix": null
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x3028",
+      "sources": {
+        "keyboardPreset": [
+          {
+            "firmware": "106"
+          },
+          {
+            "firmware": "107"
+          },
+          {
+            "firmware": "112"
+          }
+        ],
+        "keyboardConfig": [
+          {
+            "suffix": null
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x302d",
+      "sources": {
+        "keyboardPreset": [
+          {
+            "firmware": "101"
+          },
+          {
+            "firmware": "102"
+          },
+          {
+            "firmware": "102a"
+          },
+          {
+            "firmware": "102d"
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x3030",
+      "sources": {
+        "keyboardPreset": [
+          {
+            "firmware": "100"
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x3033",
+      "sources": {
+        "keyboardConfig": [
+          {
+            "suffix": "MCHOSE G87 V2 2.4G"
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x303c",
+      "sources": {
+        "cardList": [
+          {
+            "desc": "Ace 75 磁轴键盘（8K 已发布, 16K 未发布）",
+            "usage_page": "0x0001",
+            "usage": "0x0000",
+            "priority": 2,
+            "webdriver_enum": {
+              "deviceType": 1,
+              "subType": 2
+            }
+          }
+        ],
+        "keyboardPreset": [
+          {
+            "firmware": "107"
+          },
+          {
+            "firmware": "113"
+          },
+          {
+            "firmware": "114"
+          },
+          {
+            "firmware": "118"
+          }
+        ],
+        "keyboardConfig": [
+          {
+            "suffix": null
+          }
+        ],
+        "bundle": [
+          {
+            "name": "Ace 75",
+            "device_type": null
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x303d",
+      "sources": {
+        "cardList": [
+          {
+            "desc": "Ace 75 磁轴键盘（8K 已发布, 16K 未发布）",
+            "usage_page": "0xff00",
+            "usage": "0x0001",
+            "priority": 1,
+            "webdriver_enum": {
+              "deviceType": 1,
+              "subType": 2
+            }
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x303e",
+      "sources": {
+        "keyboardPreset": [
+          {
+            "firmware": "102"
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x3040",
+      "sources": {
+        "cardList": [
+          {
+            "desc": "Ace60 Pro ISO FR 配置",
+            "usage_page": "0x0001",
+            "usage": "0x0000",
+            "priority": 1,
+            "webdriver_enum": {
+              "deviceType": 1,
+              "subType": 2
+            }
+          }
+        ],
+        "keyboardPreset": [
+          {
+            "firmware": "100"
+          },
+          {
+            "firmware": "101"
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x3041",
+      "sources": {
+        "cardList": [
+          {
+            "desc": "Ace60 Pro ISO FR 配置",
+            "usage_page": "0xff00",
+            "usage": "0x0001",
+            "priority": 2,
+            "webdriver_enum": {
+              "deviceType": 1,
+              "subType": 2
+            }
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x4021",
+      "sources": {
+        "bundle": [
+          {
+            "name": "MCHOSE A7 V2 Ultra+",
+            "device_type": null
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x4023",
+      "sources": {
+        "bundle": [
+          {
+            "name": "MCHOSE A7 V2 Pro+",
+            "device_type": null
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x4026",
+      "sources": {
+        "bundle": [
+          {
+            "name": "MCHOSE A5 V3 Ultra+",
+            "device_type": null
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x4027",
+      "sources": {
+        "bundle": [
+          {
+            "name": "MCHOSE K7 V2 Pro+",
+            "device_type": null
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x4028",
+      "sources": {
+        "bundle": [
+          {
+            "name": "MCHOSE K7 V2 Ultra+",
+            "device_type": null
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x4032",
+      "sources": {
+        "bundle": [
+          {
+            "name": "MCHOSE A7 V3 Pro+",
+            "device_type": null
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x4033",
+      "sources": {
+        "bundle": [
+          {
+            "name": "MCHOSE A7 V3 Ultra+",
+            "device_type": null
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x4034",
+      "sources": {
+        "bundle": [
+          {
+            "name": "MCHOSE A5 V3 Ultra+(3955)",
+            "device_type": null
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x4150",
+      "sources": {
+        "bundle": [
+          {
+            "name": "MCHOSE K7 Ultra",
+            "device_type": null
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x6001",
+      "sources": {
+        "bundle": [
+          {
+            "name": "MCHOSE K9 ULTRA HEADSET",
+            "device_type": null
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x6002",
+      "sources": {
+        "bundle": [
+          {
+            "name": "MCHOSE K9 UITRA",
+            "device_type": null
+          },
+          {
+            "name": "MCHOSE K9 ULTRA",
+            "device_type": null
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x6003",
+      "sources": {
+        "bundle": [
+          {
+            "name": "MCHOSE K20 PRO",
+            "device_type": "Ee.SPEAKER"
+          },
+          {
+            "name": "MCHOSE K20 Pro",
+            "device_type": null
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x6008",
+      "sources": {
+        "bundle": [
+          {
+            "name": "V9 Turbo",
+            "device_type": null
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x6009",
+      "sources": {
+        "bundle": [
+          {
+            "name": "MCHOSE V9 TURBO HEADSET",
+            "device_type": "Ee.HEADSET_DOCK"
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x600a",
+      "sources": {
+        "bundle": [
+          {
+            "name": "MCHOSE V9 TURBO+",
+            "device_type": "Ee.HEADSET"
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x600d",
+      "sources": {
+        "bundle": [
+          {
+            "name": "MCHOSE V9 TURBO",
+            "device_type": "Ee.HEADSET"
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x6010",
+      "sources": {
+        "bundle": [
+          {
+            "name": "MCHOSE V9 PRO 2 HEADSET",
+            "device_type": null
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x6011",
+      "sources": {
+        "bundle": [
+          {
+            "name": "MCHOSE V9 PRO 2",
+            "device_type": "Ee.HEADSET"
+          },
+          {
+            "name": "MCHOSE G9 V2-II",
+            "device_type": null
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x6045",
+      "sources": {
+        "bundle": [
+          {
+            "name": "MCHOSE X9",
+            "device_type": "Ee.HEADSET"
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x6047",
+      "sources": {
+        "bundle": [
+          {
+            "name": "MCHOSE K9",
+            "device_type": null
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x6089",
+      "sources": {
+        "bundle": [
+          {
+            "name": "MCHOSE G9 V2",
+            "device_type": null
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x60c4",
+      "sources": {
+        "bundle": [
+          {
+            "name": "MCHOSE K20",
+            "device_type": "Ee.SPEAKER"
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x60c6",
+      "sources": {
+        "bundle": [
+          {
+            "name": "MCHOSE K20 GT",
+            "device_type": "Ee.SPEAKER"
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x3837",
+      "product_id": "0x8080",
+      "sources": {
+        "bundle": [
+          {
+            "name": "MCHOSE G9 WIRED HEADSET",
+            "device_type": "Ee.HEADSET"
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x41e4",
+      "product_id": "0x2101",
+      "sources": {
+        "keyboardPreset": [
+          {
+            "firmware": "119"
+          },
+          {
+            "firmware": "120"
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x41e4",
+      "product_id": "0x2103",
+      "sources": {
+        "keyboardPreset": [
+          {
+            "firmware": "118"
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x41e4",
+      "product_id": "0x2112",
+      "sources": {
+        "keyboardPreset": [
+          {
+            "firmware": "102"
+          },
+          {
+            "firmware": "104"
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x41e4",
+      "product_id": "0x2116",
+      "sources": {
+        "keyboardPreset": [
+          {
+            "firmware": "118"
+          },
+          {
+            "firmware": "120"
+          },
+          {
+            "firmware": "121"
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x41e4",
+      "product_id": "0x2118",
+      "sources": {
+        "keyboardPreset": [
+          {
+            "firmware": "109"
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x41e4",
+      "product_id": "0x211a",
+      "sources": {
+        "keyboardPreset": [
+          {
+            "firmware": "116"
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x41e4",
+      "product_id": "0x211c",
+      "sources": {
+        "keyboardPreset": [
+          {
+            "firmware": "114"
+          },
+          {
+            "firmware": "115"
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x41e4",
+      "product_id": "0x2120",
+      "sources": {
+        "keyboardPreset": [
+          {
+            "firmware": "117"
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x41e4",
+      "product_id": "0x2122",
+      "sources": {
+        "keyboardPreset": [
+          {
+            "firmware": "112"
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x41e4",
+      "product_id": "0x2132",
+      "sources": {
+        "keyboardPreset": [
+          {
+            "firmware": "114"
+          },
+          {
+            "firmware": "116"
+          },
+          {
+            "firmware": "120"
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x41e4",
+      "product_id": "0x3201",
+      "sources": {
+        "bundle": [
+          {
+            "name": "MCHOSE V9",
+            "device_type": "Ee.HEADSET"
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x41e4",
+      "product_id": "0x3202",
+      "sources": {
+        "bundle": [
+          {
+            "name": "MCHOSE V9 PRO",
+            "device_type": "Ee.HEADSET"
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x41e4",
+      "product_id": "0x3402",
+      "sources": {
+        "bundle": [
+          {
+            "name": "MCHOSE S9 PRO",
+            "device_type": "Ee.HEADSET"
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x41e4",
+      "product_id": "0x3502",
+      "sources": {
+        "bundle": [
+          {
+            "name": "MCHOSE G9 PRO",
+            "device_type": "Ee.HEADSET"
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x5253",
+      "product_id": "0x1020",
+      "sources": {
+        "bundle": [
+          {
+            "name": "MCHOSE A7 V2 Pro+",
+            "device_type": null
+          },
+          {
+            "name": "MCHOSE A7 V2 Ultra+",
+            "device_type": null
+          },
+          {
+            "name": "MCHOSE K7 Ultra",
+            "device_type": null
+          }
+        ]
+      }
+    },
+    {
+      "vendor_id": "0x5253",
+      "product_id": "0x1021",
+      "sources": {
+        "bundle": [
+          {
+            "name": "MCHOSE K7 Ultra",
+            "device_type": null
+          }
+        ]
+      }
+    }
+  ]
+}

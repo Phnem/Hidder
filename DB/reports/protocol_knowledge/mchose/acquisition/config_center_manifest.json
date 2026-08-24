@@ -1,0 +1,144 @@
+{
+  "_what": "MCHOSE config centre acquisition, TICKET-23",
+  "_why": "device knowledge served at runtime; invisible to a static bundle walk",
+  "acquired_at": "2026-08-24T18:26:03.826092+00:00",
+  "build_identities": {
+    "webVersion": {
+      "branch": "HEAD",
+      "tag": "v3.15.2",
+      "hash": "c68ce3684d53e143698294326f5e9d6d822cd816",
+      "publishTime": 1787538942350
+    },
+    "pcVersion": {
+      "branch": "",
+      "tag": "1.2.04",
+      "hash": "ef08c02bd7ceb7351daa34abed2f72d159843995",
+      "publishTime": 1787108039443
+    },
+    "rendererVersion": {
+      "branch": "",
+      "tag": "1.1.17",
+      "hash": "804e379c3d318fd2a7478bb515937e8bbbbc19b2",
+      "publishTime": 1787129038299
+    }
+  },
+  "config_center_version_map": {
+    "MCHOSE V9 Turbo+--14391--24586": "1088b362cc",
+    "MCHOSE V9 PRO--10525--14429": "57db35ba97",
+    "MCHOSE V9 Turbo--14391--24589": "49404cbdd0",
+    "MCHOSE K20 GT--14391--24774": "5c60aa6352",
+    "keyboardPreset": "5e9d0c0b70",
+    "固件库": "71b6f01d13",
+    "keyboardConfig": "c54aab872c",
+    "appLoadPage": "04032ce00b",
+    "androidAPPUpdata": "b851ff61e3",
+    "mobileOtaUpgrade": "ebb9f81ec6",
+    "iOSAPPUpdate": "168d628b61",
+    "mouseConfig": "89b67ad5c0",
+    "otaConfigApp_prod": "57b321aae9",
+    "newMouseConfig": "dcf57ae6bd",
+    "pre-newMouseConfig": "b35f0e4fe0",
+    "cardList": "d4b8e6e0e0",
+    "MCHOSE V9 PRO 2--14391--24592": "eae8b46caf",
+    "MCHOSE V9 Pro 2--14391--24593": "e10f5df52e",
+    "MCHOSE R9--14391--24595": "3aac7dbeac",
+    "mchosePcFile": "2b573a1279",
+    "keyboardFirmwareHistory": "964dc43ed9",
+    "mouseFirmwareHistory": "80857e6172",
+    "audition": "6d0011a272"
+  },
+  "named_in_version_map_but_not_retrieved": [
+    "MCHOSE K20 GT--14391--24774",
+    "MCHOSE R9--14391--24595",
+    "MCHOSE V9 PRO 2--14391--24592",
+    "MCHOSE V9 PRO--10525--14429",
+    "MCHOSE V9 Pro 2--14391--24593",
+    "MCHOSE V9 Turbo+--14391--24586",
+    "MCHOSE V9 Turbo--14391--24589",
+    "androidAPPUpdata",
+    "appLoadPage",
+    "audition",
+    "iOSAPPUpdate",
+    "keyboardFirmwareHistory",
+    "mchosePcFile",
+    "mobileOtaUpgrade",
+    "mouseFirmwareHistory",
+    "otaConfigApp_prod",
+    "pre-newMouseConfig",
+    "固件库"
+  ],
+  "artifacts": [
+    {
+      "url": "https://cdn.mchose.com.cn/configCenter/config/global.json",
+      "fetched_at": "2026-08-24T18:25:59.534277+00:00",
+      "http_status": 200,
+      "size_bytes": 11469,
+      "sha256_wire": "3569e550033a58e6baa5876fe6c05a6e1dc176f190f8a623ff94236e3b281df1",
+      "etag": null,
+      "last_modified": "Mon, 24 Aug 2026 08:27:18 GMT",
+      "sha256_decoded": "48633aae2c76d61cc9f188582c8c9526709eb852210954c160e6acac500be3e1",
+      "role": "global config; carries the version map and build identities"
+    },
+    {
+      "url": "https://cdn.mchose.com.cn/configCenter/custom/cardList.json?hash=d4b8e6e0e0",
+      "fetched_at": "2026-08-24T18:26:01.943605+00:00",
+      "http_status": 200,
+      "size_bytes": 2065,
+      "sha256_wire": "c4e618210e87f53b2eb714c2338bb50edf8437e873853421385bda4c141e480d",
+      "etag": null,
+      "last_modified": "Wed, 19 Aug 2026 09:36:18 GMT",
+      "config_center_hash": "d4b8e6e0e0",
+      "sha256_decoded": "afbaf64a222c73c1d0d56722bc34b708b44fe1265e090ea3a66c91d397fc26ac",
+      "decoded_entries": 1
+    },
+    {
+      "url": "https://cdn.mchose.com.cn/configCenter/custom/keyboardConfig.json?hash=c54aab872c",
+      "fetched_at": "2026-08-24T18:26:02.277641+00:00",
+      "http_status": 200,
+      "size_bytes": 1057,
+      "sha256_wire": "38988359cc3763d2893212d840b3b0e9da191fb59f0c59d738dcba589860937a",
+      "etag": null,
+      "last_modified": "Mon, 24 Aug 2026 08:27:18 GMT",
+      "config_center_hash": "c54aab872c",
+      "sha256_decoded": "85652b4c40a72ce5b2127197921ca7ed5ad74c28fe6b07ca044b1697a476f54d",
+      "decoded_entries": 13
+    },
+    {
+      "url": "https://cdn.mchose.com.cn/configCenter/custom/keyboardPreset.json?hash=5e9d0c0b70",
+      "fetched_at": "2026-08-24T18:26:02.655326+00:00",
+      "http_status": 200,
+      "size_bytes": 1781,
+      "sha256_wire": "88b20a801b9d8aac1c402f82fb269f868f3af53d436200969a2b1ca72d1b73e9",
+      "etag": null,
+      "last_modified": "Fri, 21 Aug 2026 03:10:14 GMT",
+      "config_center_hash": "5e9d0c0b70",
+      "sha256_decoded": "74aa67e5168eac4ab603aebec30921abbf47575186f06d72a76e0f4a27162dfa",
+      "decoded_entries": 79
+    },
+    {
+      "url": "https://cdn.mchose.com.cn/configCenter/custom/mouseConfig.json?hash=89b67ad5c0",
+      "fetched_at": "2026-08-24T18:26:03.088586+00:00",
+      "http_status": 200,
+      "size_bytes": 837,
+      "sha256_wire": "32cd4a15a0bda6d6811d4458b7ba1aec0fde4081577df52215b57f89827ed9fd",
+      "etag": "\"33A4A29FDCFC03743861EAE5AE6C8774\"",
+      "last_modified": "Fri, 14 Aug 2026 09:41:57 GMT",
+      "config_center_hash": "89b67ad5c0",
+      "sha256_decoded": "ab9fbe444aba445e73b3963207f55da5f15d643063c1a8ba81a6e8f9a976fc3f",
+      "decoded_entries": 35
+    },
+    {
+      "url": "https://cdn.mchose.com.cn/configCenter/custom/newMouseConfig.json?hash=dcf57ae6bd",
+      "fetched_at": "2026-08-24T18:26:03.488884+00:00",
+      "http_status": 200,
+      "size_bytes": 1169,
+      "sha256_wire": "e37eb2bdd64b26515acf82bb386f58edeeb6e14888c7f4311f6ee026817045e2",
+      "etag": null,
+      "last_modified": "Fri, 14 Aug 2026 09:42:05 GMT",
+      "config_center_hash": "dcf57ae6bd",
+      "sha256_decoded": "ef6bdc0c14a187b2ade44ef26a1c987fd296f455c0a02c21e7d229b8d5887903",
+      "decoded_entries": 11
+    }
+  ],
+  "manifest_sha256": "f4958fe253672141bc2101e27f1a40f6ff265b418ab76e1fcfbbf067b9729b5c"
+}

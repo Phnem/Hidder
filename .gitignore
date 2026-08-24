@@ -44,3 +44,10 @@ $RECYCLE.BIN/
 
 # Vetro Probe schemas are tracked (exception to *.json)
 !community/vetro_probe/schema/*.json
+
+# Provenance records are evidence, not downloads. The blanket `*.json` rule
+# above targets fetched vendor packages and databases; these manifests are
+# hand-produced records of WHERE an artifact came from and WHAT its hash was,
+# and a provenance record that is not version-controlled is not a record.
+# The artifacts themselves stay out of the repo (see data/README.md).
+!DB/reports/protocol_knowledge/*/acquisition/*.json
