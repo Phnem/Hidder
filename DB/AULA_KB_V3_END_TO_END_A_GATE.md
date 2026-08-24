@@ -67,27 +67,43 @@ carry `manual learning still required`.
 
 ## The bootstrap doors, after 2026-08-24
 
-Sixteen reads and nine writes went through the doors in one batch on
-2026-08-24; twenty-two left, promoted on the physical evidence (exchange 010).
-Three reads remain:
+**Both empty**, which is this project's resting state rather than an unused
+mechanism. Sixteen reads and nine writes went through in one batch; twenty-two
+left on exchange 010's evidence and the last three on exchange 012's.
 
-| Command | Why it stayed |
-|---|---|
-| `read_firmware_version` | Reply declared 1 data byte, decoder expects 2. Request-shape defect. |
-| `read_rt_precision` | Reply declared 0 data bytes; a non-zero byte sat past the declared boundary. Same defect. |
-| `read_supported_switches` | Same shape as `read_rt_precision`. |
+Those three — `read_firmware_version`, `read_rt_precision`,
+`read_supported_switches` — stayed behind because their replies were rejected,
+and the diagnosis recorded at the time was wrong. It said the *requests* had
+asked for too few bytes. All three requests are byte-identical to the vendor's
+own serializer templates and always were.
 
-All three built their request by reproducing a captured *connect-path* frame
-verbatim, without accounting for this family's own established rule (already
-true of `read_model_id`) that the request's own declared length constrains the
-reply's. Not promoted; nothing here claims otherwise. The write door is empty
-— all nine of its targets promoted.
+The difference is on the reply side. This project bounds a response's data by
+the response's own declared length byte; the vendor's client never reads that
+byte, slicing from the data offset to the checksum and taking a fixed width off
+the front. On this board `0x82:0x02` declares one byte and carries two,
+`0x82:0x03` and `0x82:0x06` declare none and carry four and one.
 
-`psafety`'s own guardrails (`exactly_the_planned_batch_is_awaiting_a_first_exchange`,
-`the_door_holds_exactly_the_commands_that_are_mid_promotion`,
-`the_aula_family_has_exactly_the_thirty_commands_it_earned`) hold the doors'
-and the production surface's contents exact, so a command appearing or
-disappearing unreviewed fails the build.
+`decode_response_body` sits beside `decode_response` rather than replacing it.
+Thirty commands are on a production path on the strength of the declared length
+agreeing with the payload, and widening all of them would turn a short answer —
+this family's way of saying "not supported" — into a plausible value. Only a
+command whose vendor-side reader is on record may use it.
+
+Two corrections came with it, both from reading the vendor source rather than a
+prose summary of it:
+
+- **The firmware version is little-endian.** The decoder had the bytes the other
+  way round and nothing disagreed. The board sent `16 02` = `0x0216` = 534, and
+  `0216` is what the vendor's own software displayed for this board — in hex,
+  not the `0534` decimal would give.
+- **`read_rt_precision` is not a unit.** The vendor converts rapid-trigger
+  deltas with `precision_distance`, the scalar `read_travel_precision` answers,
+  not this one. The byte is carried unnamed.
+
+**Promotion is not understanding.** Two of these three answer without closing
+anything: the switch table's 26 bytes are carried and not parsed, and
+`0x82:0x06`'s byte has no established meaning. The rank evaluator was changed in
+the same commit so that promoting them could not close a bound by itself.
 
 ## Never generated, and staying that way
 
@@ -105,10 +121,10 @@ boilerplate and reuses a template eventually emits a factory reset.
 one-byte flag, reversible in one write, now `safe_write`. The two share a word
 in their names and nothing else, and both ACL entries say so.
 
-## Contradictions: three settled, one open
+## Contradictions: four settled, and one defect in their place
 
 Four disagreements between this project's own two research paths were found
-while porting this surface. Three are now settled:
+while porting this surface. **All four are now settled.**
 
 1. **The `0x84` request length byte is not uniform across registers.** Settled
    by capture; the runtime reproduces each register's own observed shape.
@@ -118,37 +134,80 @@ while porting this surface. Three are now settled:
 3. **The profile-name "unnamed" sentinel.** Settled 2026-08-24 by a real read:
    the board answers with a `0x38`-length body of fifty-six `0xFF` bytes, not
    the `0xFF`-length-byte form one source document described.
+4. **Byte 5 of an actuation record: pad byte, or per-key scope flag.** Settled
+   2026-08-24 (exchange 014). The vendor's own parsers name the field in all
+   three of this family's record shapes — `distance_global`, `rt_global`,
+   `safe_area_global` — and the board was then shown to *store* it. W's dead-zone
+   scope was driven `0 → 1` and W's rapid-trigger scope `1 → 0`, each read back
+   changed with every other byte of the record held constant, each restored
+   exactly. **Not padding.**
 
-One remains open and blocks every product's rank, deliberately — a rank that
-came out clean while it stood would be the wrong rank:
+   An earlier attempt at this was inconclusive by construction: all of W/A/S/D
+   sat at `0`, so the transition could not be observed. What made it answerable
+   was `set_rapid_trigger`/`set_deadzone` becoming production-safe —
+   `set_key_travel` hardcodes the byte and therefore cannot ask the question.
 
-4. **Byte 5 of an actuation record: pad byte, or per-key scope flag.** Three
-   independent observations agree `01` means "this key has its own value" and
-   `00` means "it follows the board's"; Peripheral writes `00` on every
-   actuation write it has ever made. This is the leading explanation for the
-   unresolved `W 51→75→51 → 202/149` incident. A three-step test
-   (read/write/read, watching byte 5) ran on 2026-08-24 and was
-   **inconclusive by construction**: all four of W/A/S/D were already at
-   `trailing: 0` before the write, so the `01→00` transition the test is built
-   to catch could not be observed. Neither confirmed nor refuted. The
-   read/write surface has no key left that sits at `01` to test against.
+### What took its place on the blocker list
+
+Not a disagreement. A defect with evidence behind it, and it still blocks every
+product's rank deliberately:
+
+**`set_key_travel` writes the per-key scope byte as `0`, and the board stores
+it.** Every actuation write this project has ever made has told the board the key
+follows the board-wide value while handing it an individual one — which is also
+why the four addressable keys all read `0` today where exchanges 003/004
+recorded `01`.
+
+It is not fixed. Correcting it changes the bytes a shipping, physically
+validated `slow_flash` command puts on the wire, and needs its own physical pass.
+
+Note what this does **not** settle: the `W 51→75→51 → 202/149` incident. That
+this byte causes it is a mechanism that fits, and a mechanism that fits is not
+one that has been caught doing it — the anomaly has not reproduced across three
+clean transitions (exchanges 006, 010, 014).
 
 Full write-ups with the frames on all sides:
-`Vetro hud/.claude/worktrees/.../docs/hardware/aula-bytech-request-shape-contradictions.md`
-and `.../docs/hardware/aula-bytech-actuation-readback-anomaly.md`.
+`Vetro hud/.claude/worktrees/.../docs/hardware/aula-bytech-request-shape-contradictions.md`,
+`.../aula-bytech-actuation-readback-anomaly.md` and
+`.../aula-bytech-exchange-014-scope-byte-discriminating.md`.
 
-## A real backend bug found, and not yet fixed
+## The backend bug: reproduced, localised, fixed
 
-Reconnecting through the desktop app's own `listDevices`/`connectDevice` IPC —
-the only reconnect path anywhere in this codebase — failed repeatedly and
-identically after the polling write's forced disconnect, resolving only after
-a full process restart. `Worker::scan()`'s "already here" branch
-(`crates/pcore/src/service.rs`) is the leading suspect (it refreshes
-`known.present` every tick but never `known.discovered`, and `connect()` reads
-its openable path from the latter) but was not confirmed as the sole cause,
-and was **not patched speculatively**. Full record in exchange 010. The
-wire-level polling write/read/persistence is proven; a working reconnect UX
-for any command whose write disconnects the device is not.
+Reconnecting through the desktop app's own IPC failed repeatedly after the
+polling write's forced disconnect and recovered only on a full process restart.
+This report previously named `Worker::scan()`'s stale `known.discovered` as the
+leading suspect. **That theory is refuted.**
+
+Exchange 013 kept one `Peripheral` alive across the re-enumeration and tried
+three candidates in order:
+
+| candidate | result |
+|---|---|
+| the session held before the write | **dead** — `WriteFile: (0x0000048F)` |
+| a reopen from the pre-write discovery | works, path byte-identical |
+| a reopen from a discovery taken after | works |
+
+So neither the discovery nor the enumeration cache was stale. The only dead
+thing was the `DeviceSession`'s handle — and `Worker::connect` returns early
+while a session exists, so the application answered "connected" and then wrote
+through it.
+
+It looked intermittent because the watcher enumerates every two seconds and a
+re-enumeration takes about as long: when a scan lands in the gap the device is
+removed and the service recovers by luck, and when it does not, the entry
+survives holding a dead handle for the life of the process. That is exchange 010
+failing for minutes and exchange 011, from a fresh process, always working —
+one defect, one coin toss.
+
+**Fixed.** `WriteTarget::reenumerates_the_device` is its own predicate, and the
+session is released the moment such a write is dispatched. Nothing enumeration
+can see changes across the re-enumeration, so the write is the only moment the
+program knows. Verified through the running `DeviceService` on hardware: write,
+card no longer claiming a session, read of the new rate — one process, no
+restart.
+
+`known.discovered`'s enumeration half is refreshed in `scan` as well. That is a
+separate latent defect on the same path, proven not to be this one.
 
 ## The 15 products
 
@@ -173,19 +232,41 @@ unit), and the vendor's own per-product layout data. One row has anything more.
 | HERO 100 | 21990232555521 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 7 |
 | HERO 84 HE JIS | 18691697672245 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 6 |
 
-HERO 84 HE's four remaining blockers, exactly: the unread switch-type-table
-bound (`read_supported_switches` still blocked), two unread precision scalars
-(`read_travel_precision`, `read_rt_precision`, both still blocked or echoing),
-and the one open contradiction. Every other row carries those same four plus
-its own unverified identity binding and a capability set inherited from the
-family rather than established for it (two more), and the four rows sharing
-an ambiguous identity field with a sibling carry one further caveat (seven
-total).
+HERO 84 HE's four remaining blockers, verbatim from
+`cargo run -p pproto --example rank_matrix`:
+
+```text
+  bounds unknown: actuation ceiling: this board answers the switch table,
+                  and nothing here can read it
+  bounds unknown: he.actuation units: the travel precision scalar has never
+                  been read
+  bounds unknown: he.rapid_trigger units: the same scalar, which the vendor
+                  converts both with
+  unresolved contradiction: set_key_travel writes the per-key scope byte as 0,
+                  and the board stores it
+```
+
+Every other row carries those same four plus its own unverified identity binding
+and a capability set inherited from the family rather than established for it
+(two more); the four rows sharing an ambiguous identity field with a sibling
+carry one further caveat (seven total).
+
+**The count did not move on 2026-08-24, and two of the four nearly did for the
+wrong reason.** Both bound conditions used to be written as
+`is_production_safe(command)`, so promoting `read_supported_switches` and
+`read_rt_precision` would have closed them the moment the board answered —
+without anybody learning what a switch type permits or what the byte means. Both
+were rewritten to depend on knowledge instead:
+
+- the switch table sits behind `SWITCH_TABLE_IS_PARSEABLE`, false while the
+  vendor's `s4` is absent from the static extraction;
+- both unit gaps hinge on `read_travel_precision`, which is the scalar the
+  vendor actually converts with — rapid trigger included, contrary to what this
+  project believed until the vendor's own consumers were read.
 
 The shape of this table is the shape the evidence should produce. The board
-somebody owns has by far the fewest blockers, all four of them things no
-amount of *promotion* can satisfy — only more physical reads and the
-contradiction's resolution can.
+somebody owns has by far the fewest blockers, and all four are things no amount
+of *promotion* can satisfy.
 
 ### What the four validation states mean, kept apart
 
@@ -236,32 +317,54 @@ than merely declared.
 
 ## What happens next
 
-~~1. **The second physical pass.**~~ **Done, exchange 011.** All twenty-two
-   promoted commands re-exercised through the refactored production
-   `SafetyGate`: 13 reads, 8 write round-trips with rollback and a second
-   read-back, `set_polling_rate` both directions. 32/32, board byte-identical
-   at the end. Runner: `cargo run -p pcore --example second_physical_pass`.
+Four items are done since this report was last written. What is left is one
+defect, one missing parser, and one command nobody has got an answer out of.
 
-1. **The request-shape fix** for `read_firmware_version`/`read_rt_precision`/
-   `read_supported_switches` — widen the request the way `read_model_id`'s
-   already does, then a short follow-up read. This is now the *only* thing
-   standing between the reference unit and two of its four blockers: the
-   switch-table bound and the rapid-trigger unit scalar both resolve on it.
-2. **The reconnect-path bug** in `Worker::scan()` — exchange 011 narrowed it
-   without fixing it. Three fresh-process reconnects across the polling write
-   succeeded first time, so this is long-lived-process state rather than a
-   device or backend fault. The `Peripheral::connect()` re-lookup finding a
-   match for a path the staleness theory says should be gone is still the
-   loose thread.
-3. **The journal renders a pending write as a refusal.** `SafetyGate::write`
-   reuses `Refusal::NeedsConfirmation` as its before-the-wire placeholder, so a
-   hardware transcript reads `refused: NeedsConfirmation` for a write that was
-   authorised and sent. No emulator test reads the journal's rendering, which
-   is how it reached a transcript. Cosmetic, actively misleading, unfixed.
-4. **The actuation contradiction** needs a key this project can read/write
-   that is not already at `trailing: 0` — none exists on the current W/A/S/D
-   surface. Exchange 011 added corroboration from a sibling record (W's
-   rapid-trigger scope byte is a live `01` and survives a round trip intact),
-   which makes the byte meaningful somewhere without testing the command in
-   question. Widening the production actuation surface is still what would
-   move it.
+1. **`set_key_travel` writes a byte the board stores, and writes it as `0`.**
+   The largest open item, and the only one that is a defect rather than a gap.
+   Exchange 014 settled what that byte is: the vendor's parsers name it
+   (`distance_global`, `rt_global`, `safe_area_global`) and this board was shown
+   to store it, in both directions, on both analog record shapes, with every
+   other byte held constant. So every actuation write this project has made has
+   told the board the key follows the board-wide value while handing it an
+   individual one — which is also why the four addressable keys all read `0`
+   today where exchanges 003/004 recorded `01`.
+
+   Not fixed yet on purpose: it changes the bytes a shipping, physically
+   validated `slow_flash` command puts on the wire, and needs its own physical
+   pass. Note this settles the *contradiction* and not the *incident* — that the
+   `202`/`149` read-back is caused by this is a mechanism that fits, and the
+   anomaly has not reproduced across three clean transitions.
+
+2. **A parser for the switch table.** `read_supported_switches` is
+   production-safe and this board answers `3a e1 41 09`, but `s4` — the vendor
+   function that turns those bytes into switch types — is absent from the static
+   extraction. Until it exists, `TravelBounds` keeps the smallest maximum across
+   47 switch types and `SWITCH_TABLE_IS_PARSEABLE` stays `false`.
+
+3. **`read_travel_precision` (`0x82:0x08`)** is the last unanswered command that
+   matters, and it now blocks *two* units rather than one: the vendor converts
+   rapid-trigger deltas and actuation depths with the same scalar. It answered
+   this project's probe by echoing it, which is what an unsupported command looks
+   like on boards in this class — so the next step is establishing whether this
+   firmware implements it at all, not widening a request.
+
+### Closed since the last revision
+
+- **The second physical pass** (exchange 011). All twenty-two promoted commands
+  re-run through the refactored production `SafetyGate`. 32/32.
+- **The request-shape defect** (exchange 012). Three commands promoted; both
+  bootstrap doors empty.
+- **The reconnect defect** (exchange 013). Reproduced in one long-lived process
+  with three candidate causes separated: the pre-write *session* is dead, while
+  the pre-write discovery reopens and the path is byte-identical either side of
+  the re-enumeration. The stale-path theory this report carried is **refuted**.
+  It looked intermittent because the two-second watcher sometimes lands in the
+  re-enumeration gap and rescues it by luck. Fixed by releasing the session when
+  a write declared to re-enumerate the device is dispatched, and verified
+  through the running `DeviceService` on hardware — one process, no restart.
+- **The false journal rendering.** An authorised write borrowed
+  `Refused(NeedsConfirmation)` as its before-the-wire placeholder and every
+  hardware transcript carried it. `Outcome::Dispatched` is the missing outcome;
+  authorization semantics are untouched. Three regression tests, two of them on
+  the rendering rather than the enum, because the rendering is what misled.
