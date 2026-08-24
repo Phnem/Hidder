@@ -1,0 +1,582 @@
+{
+  "_what": "MCHOSE keyboard command table, extracted verbatim from the vendor's own table",
+  "_source_note": "`hpe` in purify.es-BGo9zI_u.js, wrapped as `oy = new mpe(hpe)` and consulted via `oy.getCommandConfig(name)`. Templates are the vendor's, byte for byte.",
+  "_not_claimed": "No byte is named here beyond what the vendor's own field schema names. Field meaning, GET/SET pairing and risk class are NOT decided by this extraction.",
+  "command_count": 13,
+  "wired_report_ids": [
+    "03",
+    "04",
+    "05",
+    "06",
+    "10"
+  ],
+  "wireless_report_ids": [
+    "01",
+    "02",
+    "03",
+    "04",
+    "06",
+    "09",
+    "13"
+  ],
+  "wired_frame_sizes": [
+    1,
+    520
+  ],
+  "wireless_frame_sizes": [
+    1,
+    19
+  ],
+  "wired_leading_pair_groups": {
+    "06 82": [
+      "getMacro",
+      "getPassWord"
+    ],
+    "<none>": [
+      "setMacro",
+      "setKeySetting",
+      "setLightColor",
+      "setPerformance",
+      "setReset",
+      "setDiyLight"
+    ],
+    "06 83": [
+      "getKeySetting"
+    ],
+    "06 8a": [
+      "getLightColor"
+    ],
+    "06 84": [
+      "getPerformance"
+    ],
+    "06 86": [
+      "getDiyLight"
+    ],
+    "06 87": [
+      "getBattery"
+    ]
+  },
+  "commands": [
+    {
+      "command": "getMacro",
+      "transports": {
+        "wired": {
+          "template_head_hex": [
+            "06",
+            "82",
+            "00",
+            "00",
+            "01",
+            "00",
+            "04",
+            "00",
+            "00",
+            "04",
+            "00",
+            "00"
+          ],
+          "zero_tail_count": 508,
+          "report_id_hex": "06",
+          "frame_bytes_including_report_id": 520,
+          "payload_bytes": 519
+        },
+        "wireless": {
+          "template_head_hex": [
+            "13",
+            "43",
+            "01",
+            "00",
+            "10",
+            "03",
+            "02"
+          ],
+          "zero_tail_count": 12,
+          "report_id_hex": "13",
+          "frame_bytes_including_report_id": 19,
+          "payload_bytes": 18
+        }
+      },
+      "parsers": {
+        "wired": "ed.getMacroParser",
+        "wireless": "ed.getMacroParser"
+      }
+    },
+    {
+      "command": "setMacro",
+      "transports": {
+        "wired": {
+          "template_head_hex": [
+            "05"
+          ],
+          "zero_tail_count": 0,
+          "report_id_hex": "05",
+          "frame_bytes_including_report_id": 1,
+          "payload_bytes": 0
+        },
+        "wireless": {
+          "template_head_hex": [
+            "03"
+          ],
+          "zero_tail_count": 0,
+          "report_id_hex": "03",
+          "frame_bytes_including_report_id": 1,
+          "payload_bytes": 0
+        }
+      },
+      "parsers": {
+        "wired": "bh.macroParser",
+        "wireless": "bh.macroWirelessParser"
+      },
+      "get_wireless_yy_verbatim": "(n,e)=>{let t=n.length;return parseInt(e*14/512)<<4|t}"
+    },
+    {
+      "command": "getPassWord",
+      "transports": {
+        "wired": {
+          "template_head_hex": [
+            "06",
+            "82",
+            "01",
+            "00",
+            "01",
+            "00",
+            "06",
+            "00"
+          ],
+          "zero_tail_count": 512,
+          "report_id_hex": "06",
+          "frame_bytes_including_report_id": 520,
+          "payload_bytes": 519
+        },
+        "wireless": {
+          "template_head_hex": [
+            "13",
+            "05",
+            "01",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00"
+          ],
+          "zero_tail_count": 0,
+          "report_id_hex": "13",
+          "frame_bytes_including_report_id": 19,
+          "payload_bytes": 18
+        }
+      },
+      "parsers": {
+        "wired": "ed.getPassWordParser",
+        "wireless": "ed.getPassWordParserWireless"
+      }
+    },
+    {
+      "command": "getKeySetting",
+      "transports": {
+        "wired": {
+          "template_head_hex": [
+            "06",
+            "83",
+            "00",
+            "00",
+            "01",
+            "00",
+            "F8",
+            "01"
+          ],
+          "zero_tail_count": 512,
+          "report_id_hex": "06",
+          "frame_bytes_including_report_id": 520,
+          "payload_bytes": 519
+        },
+        "wireless": {
+          "template_head_hex": [
+            "13",
+            "41",
+            "01",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00"
+          ],
+          "zero_tail_count": 0,
+          "report_id_hex": "13",
+          "frame_bytes_including_report_id": 19,
+          "payload_bytes": 18
+        }
+      },
+      "parsers": {}
+    },
+    {
+      "command": "setKeySetting",
+      "transports": {
+        "wired": {
+          "template_head_hex": [
+            "03"
+          ],
+          "zero_tail_count": 0,
+          "report_id_hex": "03",
+          "frame_bytes_including_report_id": 1,
+          "payload_bytes": 0
+        },
+        "wireless": {
+          "template_head_hex": [
+            "01"
+          ],
+          "zero_tail_count": 0,
+          "report_id_hex": "01",
+          "frame_bytes_including_report_id": 1,
+          "payload_bytes": 0
+        }
+      },
+      "parsers": {
+        "wired": "bh.setKeySettingWiredParser",
+        "wireless": "bh.setKeySettingWirelessParser"
+      },
+      "get_wireless_yy_verbatim": "(n,e,t,i)=>{const{keyLayer:s}"
+    },
+    {
+      "command": "getLightColor",
+      "transports": {
+        "wired": {
+          "template_head_hex": [
+            "06",
+            "8a",
+            "00",
+            "00",
+            "01",
+            "00",
+            "00",
+            "02"
+          ],
+          "zero_tail_count": 512,
+          "report_id_hex": "06",
+          "frame_bytes_including_report_id": 520,
+          "payload_bytes": 519
+        },
+        "wireless": {
+          "template_head_hex": [
+            "13",
+            "49",
+            "01",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00"
+          ],
+          "zero_tail_count": 0,
+          "report_id_hex": "13",
+          "frame_bytes_including_report_id": 19,
+          "payload_bytes": 18
+        }
+      },
+      "parsers": {
+        "wired": "ed.getLightColorWiredParser",
+        "wireless": "ed.getLightColorWirelessParser"
+      }
+    },
+    {
+      "command": "setLightColor",
+      "transports": {
+        "wired": {
+          "template_head_hex": [
+            "10"
+          ],
+          "zero_tail_count": 0,
+          "report_id_hex": "10",
+          "frame_bytes_including_report_id": 1,
+          "payload_bytes": 0
+        },
+        "wireless": {
+          "template_head_hex": [
+            "09"
+          ],
+          "zero_tail_count": 0,
+          "report_id_hex": "09",
+          "frame_bytes_including_report_id": 1,
+          "payload_bytes": 0
+        }
+      },
+      "parsers": {
+        "wired": "bh.setLightColorWiredParser",
+        "wireless": "bh.setLightColorWirelessParser"
+      },
+      "get_wireless_yy_verbatim": "<present, not captured>"
+    },
+    {
+      "command": "getPerformance",
+      "transports": {
+        "wired": {
+          "template_head_hex": [
+            "06",
+            "84",
+            "00",
+            "00",
+            "01",
+            "00",
+            "80",
+            "00"
+          ],
+          "zero_tail_count": 512,
+          "report_id_hex": "06",
+          "frame_bytes_including_report_id": 520,
+          "payload_bytes": 519
+        },
+        "wireless": {
+          "template_head_hex": [
+            "13",
+            "44",
+            "01",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00"
+          ],
+          "zero_tail_count": 0,
+          "report_id_hex": "13",
+          "frame_bytes_including_report_id": 19,
+          "payload_bytes": 18
+        }
+      },
+      "parsers": {
+        "wired": "ed.getPerformanceWiredParser",
+        "wireless": "ed.getPerformanceWirelessParser"
+      }
+    },
+    {
+      "command": "setPerformance",
+      "transports": {
+        "wired": {
+          "template_head_hex": [
+            "04"
+          ],
+          "zero_tail_count": 0,
+          "report_id_hex": "04",
+          "frame_bytes_including_report_id": 1,
+          "payload_bytes": 0
+        },
+        "wireless": {
+          "template_head_hex": [
+            "04"
+          ],
+          "zero_tail_count": 0,
+          "report_id_hex": "04",
+          "frame_bytes_including_report_id": 1,
+          "payload_bytes": 0
+        }
+      },
+      "parsers": {
+        "wired": "bh.setPerformanceWiredParser",
+        "wireless": "bh.setPerformanceWirelessParser"
+      },
+      "get_wireless_yy_verbatim": "(n,e,t)=>{let i=14;return e===t-1&&(i=n.length),i}"
+    },
+    {
+      "command": "setReset",
+      "transports": {
+        "wired": {
+          "template_head_hex": [
+            "04"
+          ],
+          "zero_tail_count": 0,
+          "report_id_hex": "04",
+          "frame_bytes_including_report_id": 1,
+          "payload_bytes": 0
+        },
+        "wireless": {
+          "template_head_hex": [
+            "06"
+          ],
+          "zero_tail_count": 0,
+          "report_id_hex": "06",
+          "frame_bytes_including_report_id": 1,
+          "payload_bytes": 0
+        }
+      },
+      "parsers": {
+        "wired": "bh.setResetWireParser",
+        "wireless": "bh.setResetWirelessParser"
+      },
+      "get_wireless_yy_verbatim": "<present, not captured>"
+    },
+    {
+      "command": "setDiyLight",
+      "transports": {
+        "wired": {
+          "template_head_hex": [
+            "06"
+          ],
+          "zero_tail_count": 0,
+          "report_id_hex": "06",
+          "frame_bytes_including_report_id": 1,
+          "payload_bytes": 0
+        },
+        "wireless": {
+          "template_head_hex": [
+            "02"
+          ],
+          "zero_tail_count": 0,
+          "report_id_hex": "02",
+          "frame_bytes_including_report_id": 1,
+          "payload_bytes": 0
+        }
+      },
+      "parsers": {
+        "wired": "bh.setDiyLightWiredParser",
+        "wireless": "bh.setDiyLightWirelessParser"
+      },
+      "get_wireless_yy_verbatim": "<present, not captured>"
+    },
+    {
+      "command": "getDiyLight",
+      "transports": {
+        "wired": {
+          "template_head_hex": [
+            "06",
+            "86",
+            "00",
+            "00",
+            "01",
+            "00",
+            "7A",
+            "01"
+          ],
+          "zero_tail_count": 512,
+          "report_id_hex": "06",
+          "frame_bytes_including_report_id": 520,
+          "payload_bytes": 519
+        },
+        "wireless": {
+          "template_head_hex": [
+            "13",
+            "42",
+            "01",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00"
+          ],
+          "zero_tail_count": 0,
+          "report_id_hex": "13",
+          "frame_bytes_including_report_id": 19,
+          "payload_bytes": 18
+        }
+      },
+      "parsers": {
+        "wired": "ed.getDiyLightParser",
+        "wireless": "ed.getDiyLightWirelessParser"
+      }
+    },
+    {
+      "command": "getBattery",
+      "transports": {
+        "wired": {
+          "template_head_hex": [
+            "06",
+            "87",
+            "00",
+            "00",
+            "01",
+            "00",
+            "02",
+            "00"
+          ],
+          "zero_tail_count": 512,
+          "report_id_hex": "06",
+          "frame_bytes_including_report_id": 520,
+          "payload_bytes": 519
+        },
+        "wireless": {
+          "template_head_hex": [
+            "13",
+            "4a",
+            "01",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00",
+            "00"
+          ],
+          "zero_tail_count": 0,
+          "report_id_hex": "13",
+          "frame_bytes_including_report_id": 19,
+          "payload_bytes": 18
+        }
+      },
+      "parsers": {
+        "wired": "ed.getBatteryParser",
+        "wireless": "ed.getBatteryWirelessParser"
+      }
+    }
+  ]
+}

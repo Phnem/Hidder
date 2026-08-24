@@ -51,3 +51,7 @@ $RECYCLE.BIN/
 # and a provenance record that is not version-controlled is not a record.
 # The artifacts themselves stay out of the repo (see data/README.md).
 !DB/reports/protocol_knowledge/*/acquisition/*.json
+# Same reasoning for static-lane output: an extracted command table is a record
+# of FACTS about a protocol (the precedent is docs/prior-art/aula-bytech-*.md),
+# not a decompiled bundle. The bundle itself is still never committed.
+!DB/reports/protocol_knowledge/*/static/*.json

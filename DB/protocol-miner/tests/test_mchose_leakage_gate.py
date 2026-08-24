@@ -58,10 +58,23 @@ FORBIDDEN = (
 
 _PATTERN = re.compile("|".join(FORBIDDEN), re.IGNORECASE)
 
-# Acquisition artifacts record PROVENANCE, not corpus content: a manifest that
-# quotes a CDN path containing "firmware" is doing its job. The corpus itself
-# lives elsewhere and is what this gate guards.
-EXEMPT_DIRS = {"acquisition"}
+# Exemption is by ROLE, and the role is "is this an input to a blind run".
+#
+#   acquisition/ records PROVENANCE -- a manifest quoting a CDN path containing
+#                "firmware" is doing its job.
+#   static/      is the STATIC LANE's output, whose entire purpose is to state
+#                semantics recovered from vendor artifacts. Forbidding semantics
+#                there would fail the gate on correct work, and a gate that
+#                fires on correct work gets weakened until it fires on nothing.
+#
+# What must stay clean is the corpus a blind run reads. That is the thing whose
+# contamination makes "the engine recovered the semantics" unfalsifiable, and it
+# is guarded by `test_the_corpus_directories_are_never_exempt`.
+EXEMPT_DIRS = {"acquisition", "static"}
+
+# Directories that are, or feed, a blind-inference corpus. Exempting one of
+# these is always a mistake, so it is asserted rather than trusted to review.
+CORPUS_DIRS = {"raw", "observations", "benchmark", "ground_truth", "corpus"}
 
 
 def _corpus_files() -> list[Path]:
@@ -104,6 +117,21 @@ def test_the_gate_can_fail(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     found = [p for p in _corpus_files()]
     assert found, "the collector found nothing to check, so the gate is vacuous"
     assert any(_PATTERN.search(p.read_text(encoding="utf-8")) for p in found)
+
+
+def test_the_corpus_directories_are_never_exempt():
+    """The gate's exemption list may grow, but never over a corpus directory.
+
+    Exemptions were widened once already (to `static/`, whose output is
+    semantic by construction). That widening is safe only while the thing the
+    gate actually protects stays protected, and "stays protected" is a property
+    worth asserting rather than remembering.
+    """
+    overlap = EXEMPT_DIRS & CORPUS_DIRS
+    assert not overlap, (
+        f"a blind-inference corpus directory was exempted from the leakage gate: {overlap}. "
+        "That makes any blind result over it unfalsifiable."
+    )
 
 
 def test_exemption_is_by_explicit_path_not_by_luck(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
