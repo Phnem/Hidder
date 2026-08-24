@@ -78,7 +78,7 @@ def git_rev():
 
 def freeze(engine_name, label, bench=BENCH, note=None):
     eng = importlib.import_module(f".{engine_name}", __package__)
-    bench = pathlib.Path(bench)
+    bench = pathlib.Path(bench).resolve()
     frozen = bench / f"frozen_{label}"
     frozen.mkdir(parents=True, exist_ok=True)
     schema_c = json.loads((bench / "schema_C_partial.json").read_text(encoding="utf-8"))

@@ -50,6 +50,16 @@ def sha256(p):
     return hashlib.sha256(p.read_bytes()).hexdigest()
 
 
+def find_frozen(label):
+    """A run freezes next to the datasets it read, which is not always BENCH."""
+    hits = sorted(CORPUS.glob(f"benchmark*/frozen_{label}"))
+    if not hits:
+        raise SystemExit(f"no frozen run labelled {label!r} under {CORPUS}")
+    if len(hits) > 1:
+        raise SystemExit(f"label {label!r} is ambiguous: {[str(h) for h in hits]}")
+    return hits[0]
+
+
 class FreezeViolation(SystemExit):
     pass
 
@@ -126,7 +136,7 @@ def main(argv=None):
     ap.add_argument("--label", required=True)
     a = ap.parse_args(argv)
 
-    frozen = BENCH / f"frozen_{a.label}"
+    frozen = find_frozen(a.label)
     manifest = verify_freeze(frozen)
     print(f"freeze verified: {frozen.name} "
           f"({manifest['engine_module']}, {len(manifest['engine_files'])} sources)")
