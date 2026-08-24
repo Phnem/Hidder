@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vetro.hardware-validation.v1",
+  "title": "Vetro Hardware Validation Certificate",
+  "type": "object",
+  "required": ["schema", "identity", "bundle", "baseline_hash", "final_hash", "baseline_restored", "tests", "coverage", "verdict"],
+  "properties": {
+    "schema": { "const": "vetro.hardware-validation.v1" },
+    "tool_version": { "type": "string" },
+    "identity": {
+      "type": "object",
+      "required": ["product", "family", "firmware", "connection", "descriptor_hash"],
+      "properties": {
+        "product": { "type": "string" },
+        "vid": { "type": "string" },
+        "pid": { "type": "string" },
+        "family": { "type": "string" },
+        "firmware": { "type": "string" },
+        "connection": { "type": "string" },
+        "descriptor_hash": { "type": "string" },
+        "exact_identity_pass": { "type": "boolean" }
+      }
+    },
+    "bundle": {
+      "type": "object",
+      "required": ["id", "version", "hash"],
+      "properties": {
+        "id": { "type": "string" },
+        "version": { "type": "integer" },
+        "hash": { "type": "string" }
+      }
+    },
+    "baseline_hash": { "type": "string" },
+    "final_hash": { "type": "string" },
+    "baseline_restored": { "type": "boolean" },
+    "tests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["operation", "status", "evidence_strength"],
+        "properties": {
+          "operation": { "type": "string" },
+          "safe_command_id": { "type": "string" },
+          "firmware_branch": { "type": "string" },
+          "connection_mode": { "type": "string" },
+          "baseline_value": {},
+          "temporary_value": {},
+          "transport_result": { "type": "string" },
+          "readback": {},
+          "readback_matched": { "type": "boolean" },
+          "observable_result": {},
+          "rollback_result": { "type": "string" },
+          "rollback_readback": {},
+          "rollback_matched": { "type": "boolean" },
+          "timing_ms": { "type": "object" },
+          "bundle_hash": { "type": "string" },
+          "evidence_strength": {
+            "type": "array",
+            "items": { "enum": ["E1", "E2", "E3", "E4", "E5", "E6"] }
+          },
+          "status": { "enum": ["PASS", "FAIL", "SKIP", "BLOCKED"] },
+          "error": { "type": "string" }
+        }
+      }
+    },
+    "contradictions": { "type": "array" },
+    "coverage": {
+      "type": "object",
+      "required": ["mandatory_core"],
+      "properties": {
+        "mandatory_core": { "type": "number", "minimum": 0, "maximum": 1 },
+        "by_capability": { "type": "object" }
+      }
+    },
+    "verdict": { "enum": ["PASS", "FAIL"] },
+    "quorum": {
+      "type": "object",
+      "properties": {
+        "eligible_for": { "enum": ["none", "PRODUCT_HARDWARE_OBSERVED", "HardwareVerified", "FamilyHardwareVerified"] }
+      }
+    }
+  }
+}

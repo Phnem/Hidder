@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vetro.preview-bundle.v1",
+  "title": "Vetro Preview Bundle (B Preview)",
+  "description": "Input for Validate mode. Defines typed operations only; raw opcodes forbidden.",
+  "type": "object",
+  "required": ["schema", "id", "version", "product", "family", "connection", "firmware", "operations", "capabilities", "bounds"],
+  "properties": {
+    "schema": { "const": "vetro.preview-bundle.v1" },
+    "id": { "type": "string", "minLength": 1 },
+    "version": { "type": "integer", "minimum": 1 },
+    "hash": { "type": "string" },
+    "product": {
+      "type": "object",
+      "required": ["vid", "pid", "name"],
+      "properties": {
+        "vid": { "type": "string", "pattern": "^0x[0-9A-Fa-f]{4}$" },
+        "pid": { "type": "string", "pattern": "^0x[0-9A-Fa-f]{4}$" },
+        "name": { "type": "string" },
+        "uuid": { "type": "string" }
+      }
+    },
+    "family": { "type": "string", "minLength": 1 },
+    "connection": {
+      "type": "object",
+      "required": ["mode"],
+      "properties": {
+        "mode": { "enum": ["wired", "2.4g", "bluetooth", "wired+2.4g", "any"] },
+        "config_interface": { "type": "integer" }
+      }
+    },
+    "firmware": {
+      "type": "object",
+      "required": ["branch"],
+      "properties": {
+        "branch": { "type": "string" },
+        "min_version": { "type": "string" },
+        "max_version": { "type": "string" }
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": { "type": "boolean" }
+    },
+    "bounds": {
+      "type": "object",
+      "description": "Per-operation bounds; missing means operation not safe to write",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["min", "max"],
+        "properties": {
+          "min": {},
+          "max": {},
+          "unit": { "type": "string" },
+          "safe_values": { "type": "array" }
+        }
+      }
+    },
+    "operations": {
+      "type": "object",
+      "description": "Typed operations. Raw opcode not allowed.",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["id", "kind", "reversible", "readback"],
+        "properties": {
+          "id": { "type": "string" },
+          "kind": { "enum": ["get", "set", "toggle", "transaction", "observable"] },
+          "reversible": { "type": "boolean" },
+          "readback": { "type": "boolean" },
+          "requires_reconnect": { "type": "boolean", "default": false },
+          "needs_observable": { "type": "boolean", "default": false },
+          "cadence_ms": { "type": "integer", "minimum": 0 },
+          "rollback_strategy": { "type": "string" }
+        }
+      }
+    },
+    "layout": { "type": "object" },
+    "safety": {
+      "type": "object",
+      "properties": {
+        "forbidden_prefixes": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  },
+  "additionalProperties": true
+}
