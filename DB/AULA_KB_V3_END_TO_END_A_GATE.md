@@ -1,7 +1,6 @@
 # AULA KB V3 — End-to-End A-Gate
 
-**Last recomputed 2026-08-24, after the knowledge-closure batch's *second*
-physical pass.** The rank below is not stored anywhere; it is computed by
+**Last recomputed 2026-08-24, after exchanges 011–016.** The rank below is not stored anywhere; it is computed by
 `crates/pproto/src/aula_bytech_rank.rs` from the ACL's own command classes and
 the generated product catalogue, and printed by
 `cargo run -p pproto --example rank_matrix`. Nothing in this document can be
@@ -121,55 +120,45 @@ boilerplate and reuses a template eventually emits a factory reset.
 one-byte flag, reversible in one write, now `safe_write`. The two share a word
 in their names and nothing else, and both ACL entries say so.
 
-## Contradictions: four settled, and one defect in their place
+## Contradictions: all five closed
 
-Four disagreements between this project's own two research paths were found
-while porting this surface. **All four are now settled.**
+Four disagreements were found while porting this surface, and a fifth item — a
+defect, not a disagreement — replaced the last of them for part of a day. **The
+list is now empty**, and every entry left it by being closed rather than deleted.
 
-1. **The `0x84` request length byte is not uniform across registers.** Settled
-   by capture; the runtime reproduces each register's own observed shape.
-2. **Register 1 is seven bytes, not three.** Settled by the vendor's own
-   register table plus a worked example; the runtime uses seven, now confirmed
-   in both directions on real hardware.
-3. **The profile-name "unnamed" sentinel.** Settled 2026-08-24 by a real read:
-   the board answers with a `0x38`-length body of fifty-six `0xFF` bytes, not
-   the `0xFF`-length-byte form one source document described.
+1. **The `0x84` request length byte is not uniform across registers.** Settled by
+   capture; the runtime reproduces each register's own observed shape.
+2. **Register 1 is seven bytes, not three.** Settled by the vendor's register
+   table plus a worked example, confirmed in both directions on hardware.
+3. **The profile-name "unnamed" sentinel.** Settled by a real read: a
+   `0x38`-length body of fifty-six `0xFF` bytes.
 4. **Byte 5 of an actuation record: pad byte, or per-key scope flag.** Settled
-   2026-08-24 (exchange 014). The vendor's own parsers name the field in all
-   three of this family's record shapes — `distance_global`, `rt_global`,
-   `safe_area_global` — and the board was then shown to *store* it. W's dead-zone
-   scope was driven `0 → 1` and W's rapid-trigger scope `1 → 0`, each read back
-   changed with every other byte of the record held constant, each restored
-   exactly. **Not padding.**
+   (exchange 014). The vendor's parsers name the field in all three record
+   shapes — `distance_global`, `rt_global`, `safe_area_global` — and the board
+   was shown to *store* it: W's dead-zone scope driven `0 → 1` and its
+   rapid-trigger scope `1 → 0`, each read back changed with every other byte
+   held constant, each restored exactly. **Not padding.**
+5. **`set_key_travel` wrote that byte as a hardcoded `0`.** The defect the
+   previous item exposed. **Fixed** (exchange 016), and confirmed on the command
+   itself — which was never possible before, because a write cannot move a byte
+   it hardcodes:
 
-   An earlier attempt at this was inconclusive by construction: all of W/A/S/D
-   sat at `0`, so the transition could not be observed. What made it answerable
-   was `set_rapid_trigger`/`set_deadzone` becoming production-safe —
-   `set_key_travel` hardcodes the byte and therefore cannot ask the question.
+   ```text
+     before  [(30, 163, 0), (43, 163, 0), (44, 163, 0), (45, 163, 0)]
+     after   [(30, 168, 1), (43, 163, 0), (44, 163, 0), (45, 163, 0)]
+   ```
 
-### What took its place on the blocker list
+   W's scope moved, the value round-tripped exactly, A/S/D did not move. The
+   write now carries `IndividualKey` — configuring one key is what that means —
+   and the rollback carries the scope the board reported.
 
-Not a disagreement. A defect with evidence behind it, and it still blocks every
-product's rank deliberately:
+### The incident is still not the contradiction
 
-**`set_key_travel` writes the per-key scope byte as `0`, and the board stores
-it.** Every actuation write this project has ever made has told the board the key
-follows the board-wide value while handing it an individual one — which is also
-why the four addressable keys all read `0` today where exchanges 003/004
-recorded `01`.
-
-It is not fixed. Correcting it changes the bytes a shipping, physically
-validated `slow_flash` command puts on the wire, and needs its own physical pass.
-
-Note what this does **not** settle: the `W 51→75→51 → 202/149` incident. That
-this byte causes it is a mechanism that fits, and a mechanism that fits is not
-one that has been caught doing it — the anomaly has not reproduced across three
-clean transitions (exchanges 006, 010, 014).
-
-Full write-ups with the frames on all sides:
-`Vetro hud/.claude/worktrees/.../docs/hardware/aula-bytech-request-shape-contradictions.md`,
-`.../aula-bytech-actuation-readback-anomaly.md` and
-`.../aula-bytech-exchange-014-scope-byte-discriminating.md`.
+That this byte produced the `W 51→75→51 → 202/149` read-back is now a
+*demonstrated mechanism* rather than a hypothesis. It is still not a caught one:
+the anomaly has not reproduced across four clean transitions (exchanges 006,
+010, 014, 016). The mechanism being real does not make the incident explained,
+and this project does not record it as such.
 
 ## The backend bug: reproduced, localised, fixed
 
@@ -216,57 +205,71 @@ unit), and the vendor's own per-product layout data. One row has anything more.
 
 | Product | Model id | Validation states | Blockers |
 |---|---|---|---|
-| HERO 84 HE | 18691697672197 | FAMILY_HARDWARE, PRODUCT_BINDING, PRODUCT_LAYOUT, PRODUCT_CAPS | **4** |
-| HERO 68 HE | 18691697672195 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 6 |
-| HERO 68 AIR | 18691697672212 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 6 |
-| WIN68HE Ultra | 18691697672213 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 6 |
-| HERO 68 MINI | 18691697672207 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 6 |
-| HERO 68 HE wireless | 19791209299969 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 7 |
-| HERO 68 HE wireless | 21990232555523 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 7 |
-| HERO 99 | 18691697672210 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 6 |
-| HERO 87 HE | 18691697672214 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 6 |
-| HERO 68 HE NEO | 18691697672218 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 6 |
-| HERO 68 HE JIS | 18691697672232 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 6 |
-| HERO 100 | 18691697672216 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 7 |
-| HERO 99 HE | 18691697672255 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 6 |
-| HERO 100 | 21990232555521 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 7 |
-| HERO 84 HE JIS | 18691697672245 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 6 |
+| HERO 84 HE | 18691697672197 | FAMILY_HARDWARE, PRODUCT_BINDING, PRODUCT_LAYOUT, PRODUCT_CAPS | **2** |
+| HERO 68 HE | 18691697672195 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 5 |
+| HERO 68 AIR | 18691697672212 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 5 |
+| WIN68HE Ultra | 18691697672213 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 5 |
+| HERO 68 MINI | 18691697672207 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 5 |
+| HERO 68 HE wireless | 19791209299969 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 6 |
+| HERO 68 HE wireless | 21990232555523 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 6 |
+| HERO 99 | 18691697672210 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 5 |
+| HERO 87 HE | 18691697672214 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 5 |
+| HERO 68 HE NEO | 18691697672218 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 5 |
+| HERO 68 HE JIS | 18691697672232 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 5 |
+| HERO 100 | 18691697672216 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 6 |
+| HERO 99 HE | 18691697672255 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 5 |
+| HERO 100 | 21990232555521 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 6 |
+| HERO 84 HE JIS | 18691697672245 | FAMILY_HARDWARE, PRODUCT_LAYOUT | 5 |
 
-HERO 84 HE's four remaining blockers, verbatim from
+HERO 84 HE's two remaining blockers, verbatim from
 `cargo run -p pproto --example rank_matrix`:
 
 ```text
   bounds unknown: actuation ceiling: this board answers the switch table,
                   and nothing here can read it
-  bounds unknown: he.actuation units: the travel precision scalar has never
-                  been read
-  bounds unknown: he.rapid_trigger units: the same scalar, which the vendor
-                  converts both with
-  unresolved contradiction: set_key_travel writes the per-key scope byte as 0,
-                  and the board stores it
+  bounds unknown: he.rapid_trigger units: no rapid-trigger value has been
+                  checked against an outside source
 ```
 
-Every other row carries those same four plus its own unverified identity binding
-and a capability set inherited from the family rather than established for it
-(two more); the four rows sharing an ambiguous identity field with a sibling
-carry one further caveat (seven total).
+It carried four until 2026-08-24. Two closed:
 
-**The count did not move on 2026-08-24, and two of the four nearly did for the
-wrong reason.** Both bound conditions used to be written as
-`is_production_safe(command)`, so promoting `read_supported_switches` and
-`read_rt_precision` would have closed them the moment the board answered —
-without anybody learning what a switch type permits or what the byte means. Both
-were rewritten to depend on knowledge instead:
+- **the contradiction**, by fixing `set_key_travel` and confirming it on the
+  command itself;
+- **actuation units**, on the four-point cross-check against the vendor's own
+  configurator — 0.51/1.02/1.49/2.00 mm written there, raw 51/102/149/200 read
+  here, exact on all four. Not on `read_travel_precision`, which exchange 015
+  confirmed this firmware does not implement: asked again under an echo detector
+  that cleared three other empty-payload commands the same day, it still returns
+  this project's own request body zero to the checksum.
 
-- the switch table sits behind `SWITCH_TABLE_IS_PARSEABLE`, false while the
-  vendor's `s4` is absent from the static extraction;
-- both unit gaps hinge on `read_travel_precision`, which is the scalar the
-  vendor actually converts with — rapid trigger included, contrary to what this
-  project believed until the vendor's own consumers were read.
+  Gated on `product_binding_verified`. The vendor replaces its default scale
+  with the one the device reports, so this is a fact about *this* board and a
+  product nobody has touched inherits none of it.
 
-The shape of this table is the shape the evidence should produce. The board
-somebody owns has by far the fewest blockers, and all four are things no amount
-of *promotion* can satisfy.
+**Neither of the two left is a code problem.**
+
+| blocker | what would close it |
+|---|---|
+| actuation ceiling | the vendor's table of 47 switch types. This board answers `0x82:0x03` and reports switch type 14 per key; the mapping from a type to the travel it permits lives in the vendor's family chunk and is in no local artifact. |
+| rapid trigger units | one rapid-trigger value set in the vendor's own software and read back here — the same check that fixed the actuation scale, never performed for this setting. |
+
+Rapid trigger is deliberately not closed on actuation's cross-check even though
+the vendor converts both with the same scalar. That chain rests entirely on the
+static extraction being right about which scalar rapid trigger uses, nobody has
+checked a rapid-trigger number against anything outside this project, and a
+wrong scale there is a slider out by a factor of ten.
+
+Every other row carries those two plus its own unverified identity binding and a
+capability set inherited from the family rather than established for it, and the
+four rows sharing an ambiguous identity field with a sibling carry one further
+caveat.
+
+**Those inherited blockers are why 15/15 is not reachable from this desk.**
+`FAMILY_NOT_VERIFIED` and `manual learning still required` are cleared by a board
+answering, and there is one board. Fourteen rows are the vendor's catalogue
+saying which module a product uses — second-hand, enough to open a device
+read-only, and not enough to call a product finished. Making them rank A without
+the hardware would mean removing the check that says so.
 
 ### What the four validation states mean, kept apart
 
@@ -317,54 +320,52 @@ than merely declared.
 
 ## What happens next
 
-Four items are done since this report was last written. What is left is one
-defect, one missing parser, and one command nobody has got an answer out of.
+Two things, and neither is code. Everything this project could close from the
+desk is closed.
 
-1. **`set_key_travel` writes a byte the board stores, and writes it as `0`.**
-   The largest open item, and the only one that is a defect rather than a gap.
-   Exchange 014 settled what that byte is: the vendor's parsers name it
-   (`distance_global`, `rt_global`, `safe_area_global`) and this board was shown
-   to store it, in both directions, on both analog record shapes, with every
-   other byte held constant. So every actuation write this project has made has
-   told the board the key follows the board-wide value while handing it an
-   individual one — which is also why the four addressable keys all read `0`
-   today where exchanges 003/004 recorded `01`.
+1. **The vendor's switch table.** `read_supported_switches` is production-safe
+   and this board answers `3a e1 41 09`; `read_key_switch_type` reports type 14
+   for every key it can address. What is missing is the mapping from a switch
+   type to the travel it permits — 47 entries in the vendor's family chunk, of
+   which this project has only the *distribution* (2.8 ×1, 3.0 ×4, 3.3 ×2,
+   3.4 ×29, 3.5 ×9, 3.7 ×1, 3.8 ×1 mm). Type 14 could be any of them, so
+   `TravelBounds` keeps the smallest ceiling and `SWITCH_TABLE_IS_PARSEABLE`
+   stays `false`. Guessing here would widen a bound that governs writes.
 
-   Not fixed yet on purpose: it changes the bytes a shipping, physically
-   validated `slow_flash` command puts on the wire, and needs its own physical
-   pass. Note this settles the *contradiction* and not the *incident* — that the
-   `202`/`149` read-back is caused by this is a mechanism that fits, and the
-   anomaly has not reproduced across three clean transitions.
+2. **One rapid-trigger value, cross-checked.** Set a rapid-trigger sensitivity
+   to a known figure in the vendor's own software, then read it back here. That
+   is the whole of it, and it is the same check that fixed the actuation scale
+   on exchange 004. Until somebody does it, no rapid-trigger number in this
+   project has ever been compared against anything outside it.
 
-2. **A parser for the switch table.** `read_supported_switches` is
-   production-safe and this board answers `3a e1 41 09`, but `s4` — the vendor
-   function that turns those bytes into switch types — is absent from the static
-   extraction. Until it exists, `TravelBounds` keeps the smallest maximum across
-   47 switch types and `SWITCH_TABLE_IS_PARSEABLE` stays `false`.
+### And then?
 
-3. **`read_travel_precision` (`0x82:0x08`)** is the last unanswered command that
-   matters, and it now blocks *two* units rather than one: the vendor converts
-   rapid-trigger deltas and actuation depths with the same scalar. It answered
-   this project's probe by echoing it, which is what an unsupported command looks
-   like on boards in this class — so the next step is establishing whether this
-   firmware implements it at all, not widening a request.
+Fourteen products would still not be rank A, and no amount of work here changes
+that. They carry `protocol family is high, not verified` and `manual learning
+still required` because no board of those models has ever answered — the
+catalogue says which module a product uses, which is second-hand and enough to
+open a device read-only. Clearing those two is a hardware problem, not a
+software one.
+
+So the honest ceiling on this surface is **1/15**, and it is two evidence items
+away.
 
 ### Closed since the last revision
 
-- **The second physical pass** (exchange 011). All twenty-two promoted commands
-  re-run through the refactored production `SafetyGate`. 32/32.
-- **The request-shape defect** (exchange 012). Three commands promoted; both
-  bootstrap doors empty.
-- **The reconnect defect** (exchange 013). Reproduced in one long-lived process
-  with three candidate causes separated: the pre-write *session* is dead, while
-  the pre-write discovery reopens and the path is byte-identical either side of
-  the re-enumeration. The stale-path theory this report carried is **refuted**.
-  It looked intermittent because the two-second watcher sometimes lands in the
-  re-enumeration gap and rescues it by luck. Fixed by releasing the session when
-  a write declared to re-enumerate the device is dispatched, and verified
-  through the running `DeviceService` on hardware — one process, no restart.
-- **The false journal rendering.** An authorised write borrowed
-  `Refused(NeedsConfirmation)` as its before-the-wire placeholder and every
-  hardware transcript carried it. `Outcome::Dispatched` is the missing outcome;
-  authorization semantics are untouched. Three regression tests, two of them on
-  the rendering rather than the enum, because the rendering is what misled.
+- **The second physical pass** (011). Twenty-two promoted commands re-run
+  through the refactored production `SafetyGate`. 32/32.
+- **The request-shape defect** (012). Three commands promoted; both bootstrap
+  doors empty. The diagnosis this report previously carried was wrong: the
+  requests were byte-identical to the vendor's own templates all along, and the
+  reply's declared length is what nobody should have been reading.
+- **The reconnect defect** (013). Reproduced in one long-lived process with three
+  candidate causes separated; the stale-path theory this report named is
+  **refuted**. Fixed by releasing the session when a re-enumerating write is
+  dispatched, verified through the running `DeviceService`.
+- **The false journal rendering.** `Outcome::Dispatched` replaces a borrowed
+  refusal. Authorization semantics untouched, three regression tests.
+- **The scope byte** (014), and **`set_key_travel`** (016). The contradictions
+  list is empty.
+- **`read_travel_precision`** (015). Confirmed unimplemented on this firmware,
+  under a detector that can now tell an echo from an answer. The unit gap it was
+  blocking closed on better evidence instead.
