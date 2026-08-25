@@ -2,9 +2,15 @@
 
 ## Status
 
-**PARTIAL** (2026-08-25). Выполнены только приоритеты 1 и 2 из указаний пользователя; oracle/echo-audit/sweep-часть тикета **не начиналась**.
+**Superseded by the entries below.** This line and the next section describe
+the state as of the *first* pass (priorities 1–2 only, oracle/echo/sweep not
+started, wired `0x04` `NOT_ESTABLISHED`). Every later consolidation pass in
+this file, ending with wired `0x04` = `IMPOSSIBLE_AT_WIRE_LEVEL` and
+`hardware_shaped_hole = EMPTY`, supersedes it. Left in place as history, not
+current status — see the final `TICKET-25 FINAL A PREVIEW ELIGIBILITY PASS`
+section at the end of this file for the current verdict.
 
-### A PREVIEW BLOCKER = **OPEN**
+### A PREVIEW BLOCKER = OPEN (as of this first pass only — see final section)
 
 Приоритет 1 выполнен полностью — путь найден, прослежен и классифицирован, — но блокер **не закрыт**, и причина стала точнее, а не мягче.
 
@@ -380,6 +386,176 @@ REQUIRED для детектора эха, типов `VendorKeyId`/`HidUsage`, 
 ## Expected architecture impact
 
 Первая проверка `pdevemu`/`runtime.js` на семейной нейтральности. Ожидаемо всплывёт всё, что молча предполагает AULA: report id 9, 63-байтный payload, `.btn-connect` как селектор, `.q-tab` как признак конфигуратора. Каждое такое место — либо параметр профиля, либо баг.
+
+---
+
+## TICKET-25 FINAL A PREVIEW ELIGIBILITY PASS (2026-08-25)
+
+Коммит `f5f98aa`. 132 теста зелёные. Real writes не выполнялись.
+
+**Оговорка первой строкой:** точный текст v3 §58 (mandatory core surface) и
+§42 (`PreviewEligible`) в этом репозитории и в worktree `aula-bytech` не
+найден — есть только ссылки на номера в `VETRO_D_TO_A_PREVIEW_EXECUTION_PLAYBOOK_V4.md:37-38`.
+Ниже использована операционная замена: словарь классов, которым весь этот
+тикет уже пользовался (`SAFE_READ` / `POTENTIALLY_DESTRUCTIVE` /
+`DESTRUCTIVE_CONFIRMED` / `UNKNOWN` / `BLOCKED`, правило «UNKNOWN никогда не
+становится SAFE»), и покрытие core surface взято максимально широко — каждая
+команда, реально наблюдённая в вендорском UI обеих семей (13 BY + 13 CZ),
+а не заранее подобранное узкое подмножество.
+
+**1. Mandatory core surface, по семьям.**
+
+BY (`K99`, native Vue, report id 6, 519 байт):
+
+| operation | evidence | read/write | reversible | destructive | rollback | provenance | uncertainty |
+|---|---|---|---|---|---|---|---|
+| identity/connect | vendor predicate + `getDevName`, static | — | — | no | n/a | vendor source, static | none |
+| getBattery (`87`) | oracle, matches hpe template | read | — | no | n/a | vendor source + oracle | none |
+| getPerformance (`84`) | oracle | read | — | no | n/a | vendor source + oracle | none |
+| getKeySetting (`83`) | oracle | read | — | no | n/a | vendor source + oracle | none |
+| getLightColor (`8a`) | oracle | read | — | no | n/a | vendor source + oracle | none |
+| getDiyLight (`86`) | oracle | read | — | no | n/a | vendor source + oracle | none |
+| setPerformance (`04`) | oracle, byte-identical to setReset (proof) | write | yes (`ToPreviousValue`, needs backup) | maybe | value-based | vendor source + oracle + proof | wire bytes carry no verdict — intent must |
+| setReset (`04`) | oracle, captured via vendor dialog | write | no | yes | n/a (constant record) | vendor source + oracle + proof | none on the byte question; unresolved on enforcement |
+| setKeySetting/setMacro/setDiyLight/setLightColor (writes `03`/`05`/`06`/`10`) | static only | write | unknown | unknown | unknown | vendor source (name only) | no captured frame, no known inverse |
+
+CZ (`God 60`, cizhou iframe, report id 0, 64 bytes):
+
+| operation | evidence | read/write | reversible | destructive | rollback | provenance | uncertainty |
+|---|---|---|---|---|---|---|---|
+| identity/connect | passive, 0 frames sent, 3 independent sources agree | — | — | no | n/a | vendor source, static+oracle | none |
+| getInfo (`03`) / getBase (`04`) / getFuncConfig (`05`) / getKeyMatrix×2 (`07`/`08`) / `0c`/`a0`/`a9`/`f1` | oracle, `SYNTHETIC_FROM_VENDOR_SCHEMA` | **UNKNOWN by construction** | — | unknown | n/a | vendor source + oracle | byte 4 means "requested" for a read and "supplied" for a write; an all-zero trailing region proves nothing either way — structurally, not by missing effort |
+| `06` (3 fields at offsets 9/20/35 located) | oracle + sweep, ≥4 points each | **WRITE** (non-zero trailing proves it) | unknown | yes (unconfirmed scope) | unknown | vendor source + oracle + sweep | which UI section owns the fields is not established |
+| `0b` / `0d` / `f2` | oracle, non-zero trailing | **WRITE** | unknown | yes (unconfirmed scope) | unknown | vendor source + oracle | no field located, no known inverse |
+
+**2. PreviewEligible per operation.**
+
+| operation | verdict | reason (exactly one) |
+|---|---|---|
+| BY identity | PREVIEW_ELIGIBLE | static vendor predicate, no ambiguity, no side effect |
+| BY getBattery/getPerformance/getKeySetting/getLightColor/getDiyLight | PREVIEW_ELIGIBLE (5) | confirmed `SAFE_READ`, serializer+reader cited from vendor source, oracle-observed |
+| BY setPerformance | NOT_PREVIEW_ELIGIBLE | wire bytes can equal a factory reset (proof); safety now depends on intent provenance (`classify_by_intent`, this pass), and no production transport in this repo carries that provenance to the send call — the design is proven, the enforcement point does not exist yet |
+| BY setReset | NOT_PREVIEW_ELIGIBLE | `DESTRUCTIVE_CONFIRMED` operations require a production confirmation gate (playbook §4.6: destructive generates no id through any door); no such gate exists for MCHOSE |
+| BY setKeySetting/setMacro/setDiyLight/setLightColor (4) | UNKNOWN | no captured frame, no known inverse — cannot be assessed, not merely unsafe |
+| CZ identity | PREVIEW_ELIGIBLE | passive, zero frames, three independent sources agree |
+| CZ getInfo/getBase/getFuncConfig/getKeyMatrix×2/`0c`/`a0`/`a9`/`f1` (9) | NOT_PREVIEW_ELIGIBLE | CZ envelope cannot distinguish a read from a write of zeros at the wire level (byte 4 double-duty); no intent-provenance layer exists for CZ the way one now exists for BY |
+| CZ `06`/`0b`/`0d`/`f2` (4) | NOT_PREVIEW_ELIGIBLE | classified `POTENTIALLY_DESTRUCTIVE`; full field scope unconfirmed and no CZ intent layer exists |
+
+**3. Intent safety check.**
+
+No production driver exists for MCHOSE anywhere in this repo or in `crates/`
+— only the research harness (`protocol-miner/`). So "can the current
+architecture preserve intent" splits in two:
+
+- **As a design, proven this pass:** `classify_by_intent()`
+  (`miner/dynamic/mchose_by_oracle.py`) takes the command name from the call
+  site (`sendCommand('set', 'setPerformance', …)` vs
+  `sendCommand('set', 'setReset', …)`) and returns different verdicts —
+  `DESTRUCTIVE_CONFIRMED` vs `POTENTIALLY_DESTRUCTIVE` — for the *identical*
+  519-byte frame. A frame offered with no command name is `BLOCKED`, not
+  guessed. Six regression tests in
+  `tests/test_mchose_by_intent_provenance.py`, including the required
+  `same_wire_bytes` case and the opaque-replay `BLOCKED` case.
+- **As a shipped enforcement point: does not exist.** Nothing in this repo
+  calls `sendFeatureReport` for a real MCHOSE device. The proof says safety
+  *can* survive to the transport boundary if the driver is written to keep
+  the command name until the call; it does not say a driver does this today,
+  because there is no driver.
+
+**This is a real A Preview blocker, precisely because it is not
+hardware-shaped:** it closes when someone writes the transport wrapper, not
+when N users touch a keyboard.
+
+**4. Critical contradictions.**
+
+`critical_contradictions = 0` (after this pass; **2 found and fixed**, not
+pre-existing-zero):
+
+1. `BY_FAMILY.md` still asserted the withdrawn finding ("dialog opens only
+   under undersized replies", `setReset` frames captured = 0, verdict
+   `NOT_ESTABLISHED`) after `BY_0X04_INDISTINGUISHABLE.md` superseded it with
+   the opposite, proven result. Fixed: section rewritten to point to the
+   superseding document.
+2. `BY_FAMILY.md` labelled wired lead byte `86` as `setDiyLight`.
+   `static/kb_command_table.json`'s own `wired_leading_pair_groups["06 86"]`
+   says `86` is `getDiyLight`'s read template; `setDiyLight`'s wired lead byte
+   is `06`. Fixed with the artifact cited.
+
+Also found and marked, not a contradiction: the top-of-file `Status`/`A
+PREVIEW BLOCKER = OPEN` line was the *first* pass's snapshot, superseded by
+every entry below it — annotated rather than deleted, since deleting history
+would hide that the blocker was ever open at all.
+
+**5. Coverage.**
+
+```
+mandatory_core_total = 26   (13 BY + 13 CZ, every command observed in the vendor's own UI)
+mapped                = 26/26   (every one has a classification, none silently missing)
+preview_eligible      = 7/26   (BY identity + 5 BY reads + CZ identity)
+not_eligible          = 6/26   (BY setPerformance, setReset; CZ 4 proven writes)
+unknown               = 13/26  (BY 4 unclassified writes; CZ 9 structurally UNKNOWN commands)
+```
+
+UI inventory coverage: **142/154** controls (CZ walk, capped and budgeted, kept
+as its own axis, per instruction not merged into the count above).
+
+3 unresolved marketing ids (`0x302d`/`0x3030`/`0x303e`): catalogue debt, not a
+blocker — identity graph closes without them (`identity_graph.json`).
+
+`SYNTHETIC_FROM_VENDOR_SCHEMA` stays exactly that: every CZ reply and every BY
+reply this pass ever saw was harness-supplied. Nothing above is promoted to
+hardware evidence, and per playbook §3 the AULA calibration gate (part 3),
+required before the first signed bundle of *any* new family, was **not run
+this pass** — its status is UNKNOWN, not passed, and that is named as a
+blocker rather than assumed.
+
+**6. Final verdict.**
+
+| OPERATION | MAPPED | PREVIEW_ELIGIBLE | SAFETY CLASS | BLOCKER |
+|---|---|---|---|---|
+| BY identity | yes | yes | — | — |
+| BY getBattery/getPerformance/getKeySetting/getLightColor/getDiyLight | yes | yes | SAFE_READ | — |
+| BY setPerformance | yes | no | POTENTIALLY_DESTRUCTIVE (final) | no production transport carries intent to send |
+| BY setReset | yes | no | DESTRUCTIVE_CONFIRMED | no production confirmation gate exists |
+| BY setKeySetting/setMacro/setDiyLight/setLightColor | yes | unknown | UNKNOWN | no captured frame |
+| CZ identity | yes | yes | — | — |
+| CZ getInfo/getBase/getFuncConfig/getKeyMatrix×2/`0c`/`a0`/`a9`/`f1` | yes | no | UNKNOWN | envelope cannot prove direction; no CZ intent layer |
+| CZ `06`/`0b`/`0d`/`f2` | yes | no | POTENTIALLY_DESTRUCTIVE | same — no CZ intent layer, scope unconfirmed |
+
+```
+MANDATORY CORE COVERAGE = 26/26 mapped, 7/26 Preview-eligible
+PREVIEW ELIGIBLE = 7/26
+CRITICAL CONTRADICTIONS = 0 (2 found and fixed this pass)
+INTENT PROVENANCE SAFE = NO -- proven possible, not implemented (no MCHOSE driver exists in this repo)
+```
+
+**A PREVIEW PROGRESS = 60%**
+
+Lower than the ~90% carried into this pass, and that drop is the actual
+finding, not a mistake: prior passes tracked "is the BY wire-level
+discriminator answered," which is now YES and final. This pass ran the full
+§0.2 formula for the first time and found the mandatory-core-surface conjunct
+was never checked against CZ at all. Once checked, CZ's core surface (every
+command except identity) fails it for a structural reason, not a coverage
+gap.
+
+**A PREVIEW = BLOCKED.**
+
+Minimal remaining blocker list (three; none hardware-shaped):
+
+1. **No intent-provenance layer for CZ.** `classify_by_intent()` exists for
+   BY; the same pattern (call-site command name, never wire bytes, for the
+   ambiguous pair) has not been built for CZ's `06`/`0b`/`0d`/`f2` writes or
+   for telling its nine UNKNOWN commands apart from writes-of-zero. Closes
+   when that layer is written and tested — a code task.
+2. **No production transport implementation exists for MCHOSE at all**, BY or
+   CZ. `classify_by_intent` is proven correct but nothing calls it before a
+   real `sendFeatureReport`/`sendReport`. Closes when a driver is written —
+   a code task, not a hardware task.
+3. **§58/§42 exact text and the playbook §3 calibration gate status are both
+   unverified for MCHOSE.** Closes when the source document is located (or a
+   project-approved substitute is adopted) and the gate is run once for the
+   MCHOSE pipeline — a documentation/process task.
 
 ## Risks
 
