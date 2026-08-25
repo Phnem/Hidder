@@ -1,0 +1,26 @@
+{
+ "_what": "MCHOSE identity edges OBSERVED by connecting a fake device to the live vendor app, TICKET-25",
+ "_method": "A fake WebHID device advertising one vid:pid+usage was offered to the real M HUB Web. The name below is what the vendor app itself displayed for that identity. This is an observation of the vendor resolving identity, not a similarity match.",
+ "_safety": "navigator.hid was fully replaced; no physical device was reachable. Asserted on the live page, not assumed.",
+ "observed_at": "2026-08-25",
+ "edges": [
+  {
+   "vendor_id": "0x3837",
+   "product_id": "0x301a",
+   "usage_page": "0xff00",
+   "usage": "0x0001",
+   "displayed_name": "God 60",
+   "source": "live M HUB Web device screen after fake-device connect",
+   "corroborated_by": [
+    "configCenter/cardList desc \"God 60 配置\"",
+    "CZ HidIndexDeviceFilters entry 0x3837:0x301a usagePage 0xff00"
+   ],
+   "frames_exchanged_before_name_shown": 0
+  }
+ ],
+ "finding_identity_is_passive": {
+  "statement": "The app resolved and displayed the product name with ZERO HID reports sent.",
+  "evidence": "oracle capture god60_connect.jsonl is empty at the point the name was displayed",
+  "why_it_matters": "Playbook 0.2 requires the identity graph to close WITHOUT manual selection. For this family the vendor closes it from vid:pid + usage alone, so identity needs no exchange and no user choice. That is a property of THIS observation, not a claim about every MCHOSE product."
+ }
+}

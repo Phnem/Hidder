@@ -16,6 +16,34 @@
   window.__protocolMinerCannedResponses = window.__protocolMinerCannedResponses || {};
   window.__protocolMinerRecordedTraces = window.__protocolMinerRecordedTraces || [];
 
+  // response_delivery_mode: how a bridge-produced reply to a HOST_TO_DEVICE
+  // sendReport is delivered back to the page. Currently the only supported
+  // mode - kept as a named constant (not a magic string scattered around)
+  // so a future second mode (e.g. synchronous GET-style feature reports)
+  // has an obvious place to branch on.
+  const RESPONSE_DELIVERY_MODE_ASYNC_INPUTREPORT = 'ASYNC_INPUTREPORT';
+
+  // response_latency_ms: simulated device->host reply latency, profile/
+  // config-driven (window.__protocolMinerResponseLatencyMs, or a per-device
+  // descriptor.responseLatencyMs - see FakeHIDDevice constructor), NOT a
+  // hardcoded per-vendor constant. Falls back to this generic default.
+  //
+  // Why any delay at all: vendor protocols that pair a sendReport with an
+  // async inputreport commonly do "send, then clear any stale queued
+  // replies, then wait for the fresh one" on the read side (observed
+  // directly in one real vendor's own bundle: a clear-receive-queue helper
+  // does an unconditional queue-wipe right after sendReport, before the
+  // actual wait/poll starts - this is a generic pattern, not unique to that
+  // vendor). A same-microtask reply can win that race and land in the queue
+  // *before* the clear runs, so the app wipes out its own correct,
+  // freshly-arrived reply and then times out waiting for one that will never
+  // come again. Real hardware never triggers this because a real reply
+  // always arrives after genuine I/O latency, well after any such immediate
+  // synchronous continuation. A small nonzero macrotask delay (setTimeout,
+  // not Promise.resolve().then which is a same-tick microtask) reproduces
+  // that ordering generically, for any protocol with this pattern.
+  const DEFAULT_RESPONSE_LATENCY_MS = 8;
+
   function recordTrace(event) {
     const trace = {
       timestamp: new Date().toISOString(),
@@ -74,6 +102,15 @@
       this.productId = descriptor.productId || 0x5678;
       this.productName = descriptor.productName || 'Simulated Protocol Miner HID Device';
       this.opened = false;
+      // Precedence: per-device descriptor override > global page-level
+      // override (window.__protocolMinerResponseLatencyMs, settable by any
+      // profile/config builder before this script runs) > generic default.
+      this.responseLatencyMs = descriptor.responseLatencyMs != null
+        ? descriptor.responseLatencyMs
+        : (window.__protocolMinerResponseLatencyMs != null
+          ? window.__protocolMinerResponseLatencyMs
+          : DEFAULT_RESPONSE_LATENCY_MS);
+      this.responseDeliveryMode = descriptor.responseDeliveryMode || RESPONSE_DELIVERY_MODE_ASYNC_INPUTREPORT;
       this.collections = descriptor.collections || [
         {
           usagePage: 0xff00,
@@ -109,6 +146,15 @@
     async sendReport(reportId, data) {
       const hex = bufferToHex(data);
       const byteLength = data ? (data.byteLength || data.length || 0) : 0;
+      let bridgeResult = null;
+      if (typeof window.__protocolMinerBridgeRespond === 'function') {
+        try {
+          bridgeResult = await window.__protocolMinerBridgeRespond({
+            method: 'sendReport', report_id: reportId, bytes_hex: hex,
+            vendorId: this.vendorId, productId: this.productId
+          });
+        } catch (e) { bridgeResult = null; }
+      }
       recordTrace({
         transport: 'webhid',
         method: 'sendReport',
@@ -117,11 +163,29 @@
         byte_length: byteLength,
         stack: new Error().stack
       });
+      // Many vendor devices reply to an OUTPUT report on report_id N with an
+      // asynchronous INPUT report on the same report_id, delivered via the
+      // 'inputreport' event - not via sendReport's return value (which is
+      // void per spec). If the response engine produced a reply, deliver it
+      // that way, after responseLatencyMs (see its definition above for why
+      // a same-microtask delivery is wrong - RESPONSE_DELIVERY_MODE_ASYNC_INPUTREPORT).
+      if (bridgeResult && bridgeResult.reply && typeof bridgeResult.reply.hex === 'string') {
+        const replyReportId = bridgeResult.reply.reportId != null ? bridgeResult.reply.reportId : reportId;
+        setTimeout(() => this.simulateInputReport(replyReportId, bridgeResult.reply.hex), this.responseLatencyMs);
+      }
     }
 
     async sendFeatureReport(reportId, data) {
       const hex = bufferToHex(data);
       const byteLength = data ? (data.byteLength || data.length || 0) : 0;
+      if (typeof window.__protocolMinerBridgeRespond === 'function') {
+        try {
+          await window.__protocolMinerBridgeRespond({
+            method: 'sendFeatureReport', report_id: reportId, bytes_hex: hex,
+            vendorId: this.vendorId, productId: this.productId
+          });
+        } catch (e) {}
+      }
       recordTrace({
         transport: 'webhid',
         method: 'sendFeatureReport',
@@ -133,9 +197,36 @@
     }
 
     async receiveFeatureReport(reportId) {
+      let dataView;
+      // Preferred path: a live Python-side response engine (adaptive response
+      // ladder, stateful). Falls back to static canned_responses / zero-fill
+      // below when no bridge is registered - this keeps existing sync tests
+      // (which only set canned_responses) working unchanged.
+      if (typeof window.__protocolMinerBridgeRespond === 'function') {
+        let bridgeResult = null;
+        try {
+          bridgeResult = await window.__protocolMinerBridgeRespond({
+            method: 'receiveFeatureReport', report_id: reportId,
+            vendorId: this.vendorId, productId: this.productId
+          });
+        } catch (e) { bridgeResult = null; }
+        if (bridgeResult && typeof bridgeResult.hex === 'string') {
+          const bytes = hexToBytes(bridgeResult.hex);
+          dataView = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+          recordTrace({
+            transport: 'webhid',
+            method: 'receiveFeatureReport',
+            report_id: reportId,
+            bytes_hex: bufferToHex(dataView),
+            byte_length: dataView.byteLength,
+            strategy: bridgeResult.strategy,
+            confidence: bridgeResult.confidence
+          });
+          return dataView;
+        }
+      }
       const key = `feature_${reportId}`;
       const hex = window.__protocolMinerCannedResponses[key] || window.__protocolMinerCannedResponses[reportId] || null;
-      let dataView;
       if (hex) {
         const bytes = hexToBytes(hex);
         dataView = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -306,13 +397,36 @@
     new FakeUSBDevice(window.__protocolMinerDeviceConfig || {})
   ];
 
+  // Real WebHID/WebUSB only return a device from getDevices() *after* a
+  // requestDevice() grant - a fresh page load with no prior grant sees an
+  // empty list. Returning the device unconditionally (as this used to do)
+  // makes every site think it already has a granted device on first mount,
+  // which for at least one real vendor site (AULA's hero.aulastar.com)
+  // triggers its own auto-reconnect UI path instead of the normal "click
+  // Connect" flow - the same buggy reconnect path already characterized as
+  // unreliable on real hardware's cached-grant reuse. Track grant state
+  // properly instead, so the fake device behaves like a fresh pairing by
+  // default (the one flow already proven reliable), matching real WebHID
+  // semantics generically for any site, not just this one.
+  let hidGranted = false;
+  let usbGranted = false;
+
   const fakeHID = {
+    // Marker so a harness can PROVE, on the live page, that the object the
+    // vendor's code is about to write frames into is this one and not the real
+    // WebHID stack. Without it a safety claim about "no real device is
+    // reachable" rests on injection order having worked, which is an assumption
+    // rather than a check -- and the failure mode is writing a frame built for a
+    // factory reset into whatever keyboard happens to be plugged in.
+    // Additive: nothing in the runtime reads it.
+    __protocolMinerFake: true,
     async getDevices() {
       recordTrace({ transport: 'webhid', method: 'getDevices' });
-      return fakeHIDDevices;
+      return hidGranted ? fakeHIDDevices : [];
     },
     async requestDevice(options) {
       recordTrace({ transport: 'webhid', method: 'requestDevice', options: options });
+      hidGranted = true;
       return fakeHIDDevices;
     },
     addEventListener: () => {},
@@ -323,10 +437,11 @@
   const fakeUSB = {
     async getDevices() {
       recordTrace({ transport: 'webusb', method: 'getDevices' });
-      return fakeUSBDevices;
+      return usbGranted ? fakeUSBDevices : [];
     },
     async requestDevice(options) {
       recordTrace({ transport: 'webusb', method: 'requestDevice', options: options });
+      usbGranted = true;
       return fakeUSBDevices[0];
     },
     addEventListener: () => {},
