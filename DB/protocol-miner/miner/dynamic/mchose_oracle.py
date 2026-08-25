@@ -46,39 +46,72 @@ _RUNTIME_JS = _THIS.parent / "fake_browser" / "runtime.js"
 TARGET = "https://www.mchose.com.cn/#/home"
 
 # Identities are the vendor's own, from configCenter/cardList (TICKET-23).
-# Each carded device exposes TWO collections on DIFFERENT product ids: a generic
-# desktop one and the vendor config channel at 0xff00:0x0001. The configurator
-# talks to the config channel, so that is what the fake device advertises.
+#
+# Each carded MCHOSE keyboard publishes TWO product ids. The pairing is NOT
+# "generic interface + vendor config channel", which is what this table said
+# until the CZ SDK was asked directly. Its own `isBootUpdateMode(vid,pid,name)`
+# answers, for every carded pair:
+#
+#     God 60             0x3020 boot=False   0x301a boot=True
+#     Ace 75  8K         0x303c boot=False   0x303d boot=True
+#     Ace 75 16K         0x301d boot=False   0x301f boot=True
+#     Ace 68 GT          0x3007 boot=False   0x3009 boot=True
+#     Ace 60 Pro ISO FR  0x3040 boot=False   0x3041 boot=True
+#
+# The 0xff00:0x0001 id is the BOOTLOADER / DFU interface. The configurator talks
+# to the 0x0001:0x0000 id. Advertising the 0xff00 one made the live app open a
+# firmware-update dialog ("current device is in upgrade mode") instead of the
+# configurator, and made every read a no-op, because the device runtime guards
+# nearly everything with `if (isUpgradeMode) return`.
+#
+# Worth naming as a transfer error rather than a typo: assuming 0xff00:0x0001
+# was "the vendor config channel" is AULA's shape, and on AULA the config
+# collection was 0xFF60:0x0061 on the SAME pid while 0xFF00:0x0001 explicitly
+# was NOT the config channel. The assumption was wrong on both vendors.
 PROFILES: dict[str, dict] = {
     "god60": {
-        "label": "God 60 (config channel)",
+        "label": "God 60",
         "vendorId": 0x3837,
-        "productId": 0x301A,
+        "productId": 0x3020,
         "productName": "MCHOSE God 60",
-        "usagePage": 0xFF00,
-        "usage": 0x0001,
-        "sibling_generic_pid": 0x3020,
-        "provenance": "configCenter/cardList: desc 'God 60 配置'",
+        "usagePage": 0x0001,
+        "usage": 0x0000,
+        "boot_mode_pid": 0x301A,
+        "provenance": "configCenter/cardList desc 'God 60 配置'; "
+                      "mode from CZ SDK isBootUpdateMode(0x3837,0x3020,...)=False",
     },
-    "ace75": {
-        "label": "Ace 75 (config channel)",
+    "ace75_8k": {
+        "label": "Ace 75 8K",
         "vendorId": 0x3837,
-        "productId": 0x301F,
+        "productId": 0x303C,
         "productName": "MCHOSE Ace 75",
-        "usagePage": 0xFF00,
-        "usage": 0x0001,
-        "sibling_generic_pid": 0x301D,
-        "provenance": "configCenter/cardList: desc 'Ace 75 磁轴键盘（8K 已发布, 16K 未发布）'",
+        "usagePage": 0x0001,
+        "usage": 0x0000,
+        "boot_mode_pid": 0x303D,
+        "provenance": "configCenter/cardList desc 'Ace 75 磁轴键盘（8K 已发布, 16K 未发布）'; "
+                      "CZ SDK storageKey 'Ace 75 8K', isBootUpdateMode=False",
+    },
+    "ace75_16k": {
+        "label": "Ace 75 16K",
+        "vendorId": 0x3837,
+        "productId": 0x301D,
+        "productName": "MCHOSE Ace 75",
+        "usagePage": 0x0001,
+        "usage": 0x0000,
+        "boot_mode_pid": 0x301F,
+        "provenance": "same card as ace75_8k; CZ SDK storageKey 'Ace 75 16K', "
+                      "isBootUpdateMode=False",
     },
     "ace68gt": {
-        "label": "Ace 68 GT wired (config channel)",
+        "label": "Ace 68 GT",
         "vendorId": 0x3837,
-        "productId": 0x3009,
+        "productId": 0x3007,
         "productName": "MCHOSE Ace 68 GT",
-        "usagePage": 0xFF00,
-        "usage": 0x0001,
-        "sibling_generic_pid": 0x3007,
-        "provenance": "configCenter/cardList: desc 'Ace 68 GT 磁轴键盘（有线）'",
+        "usagePage": 0x0001,
+        "usage": 0x0000,
+        "boot_mode_pid": 0x3009,
+        "provenance": "configCenter/cardList desc 'Ace 68 GT 磁轴键盘（有线）'; "
+                      "CZ SDK isBootUpdateMode(0x3837,0x3007,...)=False",
     },
 }
 
@@ -87,6 +120,47 @@ PROFILES: dict[str, dict] = {
 # Advertising them makes the fake device look plausible to a client that picks a
 # report id off the descriptor.
 KEYBOARD_REPORT_IDS = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x09, 0x10, 0x13]
+
+
+def wait_device_ready(page, timeout_s: float = 120.0) -> dict:
+    """Block until the app's own device runtime is ready, or time out saying so.
+
+    The three earlier oracle passes all clicked the device row on a timer and
+    all reported the same "configurator never opened". The transition trace
+    (`mchose_transition_trace.py`) showed why, and it was not the click: the row
+    is inert until `SingletonDeviceStore` holds a settled state for the device,
+    because the list item only gains `connectMode` inside `if (deviceState)`,
+    and `toDeviceAliveStatus(item).isDisabled` is true while `connectMode` is
+    null -- so the click handler discards the click with no error and no frame.
+
+    On this host the CZ SDK finishes device setup around t+21 s, which is after
+    every fixed wait previously used. Waiting on the state rather than on the
+    clock removes the whole class of "did the click land" question.
+    """
+    deadline = timeout_s
+    step = 2.0
+    waited = 0.0
+    last: dict = {}
+    while waited < deadline:
+        last = page.evaluate(
+            """() => {
+              const s = window.SingletonDeviceStore;
+              if (!s || !s.allDeviceState) return {ready: false, why: 'no store'};
+              const out = [];
+              s.allDeviceState.forEach((st) => out.push({
+                isBusy: st ? st.isBusy : null,
+                communicateEnabled: st ? st.communicateEnabled : null,
+                failedCount: st ? st.failedCount : null}));
+              if (!out.length) return {ready: false, why: 'store empty', states: out};
+              const ok = out.some(o => o.isBusy === false && o.communicateEnabled !== false);
+              return {ready: ok, why: ok ? 'settled' : 'busy or disabled', states: out};
+            }"""
+        )
+        if last.get("ready"):
+            return last
+        page.wait_for_timeout(int(step * 1000))
+        waited += step
+    return last
 
 
 def assert_no_real_hid(page) -> None:
@@ -254,7 +328,11 @@ def main() -> int:
             }"""
         )
         print(f"[connect] clicked: {clicked!r}")
-        page.wait_for_timeout(3000)
+        ready = wait_device_ready(page)
+        print(f"[ready] {json.dumps(ready, ensure_ascii=False)}")
+        if not ready.get("ready"):
+            print("[ready] device runtime never settled -- the row will be inert and "
+                  "any empty capture below is a HARNESS outcome, not a protocol fact")
 
         # The app resolves a connected device to a display name. That name is an
         # OBSERVED id -> name edge, and it is the only route to those edges that
@@ -295,6 +373,18 @@ def main() -> int:
         )
         print(f"[open] clicked device row: {opened!r}")
         page.wait_for_timeout(8000)
+
+        # Confirm the transition rather than assume it. The route name is the
+        # app's own answer; an empty capture on the ConnectDevice route and an
+        # empty capture inside the configurator mean completely different things,
+        # and only one of them is about the protocol.
+        route = page.evaluate(
+            "() => { try { return window.$router.currentRoute.value.name; } catch (e) { return null; } }"
+        )
+        print(f"[route] {route!r}  {page.evaluate('() => location.hash')}")
+        if route != "Keyboard":
+            print("[route] NOT in the configurator; frames below (if any) are from the "
+                  "device list, not from keyboard UI actions")
 
         # Walk whatever top-level navigation the configurator exposes, one
         # action at a time, so every captured frame is attributable to the click

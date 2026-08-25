@@ -408,8 +408,37 @@
   // properly instead, so the fake device behaves like a fresh pairing by
   // default (the one flow already proven reliable), matching real WebHID
   // semantics generically for any site, not just this one.
-  let hidGranted = false;
-  let usbGranted = false;
+  //
+  // Grant state is per-ORIGIN, not per-realm. A real WebHID grant is recorded
+  // against the origin, so every same-origin frame -- including an iframe that
+  // never called requestDevice itself -- sees the device in getDevices(). A
+  // module-scoped boolean gets a fresh copy in each frame's JS realm, so an
+  // iframe would see an empty list forever.
+  //
+  // That is not hypothetical: MCHOSE's keyboard configurator is a separate app
+  // served from /cizhou/ and mounted in an iframe. With per-realm state it
+  // polled getDevices() ~10x/s and then threw "No HID devices found", which
+  // reads exactly like "the vendor app does not support this device" -- a wrong
+  // FINDING produced by a harness defect, which is the failure mode that
+  // matters here. sessionStorage is same-origin and shared across frames, and
+  // is scoped to the tab, so it also keeps the fresh-pairing default above.
+  const GRANT_KEY_HID = '__protocolMinerHidGranted';
+  const GRANT_KEY_USB = '__protocolMinerUsbGranted';
+  let hidGrantedLocal = false;
+  let usbGrantedLocal = false;
+
+  function readGrant(key, local) {
+    try {
+      return window.sessionStorage.getItem(key) === '1';
+    } catch (e) {
+      return local;
+    }
+  }
+  function writeGrant(key, value) {
+    try {
+      window.sessionStorage.setItem(key, value ? '1' : '0');
+    } catch (e) { /* fall through to the realm-local flag */ }
+  }
 
   const fakeHID = {
     // Marker so a harness can PROVE, on the live page, that the object the
@@ -422,11 +451,12 @@
     __protocolMinerFake: true,
     async getDevices() {
       recordTrace({ transport: 'webhid', method: 'getDevices' });
-      return hidGranted ? fakeHIDDevices : [];
+      return readGrant(GRANT_KEY_HID, hidGrantedLocal) ? fakeHIDDevices : [];
     },
     async requestDevice(options) {
       recordTrace({ transport: 'webhid', method: 'requestDevice', options: options });
-      hidGranted = true;
+      hidGrantedLocal = true;
+      writeGrant(GRANT_KEY_HID, true);
       return fakeHIDDevices;
     },
     addEventListener: () => {},
@@ -437,11 +467,12 @@
   const fakeUSB = {
     async getDevices() {
       recordTrace({ transport: 'webusb', method: 'getDevices' });
-      return usbGranted ? fakeUSBDevices : [];
+      return readGrant(GRANT_KEY_USB, usbGrantedLocal) ? fakeUSBDevices : [];
     },
     async requestDevice(options) {
       recordTrace({ transport: 'webusb', method: 'requestDevice', options: options });
-      usbGranted = true;
+      usbGrantedLocal = true;
+      writeGrant(GRANT_KEY_USB, true);
       return fakeUSBDevices[0];
     },
     addEventListener: () => {},

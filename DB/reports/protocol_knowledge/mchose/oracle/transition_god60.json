@@ -1,0 +1,1233 @@
+{
+  "_what": "MCHOSE device -> configurator transition trace, TICKET-25 point B",
+  "_method": "observation-only probe; no wrapper supplies or suppresses a value",
+  "at": "2026-08-25T06:16:46.912561+00:00",
+  "profile": {
+    "label": "God 60 (config channel)",
+    "vendorId": 14391,
+    "productId": 12314,
+    "productName": "MCHOSE God 60",
+    "usagePage": 65280,
+    "usage": 1,
+    "sibling_generic_pid": 12320,
+    "provenance": "configCenter/cardList: desc 'God 60 配置'"
+  },
+  "frames_sent_by_page": 0,
+  "last_success": "M5  navigator.deviceMap built",
+  "first_failed_or_missing": "M6  CZ identity matched, name rendered",
+  "milestones": [
+    {
+      "id": "M1  app mounted",
+      "passed": true,
+      "detail": {
+        "body_len": 128
+      }
+    },
+    {
+      "id": "M2  navigator.hid is the fake runtime",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "id": "M3  window.loadCZSharedData present",
+      "passed": true,
+      "detail": {
+        "typeof": "function"
+      }
+    },
+    {
+      "id": "M4  requestDevice served by the fake",
+      "passed": true,
+      "detail": {
+        "note": "grant is implied by the device list rendering"
+      }
+    },
+    {
+      "id": "M5  navigator.deviceMap built",
+      "passed": true,
+      "detail": {
+        "keys": [
+          "MCHOSE God 60"
+        ]
+      }
+    },
+    {
+      "id": "M6  CZ identity matched, name rendered",
+      "passed": false,
+      "detail": {
+        "looked_for": "God 60"
+      }
+    },
+    {
+      "id": "M7  clampDevices accepted the device",
+      "passed": true,
+      "detail": {
+        "calls": [
+          {
+            "input": [
+              {
+                "vendorId": 14391,
+                "productId": 12314,
+                "productName": "MCHOSE God 60",
+                "opened": true,
+                "collections": [
+                  {
+                    "usagePage": 65280,
+                    "usage": 1
+                  }
+                ]
+              }
+            ],
+            "kept": 1,
+            "verdict": "ALL_KEPT"
+          },
+          {
+            "input": [
+              {
+                "vendorId": 14391,
+                "productId": 12314,
+                "productName": "MCHOSE God 60",
+                "opened": true,
+                "collections": [
+                  {
+                    "usagePage": 65280,
+                    "usage": 1
+                  }
+                ]
+              }
+            ],
+            "kept": 1,
+            "verdict": "ALL_KEPT"
+          }
+        ]
+      }
+    },
+    {
+      "id": "M8  device SDK created",
+      "passed": true,
+      "detail": {
+        "enter": 1,
+        "ok": 1,
+        "rejected": 0
+      }
+    },
+    {
+      "id": "M9  SingletonDeviceStore has device state",
+      "passed": true,
+      "detail": {
+        "store_size": 1
+      }
+    },
+    {
+      "id": "M10 device state not stuck busy",
+      "passed": true,
+      "detail": {
+        "states": [
+          {
+            "device": {
+              "vendorId": 14391,
+              "productId": 12314,
+              "productName": "MCHOSE God 60",
+              "opened": true,
+              "collections": [
+                {
+                  "usagePage": 65280,
+                  "usage": 1
+                }
+              ]
+            },
+            "isBusy": false,
+            "communicateEnabled": true,
+            "failedCount": 0,
+            "isWireless": false,
+            "battery": 0,
+            "featBattery": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "M11 row is enabled (clickable)",
+      "passed": false,
+      "detail": {
+        "row_status": null,
+        "row": {
+          "text": "God 60",
+          "area": 2278,
+          "candidates": 1,
+          "chain": [
+            {
+              "tag": "DIV",
+              "cls": "",
+              "attrs": [
+                "data-v-905dd50d="
+              ]
+            },
+            {
+              "tag": "H3",
+              "cls": "device-card-name",
+              "attrs": [
+                "data-v-905dd50d="
+              ]
+            },
+            {
+              "tag": "SECTION",
+              "cls": "device-card-info",
+              "attrs": [
+                "data-v-905dd50d="
+              ]
+            },
+            {
+              "tag": "SECTION",
+              "cls": "device-card-main",
+              "attrs": [
+                "data-v-905dd50d="
+              ]
+            },
+            {
+              "tag": "DIV",
+              "cls": "device-card-body",
+              "attrs": [
+                "data-v-905dd50d="
+              ]
+            },
+            {
+              "tag": "SECTION",
+              "cls": "device-card-content",
+              "attrs": [
+                "data-v-905dd50d="
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "M12 click handler reached keyboard branch",
+      "passed": true,
+      "detail": {
+        "localStorage_writes": [
+          "deviceName",
+          "lastKBProductKey",
+          "deviceName",
+          "lastKBProductKey"
+        ]
+      }
+    },
+    {
+      "id": "M13 router on Keyboard route",
+      "passed": true,
+      "detail": {
+        "route": "Keyboard",
+        "href": "https://www.mchose.com.cn/#/keyboard?deviceName=MCHOSE+God+60&isGoUpgradePage=false"
+      }
+    }
+  ],
+  "settle_snapshots": [
+    {
+      "hid_fake": true,
+      "cz_loader": "function",
+      "device_map_keys": [
+        "MCHOSE God 60"
+      ],
+      "has_device_handler": false,
+      "nav_device": null,
+      "store_size": 1,
+      "device_states": [
+        {
+          "device": {
+            "vendorId": 14391,
+            "productId": 12314,
+            "productName": "MCHOSE God 60",
+            "opened": true,
+            "collections": [
+              {
+                "usagePage": 65280,
+                "usage": 1
+              }
+            ]
+          },
+          "isBusy": false,
+          "communicateEnabled": true,
+          "failedCount": 0,
+          "isWireless": false,
+          "battery": 0,
+          "featBattery": false
+        }
+      ],
+      "route": "ConnectDevice",
+      "href": "https://www.mchose.com.cn/#/connectDevice",
+      "body_head": "Добавить новое устройство\nОблако\nОфициальный магазин\nGod 60\nКабельный\nНе все устройства поддерживают Bluetooth для подключения драйвера.\nПанель управления муз.ритмом\nМасштабирование ритма\nМасштабирование клавиатуры\nПоказ ритма\nПоказ клав.\nСброс"
+    },
+    {
+      "hid_fake": true,
+      "cz_loader": "function",
+      "device_map_keys": [
+        "MCHOSE God 60"
+      ],
+      "has_device_handler": false,
+      "nav_device": null,
+      "store_size": 1,
+      "device_states": [
+        {
+          "device": {
+            "vendorId": 14391,
+            "productId": 12314,
+            "productName": "MCHOSE God 60",
+            "opened": true,
+            "collections": [
+              {
+                "usagePage": 65280,
+                "usage": 1
+              }
+            ]
+          },
+          "isBusy": false,
+          "communicateEnabled": true,
+          "failedCount": 0,
+          "isWireless": false,
+          "battery": 0,
+          "featBattery": false
+        }
+      ],
+      "route": "ConnectDevice",
+      "href": "https://www.mchose.com.cn/#/connectDevice",
+      "body_head": "Добавить новое устройство\nОблако\nОфициальный магазин\nGod 60\nКабельный\nНе все устройства поддерживают Bluetooth для подключения драйвера.\nПанель управления муз.ритмом\nМасштабирование ритма\nМасштабирование клавиатуры\nПоказ ритма\nПоказ клав.\nСброс"
+    },
+    {
+      "hid_fake": true,
+      "cz_loader": "function",
+      "device_map_keys": [
+        "MCHOSE God 60"
+      ],
+      "has_device_handler": false,
+      "nav_device": null,
+      "store_size": 1,
+      "device_states": [
+        {
+          "device": {
+            "vendorId": 14391,
+            "productId": 12314,
+            "productName": "MCHOSE God 60",
+            "opened": true,
+            "collections": [
+              {
+                "usagePage": 65280,
+                "usage": 1
+              }
+            ]
+          },
+          "isBusy": false,
+          "communicateEnabled": true,
+          "failedCount": 0,
+          "isWireless": false,
+          "battery": 0,
+          "featBattery": false
+        }
+      ],
+      "route": "ConnectDevice",
+      "href": "https://www.mchose.com.cn/#/connectDevice",
+      "body_head": "Добавить новое устройство\nОблако\nОфициальный магазин\nGod 60\nКабельный\nНе все устройства поддерживают Bluetooth для подключения драйвера.\nПанель управления муз.ритмом\nМасштабирование ритма\nМасштабирование клавиатуры\nПоказ ритма\nПоказ клав.\nСброс"
+    },
+    {
+      "hid_fake": true,
+      "cz_loader": "function",
+      "device_map_keys": [
+        "MCHOSE God 60"
+      ],
+      "has_device_handler": false,
+      "nav_device": null,
+      "store_size": 1,
+      "device_states": [
+        {
+          "device": {
+            "vendorId": 14391,
+            "productId": 12314,
+            "productName": "MCHOSE God 60",
+            "opened": true,
+            "collections": [
+              {
+                "usagePage": 65280,
+                "usage": 1
+              }
+            ]
+          },
+          "isBusy": false,
+          "communicateEnabled": true,
+          "failedCount": 0,
+          "isWireless": false,
+          "battery": 0,
+          "featBattery": false
+        }
+      ],
+      "route": "ConnectDevice",
+      "href": "https://www.mchose.com.cn/#/connectDevice",
+      "body_head": "Добавить новое устройство\nОблако\nОфициальный магазин\nGod 60\nКабельный\nНе все устройства поддерживают Bluetooth для подключения драйвера.\nПанель управления муз.ритмом\nМасштабирование ритма\nМасштабирование клавиатуры\nПоказ ритма\nПоказ клав.\nСброс"
+    },
+    {
+      "hid_fake": true,
+      "cz_loader": "function",
+      "device_map_keys": [
+        "MCHOSE God 60"
+      ],
+      "has_device_handler": false,
+      "nav_device": null,
+      "store_size": 1,
+      "device_states": [
+        {
+          "device": {
+            "vendorId": 14391,
+            "productId": 12314,
+            "productName": "MCHOSE God 60",
+            "opened": true,
+            "collections": [
+              {
+                "usagePage": 65280,
+                "usage": 1
+              }
+            ]
+          },
+          "isBusy": false,
+          "communicateEnabled": true,
+          "failedCount": 0,
+          "isWireless": false,
+          "battery": 0,
+          "featBattery": false
+        }
+      ],
+      "route": "ConnectDevice",
+      "href": "https://www.mchose.com.cn/#/connectDevice",
+      "body_head": "Добавить новое устройство\nОблако\nОфициальный магазин\nGod 60\nКабельный\nНе все устройства поддерживают Bluetooth для подключения драйвера.\nПанель управления муз.ритмом\nМасштабирование ритма\nМасштабирование клавиатуры\nПоказ ритма\nПоказ клав.\nСброс"
+    },
+    {
+      "hid_fake": true,
+      "cz_loader": "function",
+      "device_map_keys": [
+        "MCHOSE God 60"
+      ],
+      "has_device_handler": false,
+      "nav_device": null,
+      "store_size": 1,
+      "device_states": [
+        {
+          "device": {
+            "vendorId": 14391,
+            "productId": 12314,
+            "productName": "MCHOSE God 60",
+            "opened": true,
+            "collections": [
+              {
+                "usagePage": 65280,
+                "usage": 1
+              }
+            ]
+          },
+          "isBusy": false,
+          "communicateEnabled": true,
+          "failedCount": 0,
+          "isWireless": false,
+          "battery": 0,
+          "featBattery": false
+        }
+      ],
+      "route": "ConnectDevice",
+      "href": "https://www.mchose.com.cn/#/connectDevice",
+      "body_head": "Добавить новое устройство\nОблако\nОфициальный магазин\nGod 60\nКабельный\nНе все устройства поддерживают Bluetooth для подключения драйвера.\nПанель управления муз.ритмом\nМасштабирование ритма\nМасштабирование клавиатуры\nПоказ ритма\nПоказ клав.\nСброс"
+    }
+  ],
+  "final_snapshot": {
+    "hid_fake": true,
+    "cz_loader": "function",
+    "device_map_keys": [
+      "MCHOSE God 60"
+    ],
+    "has_device_handler": false,
+    "nav_device": {
+      "vendorId": 14391,
+      "productId": 12314,
+      "productName": "MCHOSE God 60",
+      "opened": true,
+      "collections": [
+        {
+          "usagePage": 65280,
+          "usage": 1
+        }
+      ]
+    },
+    "store_size": 1,
+    "device_states": [
+      {
+        "device": {
+          "vendorId": 14391,
+          "productId": 12314,
+          "productName": "MCHOSE God 60",
+          "opened": true,
+          "collections": [
+            {
+              "usagePage": 65280,
+              "usage": 1
+            }
+          ]
+        },
+        "isBusy": false,
+        "communicateEnabled": true,
+        "failedCount": 0,
+        "isWireless": false,
+        "battery": 0,
+        "featBattery": false
+      }
+    ],
+    "route": "Keyboard",
+    "href": "https://www.mchose.com.cn/#/keyboard?deviceName=MCHOSE+God+60&isGoUpgradePage=false",
+    "body_head": "Вернуться на главную\nПанель управления муз.ритмом\nМасштабирование ритма\nМасштабирование клавиатуры\nПоказ ритма\nПоказ клав.\nСброс"
+  },
+  "row": {
+    "text": "God 60",
+    "area": 2278,
+    "candidates": 1,
+    "chain": [
+      {
+        "tag": "DIV",
+        "cls": "",
+        "attrs": [
+          "data-v-905dd50d="
+        ]
+      },
+      {
+        "tag": "H3",
+        "cls": "device-card-name",
+        "attrs": [
+          "data-v-905dd50d="
+        ]
+      },
+      {
+        "tag": "SECTION",
+        "cls": "device-card-info",
+        "attrs": [
+          "data-v-905dd50d="
+        ]
+      },
+      {
+        "tag": "SECTION",
+        "cls": "device-card-main",
+        "attrs": [
+          "data-v-905dd50d="
+        ]
+      },
+      {
+        "tag": "DIV",
+        "cls": "device-card-body",
+        "attrs": [
+          "data-v-905dd50d="
+        ]
+      },
+      {
+        "tag": "SECTION",
+        "cls": "device-card-content",
+        "attrs": [
+          "data-v-905dd50d="
+        ]
+      }
+    ]
+  },
+  "probe_trace": [
+    {
+      "t": 0,
+      "stage": "probe:installed",
+      "data": null
+    },
+    {
+      "t": 2206,
+      "stage": "cz:loader-assigned",
+      "data": {
+        "type": "function"
+      }
+    },
+    {
+      "t": 13851,
+      "stage": "history:replaceState",
+      "data": "#/home"
+    },
+    {
+      "t": 13862,
+      "stage": "cz:loader-called",
+      "data": null
+    },
+    {
+      "t": 16761,
+      "stage": "window:error",
+      "data": {
+        "msg": "Uncaught Error: wrapRemoteConfig::> keyboard config not found, check url: https://cdn.mchose.com.cn/configCenter/custom/keyboardConfig.json",
+        "src": "blob:https://www.mchose.com.cn/05a9b6f4-9fde-4bb5-9ac2-d3db18104469",
+        "line": 8
+      }
+    },
+    {
+      "t": 18252,
+      "stage": "cz:loader-resolved",
+      "data": {
+        "keys": 95
+      }
+    },
+    {
+      "t": 18253,
+      "stage": "cz:getDeviceData",
+      "data": {
+        "args": [
+          14391,
+          12348,
+          null
+        ],
+        "result": "[object:28 keys]"
+      }
+    },
+    {
+      "t": 18253,
+      "stage": "cz:getDeviceData",
+      "data": {
+        "args": [
+          14391,
+          12349,
+          null
+        ],
+        "result": "[object:29 keys]"
+      }
+    },
+    {
+      "t": 18253,
+      "stage": "cz:getDeviceData",
+      "data": {
+        "args": [
+          14391,
+          12317,
+          null
+        ],
+        "result": "[object:27 keys]"
+      }
+    },
+    {
+      "t": 18253,
+      "stage": "cz:getDeviceData",
+      "data": {
+        "args": [
+          14391,
+          12319,
+          null
+        ],
+        "result": "[object:28 keys]"
+      }
+    },
+    {
+      "t": 18253,
+      "stage": "cz:getDeviceData",
+      "data": {
+        "args": [
+          14391,
+          12352,
+          null
+        ],
+        "result": "[object:23 keys]"
+      }
+    },
+    {
+      "t": 18253,
+      "stage": "cz:getDeviceData",
+      "data": {
+        "args": [
+          14391,
+          12353,
+          null
+        ],
+        "result": "[object:24 keys]"
+      }
+    },
+    {
+      "t": 18253,
+      "stage": "cz:getDeviceData",
+      "data": {
+        "args": [
+          14391,
+          12320,
+          null
+        ],
+        "result": "[object:31 keys]"
+      }
+    },
+    {
+      "t": 18253,
+      "stage": "cz:getDeviceData",
+      "data": {
+        "args": [
+          14391,
+          12314,
+          null
+        ],
+        "result": "[object:32 keys]"
+      }
+    },
+    {
+      "t": 18253,
+      "stage": "cz:getDeviceData",
+      "data": {
+        "args": [
+          14391,
+          12295,
+          null
+        ],
+        "result": "[object:24 keys]"
+      }
+    },
+    {
+      "t": 18253,
+      "stage": "cz:getDeviceData",
+      "data": {
+        "args": [
+          14391,
+          12297,
+          null
+        ],
+        "result": "[object:25 keys]"
+      }
+    },
+    {
+      "t": 18253,
+      "stage": "cz:getDeviceGLBKeyboardKey",
+      "data": {
+        "args": [
+          14391,
+          12348,
+          null
+        ],
+        "result": "Ace75"
+      }
+    },
+    {
+      "t": 18253,
+      "stage": "cz:getDeviceName",
+      "data": {
+        "args": [
+          14391,
+          12348,
+          null
+        ],
+        "result": "Ace 75"
+      }
+    },
+    {
+      "t": 18253,
+      "stage": "cz:getDeviceGLBKeyboardKey",
+      "data": {
+        "args": [
+          14391,
+          12349,
+          null
+        ],
+        "result": "Ace75"
+      }
+    },
+    {
+      "t": 18253,
+      "stage": "cz:getDeviceName",
+      "data": {
+        "args": [
+          14391,
+          12349,
+          null
+        ],
+        "result": "Ace 75"
+      }
+    },
+    {
+      "t": 18253,
+      "stage": "cz:getDeviceGLBKeyboardKey",
+      "data": {
+        "args": [
+          14391,
+          12317,
+          null
+        ],
+        "result": "Ace75"
+      }
+    },
+    {
+      "t": 18253,
+      "stage": "cz:getDeviceName",
+      "data": {
+        "args": [
+          14391,
+          12317,
+          null
+        ],
+        "result": "Ace 75"
+      }
+    },
+    {
+      "t": 18253,
+      "stage": "cz:getDeviceGLBKeyboardKey",
+      "data": {
+        "args": [
+          14391,
+          12319,
+          null
+        ],
+        "result": "Ace75"
+      }
+    },
+    {
+      "t": 18253,
+      "stage": "cz:getDeviceName",
+      "data": {
+        "args": [
+          14391,
+          12319,
+          null
+        ],
+        "result": "Ace 75"
+      }
+    },
+    {
+      "t": 18254,
+      "stage": "cz:getKeyboardModelConfig",
+      "data": {
+        "args": [
+          {
+            "vendorId": 14391,
+            "productId": 12348,
+            "productName": null
+          }
+        ],
+        "result": {}
+      }
+    },
+    {
+      "t": 18254,
+      "stage": "cz:getDeviceGLBKeyboardKey",
+      "data": {
+        "args": [
+          14391,
+          12352,
+          null
+        ],
+        "result": "Ace60ProISOFR"
+      }
+    },
+    {
+      "t": 18254,
+      "stage": "cz:getDeviceName",
+      "data": {
+        "args": [
+          14391,
+          12352,
+          null
+        ],
+        "result": "Ace 60 Pro ISO FR"
+      }
+    },
+    {
+      "t": 18254,
+      "stage": "cz:getDeviceGLBKeyboardKey",
+      "data": {
+        "args": [
+          14391,
+          12353,
+          null
+        ],
+        "result": "Ace60ProISOFR"
+      }
+    },
+    {
+      "t": 18254,
+      "stage": "cz:getDeviceName",
+      "data": {
+        "args": [
+          14391,
+          12353,
+          null
+        ],
+        "result": "Ace 60 Pro ISO FR"
+      }
+    },
+    {
+      "t": 18254,
+      "stage": "cz:getKeyboardModelConfig",
+      "data": {
+        "args": [
+          {
+            "vendorId": 14391,
+            "productId": 12352,
+            "productName": null
+          }
+        ],
+        "result": {}
+      }
+    },
+    {
+      "t": 18254,
+      "stage": "cz:getDeviceGLBKeyboardKey",
+      "data": {
+        "args": [
+          14391,
+          12320,
+          null
+        ],
+        "result": "God60"
+      }
+    },
+    {
+      "t": 18254,
+      "stage": "cz:getDeviceName",
+      "data": {
+        "args": [
+          14391,
+          12320,
+          null
+        ],
+        "result": "God 60"
+      }
+    },
+    {
+      "t": 18254,
+      "stage": "cz:getDeviceGLBKeyboardKey",
+      "data": {
+        "args": [
+          14391,
+          12314,
+          null
+        ],
+        "result": "God60"
+      }
+    },
+    {
+      "t": 18254,
+      "stage": "cz:getDeviceName",
+      "data": {
+        "args": [
+          14391,
+          12314,
+          null
+        ],
+        "result": "God 60"
+      }
+    },
+    {
+      "t": 18254,
+      "stage": "cz:getKeyboardModelConfig",
+      "data": {
+        "args": [
+          {
+            "vendorId": 14391,
+            "productId": 12320,
+            "productName": null
+          }
+        ],
+        "result": {}
+      }
+    },
+    {
+      "t": 18254,
+      "stage": "cz:getDeviceGLBKeyboardKey",
+      "data": {
+        "args": [
+          14391,
+          12295,
+          null
+        ],
+        "result": "Ace68GT"
+      }
+    },
+    {
+      "t": 18254,
+      "stage": "cz:getDeviceName",
+      "data": {
+        "args": [
+          14391,
+          12295,
+          null
+        ],
+        "result": "Ace 68 GT"
+      }
+    },
+    {
+      "t": 18254,
+      "stage": "cz:getDeviceGLBKeyboardKey",
+      "data": {
+        "args": [
+          14391,
+          12297,
+          null
+        ],
+        "result": "Ace68GT"
+      }
+    },
+    {
+      "t": 18254,
+      "stage": "cz:getDeviceName",
+      "data": {
+        "args": [
+          14391,
+          12297,
+          null
+        ],
+        "result": "Ace 68 GT"
+      }
+    },
+    {
+      "t": 18254,
+      "stage": "cz:getKeyboardModelConfig",
+      "data": {
+        "args": [
+          {
+            "vendorId": 14391,
+            "productId": 12295,
+            "productName": null
+          }
+        ],
+        "result": {}
+      }
+    },
+    {
+      "t": 21216,
+      "stage": "cz:loader-called",
+      "data": null
+    },
+    {
+      "t": 21218,
+      "stage": "cz:loader-resolved",
+      "data": {
+        "keys": 95
+      }
+    },
+    {
+      "t": 21224,
+      "stage": "history:replaceState",
+      "data": "#/connectDevice"
+    },
+    {
+      "t": 21294,
+      "stage": "cz:loader-called",
+      "data": null
+    },
+    {
+      "t": 21294,
+      "stage": "cz:loader-resolved",
+      "data": {
+        "keys": 95
+      }
+    },
+    {
+      "t": 21295,
+      "stage": "cz:loader-called",
+      "data": null
+    },
+    {
+      "t": 21295,
+      "stage": "cz:clampDevices",
+      "data": {
+        "input": [
+          {
+            "vendorId": 14391,
+            "productId": 12314,
+            "productName": "MCHOSE God 60",
+            "opened": true,
+            "collections": [
+              {
+                "usagePage": 65280,
+                "usage": 1
+              }
+            ]
+          }
+        ],
+        "kept": 1,
+        "verdict": "ALL_KEPT"
+      }
+    },
+    {
+      "t": 21295,
+      "stage": "cz:createDeviceSDK:enter",
+      "data": {
+        "vendorId": 14391,
+        "productId": 12314,
+        "productName": "MCHOSE God 60",
+        "opened": true,
+        "collections": [
+          {
+            "usagePage": 65280,
+            "usage": 1
+          }
+        ]
+      }
+    },
+    {
+      "t": 21296,
+      "stage": "cz:loader-resolved",
+      "data": {
+        "keys": 95
+      }
+    },
+    {
+      "t": 21296,
+      "stage": "cz:createDeviceSDK:ok",
+      "data": {
+        "storageKey": "God 60"
+      }
+    },
+    {
+      "t": 21296,
+      "stage": "cz:getDeviceType",
+      "data": {
+        "args": [
+          14391,
+          12314,
+          "MCHOSE God 60"
+        ],
+        "result": 136
+      }
+    },
+    {
+      "t": 21296,
+      "stage": "cz:getDeviceIsWireless",
+      "data": {
+        "args": [
+          14391,
+          12314,
+          "MCHOSE God 60"
+        ],
+        "result": false
+      }
+    },
+    {
+      "t": 21297,
+      "stage": "cz:getDeviceType",
+      "data": {
+        "args": [
+          14391,
+          12314,
+          "MCHOSE God 60"
+        ],
+        "result": 136
+      }
+    },
+    {
+      "t": 21364,
+      "stage": "window:unhandledrejection",
+      "data": "Error: abort\n    at y (blob:https://www.mchose.com.cn/e35501e6-30d9-498e-abc0-c1a7ee9c1be5:8:546566)\n    at v (blob:https://www.mchose.com.cn/e35501e6-30d9-498e-abc0-c1a7ee9c1be5:8:546648)\n    at blob:https://www.mchose.com.cn/e35501e6-30d9-498e-abc0-c1a7ee9c1be5:8:528867\n    at blob:https://www.mchose.com.cn/e35501e6-30d9-498e-abc0-c1a7ee9c1be5:7:193727\n    at Generator.<anonymous> (blob:https://"
+    },
+    {
+      "t": 51430,
+      "stage": "ls:set",
+      "data": {
+        "key": "deviceName",
+        "value": "MCHOSE God 60"
+      }
+    },
+    {
+      "t": 51430,
+      "stage": "ls:set",
+      "data": {
+        "key": "lastKBProductKey",
+        "value": "MCHOSE God 60$$$14391$$$12314"
+      }
+    },
+    {
+      "t": 51431,
+      "stage": "history:replaceState",
+      "data": "#/connectDevice"
+    },
+    {
+      "t": 51431,
+      "stage": "history:pushState",
+      "data": "#/keyboard?deviceName=MCHOSE+God+60&isGoUpgradePage=false"
+    },
+    {
+      "t": 51452,
+      "stage": "cz:loader-called",
+      "data": null
+    },
+    {
+      "t": 51452,
+      "stage": "cz:loader-resolved",
+      "data": {
+        "keys": 95
+      }
+    },
+    {
+      "t": 51452,
+      "stage": "cz:clampDevices",
+      "data": {
+        "input": [
+          {
+            "vendorId": 14391,
+            "productId": 12314,
+            "productName": "MCHOSE God 60",
+            "opened": true,
+            "collections": [
+              {
+                "usagePage": 65280,
+                "usage": 1
+              }
+            ]
+          }
+        ],
+        "kept": 1,
+        "verdict": "ALL_KEPT"
+      }
+    },
+    {
+      "t": 51453,
+      "stage": "ls:set",
+      "data": {
+        "key": "deviceName",
+        "value": "MCHOSE God 60"
+      }
+    },
+    {
+      "t": 51453,
+      "stage": "ls:set",
+      "data": {
+        "key": "lastKBProductKey",
+        "value": "MCHOSE God 60$$$14391$$$12314"
+      }
+    },
+    {
+      "t": 51453,
+      "stage": "cz:loader-called",
+      "data": null
+    },
+    {
+      "t": 51453,
+      "stage": "cz:loader-resolved",
+      "data": {
+        "keys": 95
+      }
+    },
+    {
+      "t": 51455,
+      "stage": "cz:getDeviceName",
+      "data": {
+        "args": [
+          14391,
+          12314,
+          "MCHOSE God 60"
+        ],
+        "result": "God 60"
+      }
+    }
+  ],
+  "console": [
+    "log: CZ initialized: {deviceStateMap: Proxy(Map), sharedStoreMap: Proxy(Map), setupDeviceSDK: , notifyAllConfigChange: , cleanDeviceSDK: }",
+    "info: support OffscreenCanvas",
+    "error: [innerLoadCZSharedData:0] catch script error ErrorEvent",
+    "pageerror: wrapRemoteConfig::> keyboard config not found, check url: https://cdn.mchose.com.cn/configCenter/custom/keyboardConfig.json",
+    "warning: [innerLoadCZSharedData:0] will call plugins.onError: ErrorEvent",
+    "warning: [innerLoadCZSharedData:0] error handled, will reload",
+    "log: [innerLoadCZSharedData:1] will call plugins.onSuccess",
+    "log: [innerLoadCZSharedData:1] got promise result undefined",
+    "log: [innerLoadCZSharedData:0] reload success, return {DeviceSDK: , createDeviceSDK: , clampDevices: , QhwSDK: , connectHID: }",
+    "log: [innerLoadCZSharedData:0] got promise result {DeviceSDK: , createDeviceSDK: , clampDevices: , QhwSDK: , connectHID: }",
+    "info: CZRemoteConfigList modify HidIndexDeviceFilters [Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Obj",
+    "info: CZRemoteConfigList modify KEYBOARD_MODELS {Ace60ProNordic: Object, G87: Object, K87S: Object, ZERO75X: Object, ACE68: Object}",
+    "info: CZRemoteConfigList modify deviceImageMap {Ace 60: Object, Ace 60 Pro: Object, Ace 60 Pro Nordic: Object, Ace 60X: Object, Ace 68: Object}",
+    "info: CZRemoteConfigList modify deviceList {keyboard: Array(21), mouse: Array(34), audio: Array(14)}",
+    "info: CZRemoteConfigList modify czDeviceName [Ace60ProNordic, Ace60ProISOFR, Ace68Turbo, Ace68Air2, Ace68Air, Ace68GT, Ace68V2, ZERO75X, Ace60, Ace68, Ace75, Jet75, Mix87, JET75, G87V2, K99V3, G75V2, G98V3, God60, K87S]"
+  ]
+}
