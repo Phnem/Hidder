@@ -40,7 +40,11 @@ on one report id, with the reply's first **2** bytes dropped before parsing. All
 frames are **519 bytes**, report id **6**.
 
 Observed live, matching the `hpe` templates exactly: `87` getBattery, `83`
-getKeySetting, `84` getPerformance, `8a` getLightColor, `86` setDiyLight.
+getKeySetting, `84` getPerformance, `8a` getLightColor, `86` getDiyLight.
+(Corrected: `86` is the read-template lead byte for `getDiyLight`, per
+`static/kb_command_table.json`'s own `wired_leading_pair_groups["06 86"]`; an
+earlier version of this line named it `setDiyLight`, which is wired lead byte
+`06` — a write, not a read, and a different byte entirely.)
 
 ## Getting a BY keyboard onto the screen
 
@@ -97,35 +101,36 @@ distinct**. Bytes that move as those controls move:
 discriminator has to be stable within an action, and these are not. Recording
 them is what a later diff has to exclude.
 
-## The blocker: still OPEN, and now precisely located
+## The blocker: RESOLVED — see `BY_0X04_INDISTINGUISHABLE.md`
 
-The factory reset exists and the app names it in its own words. Clicking
-**"Сброс"** under *"Восстановление заводских настроек"* opens:
+**This section originally reported the dialog as not opening under
+correctly-sized replies, `setReset` frames captured = 0, and verdict
+`NOT_ESTABLISHED`. That was wrong, and is superseded, not merely amended.**
 
-> Эта операция приведет к сбросу всех настроек. Вы уверены, что хотите
-> восстановить заводские настройки? — [Отмена] [Сброс]
+The apparent size-dependence was an artifact of driver-side polling arriving
+after the vendor's own confirmation dialog had already opened and closed
+(lifecycle ~6s; polling checked at 1.8s/3.5s/8s/250ms, always too late — see
+`mchose_by_reset_state_diff.py`, `analysis/by_reset_state_diff.json`). An
+in-page `MutationObserver` armed before the click shows the dialog opening
+**in both size scenarios**, with identical text, in 12/13 tracked state
+checks. There was no config-load-path dependence to explain.
 
-That dialog was reached and read. What has **not** been captured is the frame it
-produces. Three click methods were tried — synthetic `el.click()`, a real mouse
-click at the element's centre, and Playwright's actionability-checked
-`locator.click()` — and in the runs with correctly sized replies the dialog did
-not open at all, while in an earlier run with **under**-sized replies it opened
-every time and then emitted nothing (for the parser reason above).
-
-That inversion is suspicious and is recorded as an open question rather than
-explained: the button's behaviour appears to depend on which config-load path
-the page took. It is a harness/UI question, not a protocol one, and it does not
-require hardware.
-
-**So:**
+With that fixed, the `setReset` frame **was captured** (519 bytes, report id
+6, lead `0x04`) through the vendor's own dialog and confirm button. Byte-diff
+against `setPerformance` established the wired `0x04` verdict as
+**`IMPOSSIBLE_AT_WIRE_LEVEL`**: a routine `setPerformance` write and the
+captured `setReset` frame are byte-identical across all 519 bytes. Full
+derivation, proof, and consequences: `BY_0X04_INDISTINGUISHABLE.md`.
 
 ```
 setPerformance frames captured : 10
-setReset frames captured       : 0
-verdict                        : NOT_ESTABLISHED
+setReset frames captured       : 1  (519 bytes, vendor dialog + confirm button)
+verdict                        : IMPOSSIBLE_AT_WIRE_LEVEL
 ```
 
-An absent frame is a gap in the walk, not evidence that the command does not
-exist. Wired `0x04` remains **POTENTIALLY_DESTRUCTIVE**: `setPerformance` and
-`setReset` still share a lead byte and a parser, and nothing yet separates them
-by value.
+Wired `0x04` classification is now **final**: `setReset` is
+`DESTRUCTIVE_CONFIRMED` by intent provenance (which command was issued),
+`setPerformance` is `POTENTIALLY_DESTRUCTIVE`, and no function of the frame
+bytes alone can ever separate them — safety for this path has to be enforced
+at the point of intent, before serialisation, never by inspecting the wire
+frame. A captured `0x04` frame must never be replayed.

@@ -213,6 +213,47 @@ def classify_by_frame(method: str, report_id, payload_hex: str) -> tuple[str, st
     return "UNKNOWN", "does not match a characterised BY template"
 
 
+# setPerformance and setReset were proven byte-identical on the wire
+# (BY_0X04_INDISTINGUISHABLE.md): no function of the frame bytes alone can ever
+# separate them. classify_by_frame() therefore collapses both to
+# POTENTIALLY_DESTRUCTIVE, which is correct for a frame with no known origin but
+# cannot be the whole safety story, because it means a genuine factory reset is
+# never distinguished as DESTRUCTIVE_CONFIRMED either.
+#
+# classify_by_intent() is the other half: it classifies by which command the
+# caller *said* it was sending -- the one fact that exists before serialise()
+# throws it away -- and never by inspecting payload_hex for that pair. A caller
+# with no command name gets BLOCKED, not a guess: the whole point of the proof
+# is that guessing from bytes is not an option here.
+_BY_INTENT_VERDICTS = {
+    "setReset": ("DESTRUCTIVE_CONFIRMED",
+                 "traced from the restoreFactorySetting UI action through the dispatcher to "
+                 "sendCommand('set','setReset',...); this is the vendor's factory-reset call"),
+    "setPerformance": ("POTENTIALLY_DESTRUCTIVE",
+                        "sendCommand('set','setPerformance',...); frame-identical to setReset "
+                        "by proof, so the verdict comes from the call site, never from bytes"),
+}
+
+
+def classify_by_intent(command_name: str | None, payload_hex: str,
+                        method: str = "sendFeatureReport", report_id=6) -> tuple[str, str]:
+    """(safety_class, why) using the command name at the call site, not the wire frame.
+
+    For setPerformance/setReset this MUST return different verdicts for
+    byte-identical frames -- that is the entire reason it exists instead of
+    classify_by_frame(). A frame offered with no command name is a captured or
+    replayed frame with its provenance already gone, and is refused outright.
+    """
+    lead = (payload_hex or "").lower()[0:2]
+    if lead == "04" and command_name is None:
+        return ("BLOCKED",
+                "a wired 0x04 frame with no accompanying command-name provenance is exactly "
+                "the opaque-replay case the proof warns about; it is refused, not classified")
+    if lead == "04" and command_name in _BY_INTENT_VERDICTS:
+        return _BY_INTENT_VERDICTS[command_name]
+    return classify_by_frame(method, report_id, payload_hex)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--profile", choices=sorted(BY_PROFILES), default="k99")
