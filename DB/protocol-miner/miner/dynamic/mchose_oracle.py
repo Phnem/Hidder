@@ -202,17 +202,32 @@ def main() -> int:
         # wait while still serving fine (seen repeatedly since TICKET-23). A
         # goto timeout is therefore not a failure signal; the page's own state
         # is. Poll for the app root instead of trusting the navigation event.
-        try:
-            page.goto(TARGET, wait_until="commit", timeout=90000)
-        except Exception as exc:  # noqa: BLE001
-            print(f"[nav] goto raised ({exc}); polling page state instead")
-        for _ in range(60):
+        # Observed reliability on this host: roughly one load in three succeeds
+        # within a minute. That is flaky infrastructure, not a finding about the
+        # vendor, so it is retried rather than reported as a result.
+        loaded = False
+        for attempt in range(3):
             try:
-                if page.evaluate("() => !!document.querySelector('#app') && document.body.innerText.length > 40"):
-                    break
-            except Exception:  # noqa: BLE001
-                pass
-            page.wait_for_timeout(1000)
+                page.goto(TARGET, wait_until="commit", timeout=90000)
+            except Exception as exc:  # noqa: BLE001
+                print(f"[nav] attempt {attempt}: goto raised ({exc}); polling anyway")
+            for _ in range(45):
+                try:
+                    if page.evaluate(
+                        "() => !!document.querySelector('#app') && document.body.innerText.length > 40"
+                    ):
+                        loaded = True
+                        break
+                except Exception:  # noqa: BLE001
+                    pass
+                page.wait_for_timeout(1000)
+            if loaded:
+                print(f"[nav] loaded on attempt {attempt}")
+                break
+            print(f"[nav] attempt {attempt} produced an empty page; retrying")
+        if not loaded:
+            print("[nav] page never rendered; capture will be empty and that is a HARNESS "
+                  "outcome, not evidence about the protocol")
         assert_no_real_hid(page)
         print("[safety] navigator.hid is the fake runtime")
 
@@ -257,13 +272,25 @@ def main() -> int:
         # (name shown with zero HID frames sent), so nothing is on the wire until
         # a device is actually opened.
         log.set_action("open_device")
+        # Pick the SMALLEST element whose text is exactly the device name. The
+        # previous selector took the first match in document order, which is an
+        # ancestor container ("Добавить новое устройство / Облако / ...") whose
+        # innerText merely contains the name -- clicking it hit the panel, not
+        # the row, and no device was ever opened.
         opened = page.evaluate(
             """() => {
-              const t = Array.from(document.querySelectorAll('div,span,button,li'))
-                .filter(e => e.getBoundingClientRect().width > 60 && e.children.length <= 2)
-                .find(e => /God 60|Ace 75|Ace 68/i.test((e.innerText||'').trim()));
-              if (!t) return null;
-              t.click(); return (t.innerText||'').trim().slice(0,40);
+              const name = /^(God 60|Ace 75|Ace 68 GT)$/i;
+              const cands = Array.from(document.querySelectorAll('div,span,button,li,p'))
+                .filter(e => name.test((e.innerText||'').trim()))
+                .map(e => { const r = e.getBoundingClientRect();
+                            return {e, area: r.width * r.height, x: r.x + r.width/2, y: r.y + r.height/2}; })
+                .filter(o => o.area > 0)
+                .sort((a,b) => a.area - b.area);
+              if (!cands.length) return null;
+              const best = cands[0];
+              best.e.click();
+              return {text: (best.e.innerText||'').trim().slice(0,40),
+                      area: Math.round(best.area), candidates: cands.length};
             }"""
         )
         print(f"[open] clicked device row: {opened!r}")
