@@ -97,7 +97,7 @@ def main() -> int:
         page = ctx.new_page()
 
         loaded = False
-        for _ in range(3):
+        for _ in range(6):
             try:
                 page.goto(TARGET, wait_until="commit", timeout=90000)
             except Exception as exc:  # noqa: BLE001

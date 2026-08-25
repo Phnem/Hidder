@@ -55,3 +55,10 @@ $RECYCLE.BIN/
 # of FACTS about a protocol (the precedent is docs/prior-art/aula-bytech-*.md),
 # not a decompiled bundle. The bundle itself is still never committed.
 !DB/reports/protocol_knowledge/*/static/*.json
+# And for analysis output -- echo audits, UI inventories, address maps. These
+# are INTERPRETATION of a capture, which is the deliverable of a lane rather
+# than a fetched artifact. Kept separate from oracle/ on purpose: oracle/ holds
+# the raw captures a blind inference run reads, and mixing our decoding into
+# those files makes "the engine recovered the structure" unfalsifiable. The
+# leakage gate enforces that split.
+!DB/reports/protocol_knowledge/*/analysis/*.json

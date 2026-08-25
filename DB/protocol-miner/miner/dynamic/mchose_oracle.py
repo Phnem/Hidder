@@ -42,6 +42,8 @@ for _p in (_DB_ROOT, _MINER_ROOT):
     if str(_p) not in sys.path:
         sys.path.insert(0, str(_p))
 
+from miner.static import mchose_cz_codec as cz  # noqa: E402
+
 _RUNTIME_JS = _THIS.parent / "fake_browser" / "runtime.js"
 TARGET = "https://www.mchose.com.cn/#/home"
 
@@ -122,6 +124,35 @@ PROFILES: dict[str, dict] = {
 KEYBOARD_REPORT_IDS = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x09, 0x10, 0x13]
 
 
+BOOT_MODE_IDENTITIES_ARTIFACT = (
+    _DB_ROOT / "reports" / "protocol_knowledge" / "mchose" / "static" / "identity_graph.json"
+)
+
+
+def assert_not_boot_identity(profile: dict) -> None:
+    """Refuse a profile that points at the bootloader interface.
+
+    Driving the DFU id is not a harmless mistake: the app renders a firmware
+    update dialog instead of the configurator and its runtime short-circuits
+    nearly every operation with `if (isUpgradeMode) return`, so the run captures
+    nothing and looks like the vendor ignoring the device. That cost several
+    passes before anyone asked the SDK. The set is checked against the artifact
+    the SDK produced rather than against a comment.
+    """
+    try:
+        graph = json.loads(BOOT_MODE_IDENTITIES_ARTIFACT.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return  # the artifact is a check, not a dependency; absence must not block a run
+    boot = {row["id"].lower() for row in graph.get("boot_mode_identities", [])}
+    key = f"{profile['vendorId']:#06x}:{profile['productId']:#06x}".lower()
+    if key in boot:
+        raise SystemExit(
+            f"REFUSING TO RUN: profile {profile['label']!r} uses {key}, which the CZ SDK "
+            "reports as the bootloader/DFU interface. The configurator will not open and "
+            "the capture will be empty for a reason that has nothing to do with the protocol."
+        )
+
+
 def wait_device_ready(page, timeout_s: float = 120.0) -> dict:
     """Block until the app's own device runtime is ready, or time out saying so.
 
@@ -183,16 +214,48 @@ def assert_no_real_hid(page) -> None:
 
 
 class FrameLog:
-    def __init__(self, path: Path):
+    """Records every frame the page writes, and optionally answers it.
+
+    `responder` is `"none"` by default and that default is load-bearing: with no
+    reply, anything that looks like device knowledge in the page's state can only
+    have come from the page. Turning the responder on trades that guarantee for
+    reach, so every frame it answers is stamped
+    `evidence_class: synthetic_from_vendor_schema` in the log, and the echo audit
+    reads that stamp rather than re-deriving it.
+    """
+
+    def __init__(self, path: Path, responder: str = "none"):
         self.path = path
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._fh = path.open("w", encoding="utf-8")
         self._lock = threading.Lock()
         self.n = 0
         self.action = "connect"
+        self.responder = responder
+        self.answered = 0
 
     def set_action(self, name: str) -> None:
         self.action = name
+
+    def _cz_reply(self, payload_hex: str) -> tuple[str | None, str | None]:
+        """A reply the vendor's own `_isMatch` accepts, or a reason there is none."""
+        if self.responder != "cz_schema":
+            return None, None
+        try:
+            raw = bytes.fromhex(payload_hex or "")
+        except ValueError:
+            return None, "payload is not hex"
+        if len(raw) < cz.HEADER_LENGTH:
+            return None, f"shorter than the {cz.HEADER_LENGTH}-byte CZ header"
+        if raw[0] != cz.FLAG_REQUEST:
+            # Not a CZ request. Answering it anyway would be inventing a protocol
+            # the vendor never described, which is exactly what this harness is
+            # meant not to do.
+            return None, f"leading byte {raw[0]:#04x} is not the CZ request flag"
+        try:
+            return cz.synthesize_reply(raw).hex(), None
+        except ValueError as exc:
+            return None, str(exc)
 
     def record(self, req: dict) -> dict:
         with self._lock:
@@ -206,14 +269,46 @@ class FrameLog:
                 "payload_hex": req.get("bytes_hex"),
                 "payload_len": len(req.get("bytes_hex") or "") // 2,
             }
+            m = req.get("method")
+            reply_hex, why_not = (None, None)
+            if m == "sendReport":
+                reply_hex, why_not = self._cz_reply(req.get("bytes_hex") or "")
+                if reply_hex:
+                    self.answered += 1
+            if reply_hex:
+                rec["reply_hex"] = reply_hex
+                rec["reply_report_id"] = req.get("report_id")
+                # The one label that must never be lost between here and a claim.
+                rec["evidence_class"] = "synthetic_from_vendor_schema"
+                rec["reply_provenance"] = cz.PROVENANCE
+            else:
+                rec["evidence_class"] = "no_reply"
+                if why_not:
+                    rec["reply_withheld_because"] = why_not
+            # Deliberately NOT written into the capture: the decoded envelope.
+            # This file is corpus -- an input a blind inference run reads -- and a
+            # corpus carrying our interpretation of it makes "the engine recovered
+            # the structure" unfalsifiable (playbook §1.4). Decoding belongs in
+            # analysis/, and every consumer re-derives it from payload_hex.
             self._fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
             self._fh.flush()
-        m = req.get("method")
         if m == "sendReport":
-            print(f"  [{rec['seq']:>4}] {rec['ui_action']:<22} TX rid={rec['report_id']} "
-                  f"len={rec['payload_len']} {(rec['payload_hex'] or '')[:56]}")
-        # No canned response: the device answers nothing by default, so anything
-        # that looks like a reply in the page's state came from the page.
+            # Console only -- decoding for a human reading the run, never persisted
+            # into the capture file.
+            tag = ""
+            try:
+                d = cz.parse(bytes.fromhex(rec["payload_hex"] or ""))
+                tag = f"cmd={d.command:#04x} off={d.offset} size={d.size}"
+            except Exception:  # noqa: BLE001
+                pass
+            print(f"  [{rec['seq']:>4}] {rec['ui_action']:<20} TX rid={rec['report_id']} "
+                  f"{(rec['payload_hex'] or '')[:24]} {tag}"
+                  f"{'  -> synthetic reply' if reply_hex else ''}")
+        if reply_hex:
+            return {"ack": True, "reply": {"reportId": req.get("report_id"), "hex": reply_hex},
+                    "strategy": "SYNTHETIC_FROM_VENDOR_SCHEMA", "confidence": 0.0}
+        # Default: the device answers nothing, so anything that looks like a reply
+        # in the page's state came from the page.
         if m in ("receiveFeatureReport",):
             return {"hex": "", "strategy": "NO_RESPONSE", "confidence": 0.0}
         return {"ack": True, "strategy": "NO_RESPONSE", "confidence": 0.0}
@@ -244,16 +339,21 @@ def main() -> int:
     ap.add_argument("--profile", choices=sorted(PROFILES), default="god60")
     ap.add_argument("--out", required=True)
     ap.add_argument("--seconds", type=float, default=60.0)
+    ap.add_argument("--responder", choices=["none", "cz_schema"], default="none",
+                    help="cz_schema answers CZ requests with replies built from the "
+                         "vendor's own schema; every such reply is stamped "
+                         "synthetic_from_vendor_schema and is NOT hardware evidence")
     args = ap.parse_args()
 
     from playwright.sync_api import sync_playwright
 
     profile = PROFILES[args.profile]
-    log = FrameLog(Path(args.out))
+    log = FrameLog(Path(args.out), responder=args.responder)
     print(f"profile: {profile['label']}  "
           f"{profile['vendorId']:#06x}:{profile['productId']:#06x} "
           f"usage {profile['usagePage']:#06x}:{profile['usage']:#06x}")
     print(f"provenance: {profile['provenance']}")
+    assert_not_boot_identity(profile)
 
     runtime = _RUNTIME_JS.read_text(encoding="utf-8")
     cfg = (
@@ -280,7 +380,7 @@ def main() -> int:
         # within a minute. That is flaky infrastructure, not a finding about the
         # vendor, so it is retried rather than reported as a result.
         loaded = False
-        for attempt in range(3):
+        for attempt in range(6):
             try:
                 page.goto(TARGET, wait_until="commit", timeout=90000)
             except Exception as exc:  # noqa: BLE001

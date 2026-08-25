@@ -1,0 +1,191 @@
+{
+  "_what": "CZ address map as the observed offsets support it, TICKET-25 item 5",
+  "_not_a_sweep": "No parameter was varied. The CZ configurator does not render controls against synthetic data, so there was nothing to move. This reports the client's own addressing and withholds any stride not supported by several regions.",
+  "_source": "..\\reports\\protocol_knowledge\\mchose\\analysis\\ui_inventory_god60.json",
+  "frames_considered": 121,
+  "per_command": {
+    "cmd_0x03": {
+      "frames": 5,
+      "distinct_offsets": 1,
+      "offset_min": 0,
+      "offset_max": 0,
+      "sizes_seen": [
+        56
+      ],
+      "chunk_step": null,
+      "chunk_step_support": 0,
+      "regions_observed": 1,
+      "region_starts": [
+        0
+      ],
+      "record_stride": null,
+      "record_stride_note": "withheld: 1 region(s) observed, 4 required -- a stride from fewer is a difference, not a stride",
+      "semantics": null,
+      "semantics_note": "offsets say where the client looked, not what is there; every reply in this capture was synthetic_from_vendor_schema, so no byte meaning is supported"
+    },
+    "cmd_0x04": {
+      "frames": 4,
+      "distinct_offsets": 1,
+      "offset_min": 0,
+      "offset_max": 0,
+      "sizes_seen": [
+        56
+      ],
+      "chunk_step": null,
+      "chunk_step_support": 0,
+      "regions_observed": 1,
+      "region_starts": [
+        0
+      ],
+      "record_stride": null,
+      "record_stride_note": "withheld: 1 region(s) observed, 4 required -- a stride from fewer is a difference, not a stride",
+      "semantics": null,
+      "semantics_note": "offsets say where the client looked, not what is there; every reply in this capture was synthetic_from_vendor_schema, so no byte meaning is supported"
+    },
+    "cmd_0x05": {
+      "frames": 2,
+      "distinct_offsets": 2,
+      "offset_min": 0,
+      "offset_max": 56,
+      "sizes_seen": [
+        8,
+        56
+      ],
+      "chunk_step": 56,
+      "chunk_step_support": 1,
+      "regions_observed": 1,
+      "region_starts": [
+        0
+      ],
+      "record_stride": null,
+      "record_stride_note": "withheld: 1 region(s) observed, 4 required -- a stride from fewer is a difference, not a stride",
+      "semantics": null,
+      "semantics_note": "offsets say where the client looked, not what is there; every reply in this capture was synthetic_from_vendor_schema, so no byte meaning is supported"
+    },
+    "cmd_0x07": {
+      "frames": 56,
+      "distinct_offsets": 56,
+      "offset_min": 0,
+      "offset_max": 3920,
+      "sizes_seen": [
+        48,
+        56
+      ],
+      "chunk_step": 56,
+      "chunk_step_support": 48,
+      "regions_observed": 8,
+      "region_starts": [
+        0,
+        512,
+        1024,
+        1536,
+        2048,
+        2560,
+        3072,
+        3584
+      ],
+      "record_stride": 512,
+      "record_stride_note": "7 consecutive region gaps, all equal; derived from observed offsets only",
+      "semantics": null,
+      "semantics_note": "offsets say where the client looked, not what is there; every reply in this capture was synthetic_from_vendor_schema, so no byte meaning is supported"
+    },
+    "cmd_0x0c": {
+      "frames": 37,
+      "distinct_offsets": 37,
+      "offset_min": 0,
+      "offset_max": 2016,
+      "sizes_seen": [
+        32,
+        56
+      ],
+      "chunk_step": 56,
+      "chunk_step_support": 36,
+      "regions_observed": 1,
+      "region_starts": [
+        0
+      ],
+      "record_stride": null,
+      "record_stride_note": "withheld: 1 region(s) observed, 4 required -- a stride from fewer is a difference, not a stride",
+      "semantics": null,
+      "semantics_note": "offsets say where the client looked, not what is there; every reply in this capture was synthetic_from_vendor_schema, so no byte meaning is supported"
+    },
+    "cmd_0x0d": {
+      "frames": 4,
+      "distinct_offsets": 4,
+      "offset_min": 0,
+      "offset_max": 2060,
+      "sizes_seen": [
+        56
+      ],
+      "chunk_step": 12,
+      "chunk_step_support": 2,
+      "regions_observed": 2,
+      "region_starts": [
+        0,
+        2048
+      ],
+      "record_stride": null,
+      "record_stride_note": "withheld: 2 region(s) observed, 4 required -- a stride from fewer is a difference, not a stride",
+      "semantics": null,
+      "semantics_note": "offsets say where the client looked, not what is there; every reply in this capture was synthetic_from_vendor_schema, so no byte meaning is supported"
+    },
+    "cmd_0xa9": {
+      "frames": 1,
+      "distinct_offsets": 1,
+      "offset_min": 0,
+      "offset_max": 0,
+      "sizes_seen": [
+        1
+      ],
+      "chunk_step": null,
+      "chunk_step_support": 0,
+      "regions_observed": 1,
+      "region_starts": [
+        0
+      ],
+      "record_stride": null,
+      "record_stride_note": "withheld: 1 region(s) observed, 4 required -- a stride from fewer is a difference, not a stride",
+      "semantics": null,
+      "semantics_note": "offsets say where the client looked, not what is there; every reply in this capture was synthetic_from_vendor_schema, so no byte meaning is supported"
+    },
+    "cmd_0xf1": {
+      "frames": 9,
+      "distinct_offsets": 7,
+      "offset_min": 336,
+      "offset_max": 3016,
+      "sizes_seen": [
+        56
+      ],
+      "chunk_step": 56,
+      "chunk_step_support": 5,
+      "regions_observed": 2,
+      "region_starts": [
+        336,
+        3016
+      ],
+      "record_stride": null,
+      "record_stride_note": "withheld: 2 region(s) observed, 4 required -- a stride from fewer is a difference, not a stride",
+      "semantics": null,
+      "semantics_note": "offsets say where the client looked, not what is there; every reply in this capture was synthetic_from_vendor_schema, so no byte meaning is supported"
+    },
+    "cmd_0xf2": {
+      "frames": 3,
+      "distinct_offsets": 2,
+      "offset_min": 616,
+      "offset_max": 3016,
+      "sizes_seen": [
+        56
+      ],
+      "chunk_step": 2400,
+      "chunk_step_support": 1,
+      "regions_observed": 1,
+      "region_starts": [
+        616
+      ],
+      "record_stride": null,
+      "record_stride_note": "withheld: 1 region(s) observed, 4 required -- a stride from fewer is a difference, not a stride",
+      "semantics": null,
+      "semantics_note": "offsets say where the client looked, not what is there; every reply in this capture was synthetic_from_vendor_schema, so no byte meaning is supported"
+    }
+  }
+}

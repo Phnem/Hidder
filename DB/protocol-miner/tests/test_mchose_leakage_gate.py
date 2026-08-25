@@ -66,11 +66,19 @@ _PATTERN = re.compile("|".join(FORBIDDEN), re.IGNORECASE)
 #                semantics recovered from vendor artifacts. Forbidding semantics
 #                there would fail the gate on correct work, and a gate that
 #                fires on correct work gets weakened until it fires on nothing.
+#   analysis/    is INTERPRETATION of a capture -- echo audits, UI inventories,
+#                decoded envelopes. Same reasoning as static/: saying "byte 3 is
+#                a checksum" is the deliverable, not a leak.
+#
+# The split matters more than the exemption. oracle/ holds the raw captures and
+# is NOT exempt, so a decoded envelope written back into a capture file fails the
+# gate -- which is how this exemption came to be needed: an oracle run embedded
+# its own decoding in the corpus jsonl, and the gate caught it.
 #
 # What must stay clean is the corpus a blind run reads. That is the thing whose
 # contamination makes "the engine recovered the semantics" unfalsifiable, and it
 # is guarded by `test_the_corpus_directories_are_never_exempt`.
-EXEMPT_DIRS = {"acquisition", "static"}
+EXEMPT_DIRS = {"acquisition", "static", "analysis"}
 
 # Directories that are, or feed, a blind-inference corpus. Exempting one of
 # these is always a mistake, so it is asserted rather than trusted to review.

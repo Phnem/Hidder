@@ -1,0 +1,141 @@
+{
+  "_what": "MCHOSE destructive-path inventory, TICKET-25 consolidation item 7",
+  "_rule": "UNKNOWN is never promoted to SAFE. A path nobody has explained is not a path nobody needs to explain.",
+  "_families_are_not_merged": [
+    "Five families are tracked separately and no rule crosses between them: keyboard/BY, keyboard/CZ, mouse receiver, AA-55 OTA on report id 77, and the CZ SDK envelope. A classification established in one says nothing about another. AULA contributes nothing to any of them."
+  ],
+  "_no_destructive_path_found": "NOT ISSUED for any family. Coverage is far from complete and that verdict over incomplete coverage describes the walk, not the device (trap O-4).",
+  "at": "2026-08-25",
+  "families": {
+    "keyboard/BY": {
+      "transport": "navigator.deviceHandler.sendCommand, hpe command table (M HUB bundle purify.es)",
+      "coverage": "static only; no frame from this family has ever been captured",
+      "paths": [
+        {
+          "name": "setReset",
+          "classification": "DESTRUCTIVE_CONFIRMED",
+          "why": "traced from the restoreFactorySetting UI action through the dispatcher to sendCommand('set','setReset',...) (TICKET-25 priority 1)",
+          "unchanged_by_this_pass": true
+        },
+        {
+          "name": "setPerformance",
+          "classification": "POTENTIALLY_DESTRUCTIVE",
+          "why": "leads with the same wired byte 0x04 as setReset and is built by literally the same parser function j_(!0); nothing in the frame shape separates them",
+          "closes_when": "both full frames are captured through fake-WebHID and byte-diffed, and a value-level discriminator either appears or is shown not to exist",
+          "requires_hardware": false,
+          "unchanged_by_this_pass": true
+        },
+        {
+          "name": "setKeySetting / setMacro / setDiyLight / setLightColor",
+          "classification": "UNKNOWN",
+          "why": "distinct leading bytes (0x03/0x05/0x06/0x10) but no captured frame and no established inverse"
+        }
+      ]
+    },
+    "keyboard/CZ": {
+      "transport": "CZ SDK envelope, report id 0, 64-byte packet, leading 0x55 (cizhou/CZ_SHARED_DATA)",
+      "coverage": "121 frames across 9 command bytes, all emitted by the app's own initialisation; zero UI controls exercised, because the configurator does not render against synthetic data",
+      "structural_finding": {
+        "claim": "a CZ read and a CZ write of all-zero payload are BYTE-IDENTICAL",
+        "why": "byte 4 carries 'bytes requested' in _simpleGetCommand and 'bytes supplied' in _simpleFullSendCommand; the frame does not distinguish them",
+        "consequence": "direction is UNKNOWN for every CZ frame, so no CZ frame can be classified SAFE_READ on shape alone",
+        "same_shape_as": "the BY wired-0x04 ambiguity — two independent families, two independent instances of the same trap",
+        "asymmetry": "The inference runs one way only. The vendor's read builder never places bytes after the 8-byte header, so a non-zero trailing region proves a WRITE. An all-zero trailing region proves nothing, because a read and a write of zeros are byte-identical."
+      },
+      "paths": [
+        {
+          "command": "0x03",
+          "frames": 5,
+          "classification": "UNKNOWN",
+          "direction": "UNKNOWN",
+          "why": "all-zero trailing region; read and write of zeros are byte-identical"
+        },
+        {
+          "command": "0x04",
+          "frames": 4,
+          "classification": "UNKNOWN",
+          "direction": "UNKNOWN",
+          "why": "all-zero trailing region. NOTE: this is a CZ command byte and has nothing to do with BY's wired 0x04 lead; the collision of numbers across two families is a coincidence and must not be read as a connection"
+        },
+        {
+          "command": "0x05",
+          "frames": 2,
+          "classification": "UNKNOWN",
+          "direction": "UNKNOWN",
+          "why": "all-zero trailing region; sizes 56 then 8 at offsets 0 and 56, i.e. a 64-byte object"
+        },
+        {
+          "command": "0x07",
+          "frames": 56,
+          "classification": "UNKNOWN",
+          "direction": "UNKNOWN",
+          "why": "56 distinct offsets, 56-byte chunks, 8 regions at stride 0x200; consistent with a bulk read of 16 records, but consistency is not evidence of direction"
+        },
+        {
+          "command": "0x0c",
+          "frames": 37,
+          "classification": "UNKNOWN",
+          "direction": "UNKNOWN",
+          "why": "37 distinct offsets, 56-byte chunks, one contiguous region"
+        },
+        {
+          "command": "0x0d",
+          "frames": 4,
+          "classification": "POTENTIALLY_DESTRUCTIVE",
+          "direction": "WRITE",
+          "why": "non-zero payload observed (repeating 0x00 0x40 pattern, and 0x81 0x7e at offset 12), so it cannot be a read. What it writes is unknown."
+        },
+        {
+          "command": "0xa9",
+          "frames": 1,
+          "classification": "UNKNOWN",
+          "direction": "UNKNOWN",
+          "why": "single frame, size 1, all-zero trailing region"
+        },
+        {
+          "command": "0xf1",
+          "frames": 9,
+          "classification": "UNKNOWN",
+          "direction": "UNKNOWN",
+          "why": "7 distinct offsets from 336 upward in 56-byte chunks, all-zero trailing region"
+        },
+        {
+          "command": "0xf2",
+          "frames": 3,
+          "classification": "POTENTIALLY_DESTRUCTIVE",
+          "direction": "WRITE",
+          "why": "non-zero payload observed at offset 3016 (repeating 0x0001 pattern in this capture; an earlier run carried ASCII-looking bytes at the same command), so it cannot be a read. What it writes is unknown."
+        }
+      ],
+      "counts": {
+        "UNKNOWN": 114,
+        "POTENTIALLY_DESTRUCTIVE": 7,
+        "SAFE_READ": 0,
+        "REVERSIBLE_WRITE": 0,
+        "DESTRUCTIVE_CONFIRMED": 0
+      },
+      "why_no_safe_read": "Not one CZ frame is classified SAFE_READ. Every candidate has an all-zero trailing region, which is exactly the case the envelope cannot distinguish from a write."
+    },
+    "ota/aa55": {
+      "transport": "report id 77, preamble [170,85,170,85,170,85], HEADER_LENGTH 7, BOOT_MAX_PACKET_LENGTH 63",
+      "coverage": "static only",
+      "paths": [
+        {
+          "name": "firmware transfer",
+          "classification": "DESTRUCTIVE_CONFIRMED",
+          "why": "TYPE_SYNC_INFO / TYPE_TRANSFORM / TYPE_DONE flash sequence in the CZ SDK; writing firmware is destructive by definition",
+          "note": "never exercised, and out of scope by standing instruction"
+        }
+      ]
+    },
+    "mouse_receiver": {
+      "transport": "64-byte buffer, XOR checksum, 16-bit LE command id",
+      "coverage": "static only; not in scope for the keyboard track",
+      "paths": []
+    }
+  },
+  "identity_safety": {
+    "bootloader_identities_are_reachable": true,
+    "note": "33 of the 66 resolved identities are the DFU interface. Selecting one makes the app offer a firmware update. Nothing was sent to any of them; the oracle now refuses to run against one (assert_not_boot_identity), because driving DFU by accident is both an empty-capture trap and a foot-gun."
+  }
+}

@@ -223,7 +223,7 @@ def main() -> int:
         page.on("pageerror", lambda e: console.append(f"pageerror: {str(e)[:300]}"))
 
         loaded = False
-        for attempt in range(3):
+        for attempt in range(6):
             try:
                 page.goto(TARGET, wait_until="commit", timeout=90000)
             except Exception as exc:  # noqa: BLE001

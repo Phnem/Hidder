@@ -45,6 +45,9 @@ data/registry.sqlite-journal
 artifacts/*
 !artifacts/.gitkeep
 
+# Third-party upstream sources (fetched, not vendored)
+driver/msft_echo_kmdf_upstream/
+
 # IDE
 .idea/
 .vscode/

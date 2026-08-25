@@ -1,0 +1,435 @@
+{
+  "_what": "MCHOSE identity-graph checks, TICKET-25 consolidation item 6",
+  "_method": "derived only from artifacts that state both halves of an edge",
+  "identities_in_filters": 174,
+  "resolved_name_links": 66,
+  "distinct_products": 21,
+  "selector_collisions": {},
+  "vid_pid_collisions": {},
+  "identity_graph_closed_without_manual_selection": true,
+  "boot_mode_identities": [
+    {
+      "id": "0x19f5:0xff0f",
+      "name": "Ace 60 Pro"
+    },
+    {
+      "id": "0x19f5:0xff1b",
+      "name": "Ace 60"
+    },
+    {
+      "id": "0x3837:0x1017",
+      "name": "G98 V3"
+    },
+    {
+      "id": "0x3837:0x200f",
+      "name": "K87S"
+    },
+    {
+      "id": "0x3837:0x2010",
+      "name": "K87S"
+    },
+    {
+      "id": "0x3837:0x2019",
+      "name": "G87 V2"
+    },
+    {
+      "id": "0x3837:0x201f",
+      "name": "K99 V3"
+    },
+    {
+      "id": "0x3837:0x2022",
+      "name": "G75 V2"
+    },
+    {
+      "id": "0x3837:0x2026",
+      "name": "G98 V3"
+    },
+    {
+      "id": "0x3837:0x3009",
+      "name": "Ace 68 GT"
+    },
+    {
+      "id": "0x3837:0x300b",
+      "name": "Ace 68 Air 2"
+    },
+    {
+      "id": "0x3837:0x301a",
+      "name": "God 60"
+    },
+    {
+      "id": "0x3837:0x301f",
+      "name": "Ace 75"
+    },
+    {
+      "id": "0x3837:0x3022",
+      "name": "Ace 60 Pro Nordic"
+    },
+    {
+      "id": "0x3837:0x3025",
+      "name": "Ace 68 V2"
+    },
+    {
+      "id": "0x3837:0x3027",
+      "name": "Ace 68 Turbo"
+    },
+    {
+      "id": "0x3837:0x3029",
+      "name": "Ace 68 Turbo"
+    },
+    {
+      "id": "0x3837:0x302a",
+      "name": "Ace 68"
+    },
+    {
+      "id": "0x3837:0x302c",
+      "name": "Mix 87"
+    },
+    {
+      "id": "0x3837:0x303d",
+      "name": "Ace 75"
+    },
+    {
+      "id": "0x3837:0x3041",
+      "name": "Ace 60 Pro ISO FR"
+    },
+    {
+      "id": "0x41e4:0x2102",
+      "name": "Ace 60"
+    },
+    {
+      "id": "0x41e4:0x2104",
+      "name": "Ace 60 Pro"
+    },
+    {
+      "id": "0x41e4:0x2113",
+      "name": "Ace 60X"
+    },
+    {
+      "id": "0x41e4:0x2115",
+      "name": "Ace 68"
+    },
+    {
+      "id": "0x41e4:0x2117",
+      "name": "Ace 68"
+    },
+    {
+      "id": "0x41e4:0x2119",
+      "name": "Jet 75"
+    },
+    {
+      "id": "0x41e4:0x211b",
+      "name": "Jet 75"
+    },
+    {
+      "id": "0x41e4:0x211d",
+      "name": "ZERO 75X"
+    },
+    {
+      "id": "0x41e4:0x2121",
+      "name": "Ace 68 Air"
+    },
+    {
+      "id": "0x41e4:0x2123",
+      "name": "Mix 87"
+    },
+    {
+      "id": "0x41e4:0x2127",
+      "name": "Ace 60X"
+    },
+    {
+      "id": "0x41e4:0x2133",
+      "name": "Ace 68 Air"
+    }
+  ],
+  "products": {
+    "Ace 60": {
+      "normal": [
+        "0x19f5:0xfc30",
+        "0x41e4:0x2101"
+      ],
+      "boot": [
+        "0x19f5:0xff1b",
+        "0x41e4:0x2102"
+      ]
+    },
+    "Ace 60 Pro": {
+      "normal": [
+        "0x19f5:0xfc31",
+        "0x41e4:0x2103"
+      ],
+      "boot": [
+        "0x19f5:0xff0f",
+        "0x41e4:0x2104"
+      ]
+    },
+    "G98 V3": {
+      "normal": [
+        "0x3837:0x1015",
+        "0x3837:0x2025"
+      ],
+      "boot": [
+        "0x3837:0x1017",
+        "0x3837:0x2026"
+      ]
+    },
+    "K87S": {
+      "normal": [
+        "0x3837:0x200e",
+        "0x3837:0x3033"
+      ],
+      "boot": [
+        "0x3837:0x200f",
+        "0x3837:0x2010"
+      ]
+    },
+    "G87 V2": {
+      "normal": [
+        "0x3837:0x2015"
+      ],
+      "boot": [
+        "0x3837:0x2019"
+      ]
+    },
+    "K99 V3": {
+      "normal": [
+        "0x3837:0x2020"
+      ],
+      "boot": [
+        "0x3837:0x201f"
+      ]
+    },
+    "G75 V2": {
+      "normal": [
+        "0x3837:0x2021"
+      ],
+      "boot": [
+        "0x3837:0x2022"
+      ]
+    },
+    "Ace 60 Pro Nordic": {
+      "normal": [
+        "0x3837:0x3002"
+      ],
+      "boot": [
+        "0x3837:0x3022"
+      ]
+    },
+    "Ace 68": {
+      "normal": [
+        "0x3837:0x3003",
+        "0x41e4:0x2114",
+        "0x41e4:0x2116"
+      ],
+      "boot": [
+        "0x3837:0x302a",
+        "0x41e4:0x2115",
+        "0x41e4:0x2117"
+      ]
+    },
+    "Ace 68 GT": {
+      "normal": [
+        "0x3837:0x3007"
+      ],
+      "boot": [
+        "0x3837:0x3009"
+      ]
+    },
+    "Ace 68 Air 2": {
+      "normal": [
+        "0x3837:0x300a"
+      ],
+      "boot": [
+        "0x3837:0x300b"
+      ]
+    },
+    "Mix 87": {
+      "normal": [
+        "0x3837:0x300d",
+        "0x41e4:0x2122"
+      ],
+      "boot": [
+        "0x3837:0x302c",
+        "0x41e4:0x2123"
+      ]
+    },
+    "God 60": {
+      "normal": [
+        "0x3837:0x3020"
+      ],
+      "boot": [
+        "0x3837:0x301a"
+      ]
+    },
+    "Ace 75": {
+      "normal": [
+        "0x3837:0x301d",
+        "0x3837:0x303c"
+      ],
+      "boot": [
+        "0x3837:0x301f",
+        "0x3837:0x303d"
+      ]
+    },
+    "Ace 68 V2": {
+      "normal": [
+        "0x3837:0x3024"
+      ],
+      "boot": [
+        "0x3837:0x3025"
+      ]
+    },
+    "Ace 68 Turbo": {
+      "normal": [
+        "0x3837:0x3026",
+        "0x3837:0x3028"
+      ],
+      "boot": [
+        "0x3837:0x3027",
+        "0x3837:0x3029"
+      ]
+    },
+    "Ace 60 Pro ISO FR": {
+      "normal": [
+        "0x3837:0x3040"
+      ],
+      "boot": [
+        "0x3837:0x3041"
+      ]
+    },
+    "Ace 60X": {
+      "normal": [
+        "0x41e4:0x2112",
+        "0x41e4:0x2126"
+      ],
+      "boot": [
+        "0x41e4:0x2113",
+        "0x41e4:0x2127"
+      ]
+    },
+    "Jet 75": {
+      "normal": [
+        "0x41e4:0x2118",
+        "0x41e4:0x211a"
+      ],
+      "boot": [
+        "0x41e4:0x2119",
+        "0x41e4:0x211b"
+      ]
+    },
+    "ZERO 75X": {
+      "normal": [
+        "0x41e4:0x211c"
+      ],
+      "boot": [
+        "0x41e4:0x211d"
+      ]
+    },
+    "Ace 68 Air": {
+      "normal": [
+        "0x41e4:0x2120",
+        "0x41e4:0x2132"
+      ],
+      "boot": [
+        "0x41e4:0x2121",
+        "0x41e4:0x2133"
+      ]
+    }
+  },
+  "previously_unresolved": 25,
+  "newly_named_from_cz_sdk": [
+    {
+      "id": "0x3837:0x200e",
+      "name": "K87S"
+    },
+    {
+      "id": "0x3837:0x2015",
+      "name": "G87 V2"
+    },
+    {
+      "id": "0x3837:0x2020",
+      "name": "K99 V3"
+    },
+    {
+      "id": "0x3837:0x2021",
+      "name": "G75 V2"
+    },
+    {
+      "id": "0x3837:0x2025",
+      "name": "G98 V3"
+    },
+    {
+      "id": "0x3837:0x3002",
+      "name": "Ace 60 Pro Nordic"
+    },
+    {
+      "id": "0x3837:0x3003",
+      "name": "Ace 68"
+    },
+    {
+      "id": "0x3837:0x300a",
+      "name": "Ace 68 Air 2"
+    },
+    {
+      "id": "0x3837:0x300d",
+      "name": "Mix 87"
+    },
+    {
+      "id": "0x3837:0x3024",
+      "name": "Ace 68 V2"
+    },
+    {
+      "id": "0x3837:0x3026",
+      "name": "Ace 68 Turbo"
+    },
+    {
+      "id": "0x3837:0x3028",
+      "name": "Ace 68 Turbo"
+    },
+    {
+      "id": "0x41e4:0x2101",
+      "name": "Ace 60"
+    },
+    {
+      "id": "0x41e4:0x2103",
+      "name": "Ace 60 Pro"
+    },
+    {
+      "id": "0x41e4:0x2112",
+      "name": "Ace 60X"
+    },
+    {
+      "id": "0x41e4:0x2116",
+      "name": "Ace 68"
+    },
+    {
+      "id": "0x41e4:0x2118",
+      "name": "Jet 75"
+    },
+    {
+      "id": "0x41e4:0x211a",
+      "name": "Jet 75"
+    },
+    {
+      "id": "0x41e4:0x211c",
+      "name": "ZERO 75X"
+    },
+    {
+      "id": "0x41e4:0x2120",
+      "name": "Ace 68 Air"
+    },
+    {
+      "id": "0x41e4:0x2122",
+      "name": "Mix 87"
+    },
+    {
+      "id": "0x41e4:0x2132",
+      "name": "Ace 68 Air"
+    }
+  ],
+  "still_unresolved": [
+    "0x3837:0x302d",
+    "0x3837:0x3030",
+    "0x3837:0x303e"
+  ],
+  "still_unresolved_note": "These ids appear in no CZ filter entry, so the CZ SDK has nothing to say about them. Leaving them unresolved is the correct outcome; a name would have to be invented. Per §0.2 this is catalogue completeness, not a safety blocker, because the identity graph closes without manual selection."
+}
