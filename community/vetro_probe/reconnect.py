@@ -60,6 +60,7 @@ class ReconnectManager:
         """
         start = time.time()
         attempts = 0
+        last_error = ""
         while (time.time() - start) * 1000 < self.timeout_ms:
             attempts += 1
             inst = self.enumerate_fn()
@@ -75,19 +76,24 @@ class ReconnectManager:
                 fw_ok, fw_reason = self.firmware_check(inst)
                 if not fw_ok:
                     return ReconnectResult(False, f"firmware check failed: {fw_reason}", inst, attempts, None)
-            # identity + firmware OK -> acquire a brand-new session from the CURRENT session base
+            # identity + firmware OK -> acquire a brand-new session from the CURRENT session base.
+            # A transient open/enumerate failure during USB re-enumeration is NOT a hard stop:
+            # keep retrying within the timeout window, like the physical device re-appears.
             try:
                 base = self._current_transport
                 new_transport = base.fresh_session()
             except NotImplementedError:
                 return ReconnectResult(False, "transport does not support fresh_session", inst, attempts, None)
             except Exception as exc:
-                return ReconnectResult(False, f"reacquire failed: {exc}", inst, attempts, None)
+                last_error = f"reacquire failed: {exc}"
+                time.sleep(self.poll_ms / 1000)
+                continue
             self._current_transport = new_transport
             if new_transport is not None and new_transport.is_connected():
                 return ReconnectResult(True, "", inst, attempts, new_transport)
             time.sleep(self.poll_ms / 1000)
-        return ReconnectResult(False, "reconnect timeout", None, attempts, None)
+        detail = f" ({last_error})" if last_error else ""
+        return ReconnectResult(False, f"reconnect timeout{detail}", None, attempts, None)
 
     def wait_for_reconnect(self) -> ReconnectResult:
         # Backward-compat shim: delegate to fresh acquisition.

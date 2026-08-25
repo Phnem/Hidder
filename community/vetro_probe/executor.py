@@ -210,6 +210,8 @@ def _execute_reconnect_recovery(ctx, op, ev, temp_value, baseline_val):
     session_a = ctx.transport.current_session_id()
     journal.session_a = session_a
     journal.reconnect_occurred = True
+    # The reconnect-triggering write already succeeded on the wire; it may have applied.
+    journal.initial_write_may_have_applied = True
     ev.sessions = {"A": session_a, "B": None, "C": None, "D": None}
 
     def _finalize():

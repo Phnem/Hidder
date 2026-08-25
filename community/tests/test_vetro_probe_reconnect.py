@@ -23,6 +23,22 @@ from community.vetro_probe.executor import ExecutorContext, execute_single
 from community.vetro_probe.reconnect import ReconnectManager
 
 
+class FlakyFreshTransport(FakeTransport):
+    """FakeTransport whose fresh_session() fails transiently (models the USB
+    re-enumeration window where hid.enumerate returns empty right after a
+    reconnect-triggering write) then succeeds on retry."""
+
+    def __init__(self, fail_times: int = 1):
+        super().__init__({"keyboard.polling": 3}, reconnect_ops={"keyboard.polling"})
+        self._fail_times = fail_times
+
+    def fresh_session(self):
+        if self._fail_times > 0:
+            self._fail_times -= 1
+            raise RuntimeError("transient: hid enumerate empty (re-enumeration in progress)")
+        return super().fresh_session()
+
+
 def _make_env():
     bundle = production_bundle_for_hero84()
     trans = FakeTransport({"keyboard.polling": 3}, reconnect_ops={"keyboard.polling"})
@@ -148,6 +164,7 @@ def test_negative_recovery_gates_zero_writes(cfg, reason_substr):
     assert j.baseline_restored is False
     assert j.final_state == "UNKNOWN"
     assert j.manual_restore_required is True
+    assert j.initial_write_may_have_applied is True
     assert ev.status == "FAIL"
 
 
@@ -171,6 +188,25 @@ def test_negative_c_get_current_failure_blocks_baseline_write():
     assert j.manual_restore_required is True
     assert j.recovery_write_attempted is False
     assert ev.status == "FAIL"
+
+
+def test_transient_b_acquire_failure_retries_and_recovers():
+    """Real-hardware B-open race: fresh_session raises once (re-enumeration window),
+    ReconnectManager must retry within the timeout, then recovery proceeds A→B→C→D."""
+    bundle, _, gate, inst = _make_env()
+    trans = FlakyFreshTransport(fail_times=1)
+    trans.device.readback_fail_sessions.add(2)  # B readback null once acquired
+    ctx = _make_ctx(bundle, trans, gate, inst, {"firmware_ok": True})
+    ev = execute_single("keyboard.polling", ctx)
+
+    d = trans.device
+    assert d.state["keyboard.polling"] == 3
+    assert d.write_count == 2  # A write + C recovery write
+    assert d.session_write_counts.get(2, 0) == 0  # B zero writes
+    j = ctx.recovery.recovery_record
+    assert j.baseline_restored is True
+    assert (j.session_a, j.session_b, j.session_c, j.session_d) == (1, 2, 3, 4)
+    assert ev.rollback_matched is True
 
 
 def test_journal_never_claims_restored_without_final_fresh_get():
