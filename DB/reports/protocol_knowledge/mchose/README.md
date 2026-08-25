@@ -81,6 +81,25 @@ written; run it before trusting anything else here. `aula-bytech` redeployed
 twice in six days and both times it was noticed only after a finding had been
 published against a build that no longer existed.
 
+### It fired on day one — 2026-08-25
+
+```text
+config `mouseFirmwareHistory`: recorded '80857e6172', live 'c470c759a5'
+config `otaConfigApp_prod`:    recorded '57b321aae9', live '1f107cd691'
+config `pre-newMouseConfig`:   recorded 'b35f0e4fe0', live 'd2a881f80c'
+```
+
+Worth reading for what is **absent** from that list. The bundle's own version and
+`webVersion.hash` did not move, and neither did `cardList`, `keyboardConfig` or
+`keyboardPreset`. So TICKET-24's codec findings and TICKET-25's factory-reset
+trace — all of which rest on the bundle and the keyboard sources — are about a
+build still being served, while the three resources that did move are mouse
+firmware and OTA metadata, which this project has deliberately not investigated.
+
+That precision is the reason the checker compares **every** axis rather than one.
+A single bundle-hash check would have reported "no change" and been useless; a
+coarse "something moved" check would have invalidated findings that are fine.
+
 ## What is deliberately absent
 
 * **Vendor blobs.** `data/README.md` forbids committing vendor artifacts

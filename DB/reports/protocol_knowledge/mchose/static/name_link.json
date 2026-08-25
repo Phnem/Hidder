@@ -1,0 +1,171 @@
+{
+  "_what": "MCHOSE keyboard vid:pid <-> product name links, TICKET-25 priority 2",
+  "_method": "Only links an artifact states outright, with the stating artifact recorded. No similarity matching, no VID inference, no family inference. An id with two stated names is ambiguous, not resolved to the likelier one.",
+  "population_size": 37,
+  "resolved_count": 12,
+  "ambiguous_count": 0,
+  "unresolved_count": 25,
+  "resolved": {
+    "0x3837:0x303c": {
+      "vendor_id": "0x3837",
+      "product_id": "0x303c",
+      "names": [
+        {
+          "name": "Ace 75 磁轴键盘（8K 已发布, 16K 未发布）",
+          "source": "configCenter/cardList.identities+desc",
+          "verbatim_key_or_field": "Ace 75 磁轴键盘（8K 已发布, 16K 未发布）"
+        }
+      ]
+    },
+    "0x3837:0x303d": {
+      "vendor_id": "0x3837",
+      "product_id": "0x303d",
+      "names": [
+        {
+          "name": "Ace 75 磁轴键盘（8K 已发布, 16K 未发布）",
+          "source": "configCenter/cardList.identities+desc",
+          "verbatim_key_or_field": "Ace 75 磁轴键盘（8K 已发布, 16K 未发布）"
+        }
+      ]
+    },
+    "0x3837:0x301d": {
+      "vendor_id": "0x3837",
+      "product_id": "0x301d",
+      "names": [
+        {
+          "name": "Ace 75 磁轴键盘（8K 已发布, 16K 未发布）",
+          "source": "configCenter/cardList.identities+desc",
+          "verbatim_key_or_field": "Ace 75 磁轴键盘（8K 已发布, 16K 未发布）"
+        }
+      ]
+    },
+    "0x3837:0x301f": {
+      "vendor_id": "0x3837",
+      "product_id": "0x301f",
+      "names": [
+        {
+          "name": "Ace 75 磁轴键盘（8K 已发布, 16K 未发布）",
+          "source": "configCenter/cardList.identities+desc",
+          "verbatim_key_or_field": "Ace 75 磁轴键盘（8K 已发布, 16K 未发布）"
+        }
+      ]
+    },
+    "0x3837:0x3040": {
+      "vendor_id": "0x3837",
+      "product_id": "0x3040",
+      "names": [
+        {
+          "name": "Ace60 Pro ISO FR 配置",
+          "source": "configCenter/cardList.identities+desc",
+          "verbatim_key_or_field": "Ace60 Pro ISO FR 配置"
+        }
+      ]
+    },
+    "0x3837:0x3041": {
+      "vendor_id": "0x3837",
+      "product_id": "0x3041",
+      "names": [
+        {
+          "name": "Ace60 Pro ISO FR 配置",
+          "source": "configCenter/cardList.identities+desc",
+          "verbatim_key_or_field": "Ace60 Pro ISO FR 配置"
+        }
+      ]
+    },
+    "0x3837:0x3020": {
+      "vendor_id": "0x3837",
+      "product_id": "0x3020",
+      "names": [
+        {
+          "name": "God 60 配置",
+          "source": "configCenter/cardList.identities+desc",
+          "verbatim_key_or_field": "God 60 配置"
+        }
+      ]
+    },
+    "0x3837:0x301a": {
+      "vendor_id": "0x3837",
+      "product_id": "0x301a",
+      "names": [
+        {
+          "name": "God 60 配置",
+          "source": "configCenter/cardList.identities+desc",
+          "verbatim_key_or_field": "God 60 配置"
+        }
+      ]
+    },
+    "0x3837:0x3007": {
+      "vendor_id": "0x3837",
+      "product_id": "0x3007",
+      "names": [
+        {
+          "name": "Ace 68 GT 磁轴键盘（有线）",
+          "source": "configCenter/cardList.identities+desc",
+          "verbatim_key_or_field": "Ace 68 GT 磁轴键盘（有线）"
+        }
+      ]
+    },
+    "0x3837:0x3009": {
+      "vendor_id": "0x3837",
+      "product_id": "0x3009",
+      "names": [
+        {
+          "name": "Ace 68 GT 磁轴键盘（有线）",
+          "source": "configCenter/cardList.identities+desc",
+          "verbatim_key_or_field": "Ace 68 GT 磁轴键盘（有线）"
+        }
+      ]
+    },
+    "0x3837:0x3033": {
+      "vendor_id": "0x3837",
+      "product_id": "0x3033",
+      "names": [
+        {
+          "name": "MCHOSE G87 V2 2.4G",
+          "source": "configCenter/keyboardConfig key",
+          "verbatim_key_or_field": "0x3837_0x3033_MCHOSE G87 V2 2.4G"
+        }
+      ]
+    },
+    "0x3837:0x1015": {
+      "vendor_id": "0x3837",
+      "product_id": "0x1015",
+      "names": [
+        {
+          "name": "MCHOSE G98 V3 2.4G",
+          "source": "configCenter/keyboardConfig key",
+          "verbatim_key_or_field": "0x3837_0x1015_MCHOSE G98 V3 2.4G"
+        }
+      ]
+    }
+  },
+  "ambiguous": {},
+  "unresolved_ids_no_name_in_any_artifact": [
+    "0x3837:0x200e",
+    "0x3837:0x2015",
+    "0x3837:0x2020",
+    "0x3837:0x2021",
+    "0x3837:0x2025",
+    "0x3837:0x3002",
+    "0x3837:0x3003",
+    "0x3837:0x300a",
+    "0x3837:0x300d",
+    "0x3837:0x3024",
+    "0x3837:0x3026",
+    "0x3837:0x3028",
+    "0x3837:0x302d",
+    "0x3837:0x3030",
+    "0x3837:0x303e",
+    "0x41e4:0x2101",
+    "0x41e4:0x2103",
+    "0x41e4:0x2112",
+    "0x41e4:0x2116",
+    "0x41e4:0x2118",
+    "0x41e4:0x211a",
+    "0x41e4:0x211c",
+    "0x41e4:0x2120",
+    "0x41e4:0x2122",
+    "0x41e4:0x2132"
+  ],
+  "_why_unresolved_stays_unresolved": "The app shows a product name for a CONNECTED device. That is an observation available only with a device (real or emulated) attached, and it is the only route to these edges that does not involve guessing."
+}
