@@ -4,9 +4,25 @@ TICKET-25, points A–D. Written after three oracle passes had each fixed a
 different click defect and each still ended at "the configurator never opens" —
 which is what a symptom looks like when the cause is upstream of the click.
 
-**CONFIGURATOR ENTRY = CLOSED.** Reproduced across runs. Route reaches
-`/#/keyboard?deviceName=MCHOSE+God+60`, the device list row is live, and with a
-normal-mode identity the vendor's own code begins writing frames.
+**CONFIGURATOR ENTRY = CLOSED**, with a boundary that has to be stated in the
+same breath, because two runs did two different things and reporting them as one
+result would be a lie of composition:
+
+* **Boot/DFU identity `0x3837:0x301a`** — the route transition **completes**,
+  twice: `#/keyboard?deviceName=MCHOSE+God+60`, `localStorage` tripwire fired,
+  device state settled (`isBusy:false`, `communicateEnabled:true`,
+  `failedCount:0`). **0 frames**, because the app treats this id as a keyboard in
+  firmware-update mode and its runtime guards nearly every operation with
+  `if (isUpgradeMode) return`.
+* **Normal identity `0x3837:0x3020`** — the app **writes frames**, 88 of them,
+  but the runtime never settles (`communicateEnabled:false`, `failedCount:34`)
+  because the fake answers nothing, so the row stays disabled and the route stays
+  on `ConnectDevice`.
+
+So the entry *mechanism* is diagnosed and demonstrated end to end, and the
+remaining gate is an unanswered handshake — which is a point-D task, not a
+mystery. Nothing here yet gives a frame captured from inside the configurator's
+own UI, and this document does not claim one.
 
 No real device was involved. `assert_no_real_hid()` runs on the live page before
 any interaction and refuses to continue unless `navigator.hid` carries the
