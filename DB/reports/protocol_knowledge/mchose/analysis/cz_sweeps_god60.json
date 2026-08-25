@@ -1,0 +1,3713 @@
+{
+  "_what": "MCHOSE CZ controlled sweeps, TICKET-25 consolidation item 3",
+  "at": "2026-08-25T17:26:17.067154+00:00",
+  "profile": {
+    "label": "God 60",
+    "vendorId": 14391,
+    "productId": 12320,
+    "productName": "MCHOSE God 60",
+    "usagePage": 1,
+    "usage": 0,
+    "boot_mode_pid": 12314,
+    "provenance": "configCenter/cardList desc 'God 60 配置'; mode from CZ SDK isBootUpdateMode(0x3837,0x3020,...)=False"
+  },
+  "device_image": {
+    "_what": "synthetic CZ device image, TICKET-25",
+    "evidence_class": "synthetic_from_vendor_schema",
+    "not_hardware_evidence": "These bytes are the vendor's own shipped defaults, not a device's answer. No parameter value read back from them is an observation.",
+    "source_file": "default-keys-god-60.0a1fab306ca3289739c5.js",
+    "key_count": 128,
+    "bytes_per_key": 3,
+    "used_key_area_size": 384,
+    "total_key_area_size": 512,
+    "layer_slots_filled": 8,
+    "layer_slots_note": "the shipped file contains layer 0 only; the same table is served for every slot, which is a harness choice and is recorded as one",
+    "commands_backed": {
+      "0x07": {
+        "bytes": 3968,
+        "provenance": "default-keys-god-60.0a1fab306ca3289739c5.js layer-0 table, re-serialised as [type,code1,code2]"
+      }
+    },
+    "required_code_patches": [
+      {
+        "code": 252,
+        "triple": [
+          240,
+          250,
+          0
+        ],
+        "slot_index": 64,
+        "replaced": [
+          0,
+          0,
+          0
+        ],
+        "triple_provenance": "vendor getKeyCode mapping in CZ_SHARED_DATA/main.js",
+        "slot_provenance": "HARNESS CHOICE: first placeholder slot; the vendor states no index",
+        "why_required": "the shipped God60 layout dereferences defaultKeyDict[252].index"
+      }
+    ],
+    "commands_left_as_zeros": [
+      "0x03 getInfo",
+      "0x04 getBase",
+      "0x05 getFuncConfig",
+      "0x0c",
+      "0x0d",
+      "0xa9",
+      "0xf1",
+      "0xf2"
+    ]
+  },
+  "frames_total": 367,
+  "sweeps": [
+    {
+      "tab": "Освещение",
+      "control": {
+        "sel_index": 25,
+        "tag": "INPUT",
+        "type": "range",
+        "role": null,
+        "cls": "",
+        "min": 0,
+        "max": 100,
+        "step": 1,
+        "value": 0
+      },
+      "values": [
+        0,
+        25,
+        50,
+        75,
+        100
+      ],
+      "provenance": "OBSERVED_FROM_VENDOR_UI in a SYNTHETIC_ENVIRONMENT",
+      "confidence_note": "the vendor's client built these frames from its own control; the device that answered its reads was this harness, so displayed values are not observations and only the values we set are ours to reason from",
+      "groups": [
+        {
+          "command": "0x05",
+          "offset": 0,
+          "values_seen": [
+            25,
+            50,
+            75,
+            100
+          ],
+          "frame_bytes": 64,
+          "transport_derived_bytes_that_moved": [],
+          "transport_note": "byte 3 is sum(bytes 4..) & 0xFF, so it moves whenever the payload does; it is not a field",
+          "semantic_bytes_that_moved": [],
+          "fields": [],
+          "record_offsets": [],
+          "verdict": "NO_PAYLOAD_MOVEMENT",
+          "why": "the frame did not change with the control; this command does not carry it"
+        },
+        {
+          "command": "0x05",
+          "offset": 56,
+          "values_seen": [
+            25,
+            50,
+            75,
+            100
+          ],
+          "frame_bytes": 64,
+          "transport_derived_bytes_that_moved": [],
+          "transport_note": "byte 3 is sum(bytes 4..) & 0xFF, so it moves whenever the payload does; it is not a field",
+          "semantic_bytes_that_moved": [],
+          "fields": [],
+          "record_offsets": [],
+          "verdict": "NO_PAYLOAD_MOVEMENT",
+          "why": "the frame did not change with the control; this command does not carry it"
+        },
+        {
+          "command": "0x06",
+          "offset": 0,
+          "values_seen": [
+            25,
+            50,
+            75,
+            100
+          ],
+          "frame_bytes": 64,
+          "transport_derived_bytes_that_moved": [
+            3
+          ],
+          "transport_note": "byte 3 is sum(bytes 4..) & 0xFF, so it moves whenever the payload does; it is not a field",
+          "semantic_bytes_that_moved": [
+            17
+          ],
+          "fields": [
+            {
+              "payload_offset": 9,
+              "frame_offset": 17,
+              "record_offset": 9,
+              "values": [
+                25,
+                50,
+                75,
+                100
+              ],
+              "control_values": [
+                25,
+                50,
+                75,
+                100
+              ],
+              "tracks_control_value_exactly": true,
+              "scale_factor": null,
+              "encoding": "byte == control value",
+              "encoding_note": null,
+              "monotonic_in_control_value": true,
+              "width_bits": 8,
+              "width_note": "one byte moved; a wider field would show adjacent bytes moving together"
+            }
+          ],
+          "record_offsets": [
+            9
+          ],
+          "verdict": "FIELDS_OBSERVED",
+          "why": "payload bytes moved with the control and nothing else was touched"
+        },
+        {
+          "command": "0x06",
+          "offset": 8,
+          "values_seen": [
+            25,
+            50,
+            75,
+            100
+          ],
+          "frame_bytes": 64,
+          "transport_derived_bytes_that_moved": [
+            3
+          ],
+          "transport_note": "byte 3 is sum(bytes 4..) & 0xFF, so it moves whenever the payload does; it is not a field",
+          "semantic_bytes_that_moved": [
+            9
+          ],
+          "fields": [
+            {
+              "payload_offset": 1,
+              "frame_offset": 9,
+              "record_offset": 9,
+              "values": [
+                25,
+                50,
+                75,
+                100
+              ],
+              "control_values": [
+                25,
+                50,
+                75,
+                100
+              ],
+              "tracks_control_value_exactly": true,
+              "scale_factor": null,
+              "encoding": "byte == control value",
+              "encoding_note": null,
+              "monotonic_in_control_value": true,
+              "width_bits": 8,
+              "width_note": "one byte moved; a wider field would show adjacent bytes moving together"
+            }
+          ],
+          "record_offsets": [
+            9
+          ],
+          "verdict": "FIELDS_OBSERVED",
+          "why": "payload bytes moved with the control and nothing else was touched"
+        },
+        {
+          "command": "0x0b",
+          "offset": 0,
+          "values_seen": [
+            25,
+            50,
+            75,
+            100
+          ],
+          "frame_bytes": 64,
+          "transport_derived_bytes_that_moved": [],
+          "transport_note": "byte 3 is sum(bytes 4..) & 0xFF, so it moves whenever the payload does; it is not a field",
+          "semantic_bytes_that_moved": [],
+          "fields": [],
+          "record_offsets": [],
+          "verdict": "NO_PAYLOAD_MOVEMENT",
+          "why": "the frame did not change with the control; this command does not carry it"
+        },
+        {
+          "command": "0x0b",
+          "offset": 56,
+          "values_seen": [
+            25,
+            50,
+            75,
+            100
+          ],
+          "frame_bytes": 64,
+          "transport_derived_bytes_that_moved": [],
+          "transport_note": "byte 3 is sum(bytes 4..) & 0xFF, so it moves whenever the payload does; it is not a field",
+          "semantic_bytes_that_moved": [],
+          "fields": [],
+          "record_offsets": [],
+          "verdict": "NO_PAYLOAD_MOVEMENT",
+          "why": "the frame did not change with the control; this command does not carry it"
+        },
+        {
+          "command": "0x0b",
+          "offset": 112,
+          "values_seen": [
+            25,
+            50,
+            75,
+            100
+          ],
+          "frame_bytes": 64,
+          "transport_derived_bytes_that_moved": [],
+          "transport_note": "byte 3 is sum(bytes 4..) & 0xFF, so it moves whenever the payload does; it is not a field",
+          "semantic_bytes_that_moved": [],
+          "fields": [],
+          "record_offsets": [],
+          "verdict": "NO_PAYLOAD_MOVEMENT",
+          "why": "the frame did not change with the control; this command does not carry it"
+        },
+        {
+          "command": "0x0b",
+          "offset": 168,
+          "values_seen": [
+            25,
+            50,
+            75,
+            100
+          ],
+          "frame_bytes": 64,
+          "transport_derived_bytes_that_moved": [],
+          "transport_note": "byte 3 is sum(bytes 4..) & 0xFF, so it moves whenever the payload does; it is not a field",
+          "semantic_bytes_that_moved": [],
+          "fields": [],
+          "record_offsets": [],
+          "verdict": "NO_PAYLOAD_MOVEMENT",
+          "why": "the frame did not change with the control; this command does not carry it"
+        },
+        {
+          "command": "0x0b",
+          "offset": 224,
+          "values_seen": [
+            25,
+            50,
+            75,
+            100
+          ],
+          "frame_bytes": 64,
+          "transport_derived_bytes_that_moved": [],
+          "transport_note": "byte 3 is sum(bytes 4..) & 0xFF, so it moves whenever the payload does; it is not a field",
+          "semantic_bytes_that_moved": [],
+          "fields": [],
+          "record_offsets": [],
+          "verdict": "NO_PAYLOAD_MOVEMENT",
+          "why": "the frame did not change with the control; this command does not carry it"
+        },
+        {
+          "command": "0x0b",
+          "offset": 280,
+          "values_seen": [
+            25,
+            50,
+            75,
+            100
+          ],
+          "frame_bytes": 64,
+          "transport_derived_bytes_that_moved": [],
+          "transport_note": "byte 3 is sum(bytes 4..) & 0xFF, so it moves whenever the payload does; it is not a field",
+          "semantic_bytes_that_moved": [],
+          "fields": [],
+          "record_offsets": [],
+          "verdict": "NO_PAYLOAD_MOVEMENT",
+          "why": "the frame did not change with the control; this command does not carry it"
+        },
+        {
+          "command": "0x0b",
+          "offset": 336,
+          "values_seen": [
+            25,
+            50,
+            75,
+            100
+          ],
+          "frame_bytes": 64,
+          "transport_derived_bytes_that_moved": [],
+          "transport_note": "byte 3 is sum(bytes 4..) & 0xFF, so it moves whenever the payload does; it is not a field",
+          "semantic_bytes_that_moved": [],
+          "fields": [],
+          "record_offsets": [],
+          "verdict": "NO_PAYLOAD_MOVEMENT",
+          "why": "the frame did not change with the control; this command does not carry it"
+        },
+        {
+          "command": "0x0b",
+          "offset": 373,
+          "values_seen": [
+            25,
+            50,
+            75,
+            100
+          ],
+          "frame_bytes": 64,
+          "transport_derived_bytes_that_moved": [],
+          "transport_note": "byte 3 is sum(bytes 4..) & 0xFF, so it moves whenever the payload does; it is not a field",
+          "semantic_bytes_that_moved": [],
+          "fields": [],
+          "record_offsets": [],
+          "verdict": "NO_PAYLOAD_MOVEMENT",
+          "why": "the frame did not change with the control; this command does not carry it"
+        },
+        {
+          "command": "0xf1",
+          "offset": 840,
+          "values_seen": [
+            25
+          ],
+          "verdict": "WITHHELD",
+          "why": "only 1 distinct values produced a frame here; 4 is the minimum before a field can be argued"
+        }
+      ],
+      "raw_frames_by_value": {
+        "0": [],
+        "25": [
+          {
+            "payload_hex": "55050038380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 56,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050040083800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 8,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "550b003238000000000000000000000000000000000000000000000000000000ffffffffffff0000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 11,
+              "checksum": 50,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "000000000000000000000000000000000000000000000000ffffffffffff0000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "550b0070383800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 11,
+              "checksum": 112,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "550b00a5387000000000000000000000000000000000000000000000000000000000000000000000000000ffffff000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 11,
+              "checksum": 165,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 112,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000ffffff000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "550b00dd38a80000000000ffffff0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 11,
+              "checksum": 221,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 168,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "000000ffffff0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "550b001838e000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 11,
+              "checksum": 24,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 224,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "550b0051381801000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 11,
+              "checksum": 81,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 280,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "550b0089385001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 11,
+              "checksum": 137,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 336,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "550b00ae387501000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 11,
+              "checksum": 174,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 373,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55060051380000000000000000000000001900000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 6,
+              "checksum": 81,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000001900000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "55060059380800000019000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 6,
+              "checksum": 89,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 8,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0019000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "55f10083384803000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 241,
+              "checksum": 131,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 840,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050038380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 56,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050040083800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 8,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000",
+              "trailing_is_all_zero": true
+            }
+          }
+        ],
+        "50": [
+          {
+            "payload_hex": "55050038380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 56,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050040083800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 8,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "550b003238000000000000000000000000000000000000000000000000000000ffffffffffff0000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 11,
+              "checksum": 50,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "000000000000000000000000000000000000000000000000ffffffffffff0000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "550b0070383800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 11,
+              "checksum": 112,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "550b00a5387000000000000000000000000000000000000000000000000000000000000000000000000000ffffff000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 11,
+              "checksum": 165,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 112,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000ffffff000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "550b00dd38a80000000000ffffff0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 11,
+              "checksum": 221,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 168,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "000000ffffff0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "550b001838e000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 11,
+              "checksum": 24,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 224,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "550b0051381801000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 11,
+              "checksum": 81,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 280,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "550b0089385001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 11,
+              "checksum": 137,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 336,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "550b00ae387501000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 11,
+              "checksum": 174,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 373,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "5506006a380000000000000000000000003200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 6,
+              "checksum": 106,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000003200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "55060072380800000032000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 6,
+              "checksum": 114,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 8,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0032000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "55050038380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 56,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050040083800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 8,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000",
+              "trailing_is_all_zero": true
+            }
+          }
+        ],
+        "75": [
+          {
+            "payload_hex": "55050038380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 56,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050040083800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 8,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "550b003238000000000000000000000000000000000000000000000000000000ffffffffffff0000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 11,
+              "checksum": 50,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "000000000000000000000000000000000000000000000000ffffffffffff0000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "550b0070383800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 11,
+              "checksum": 112,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "550b00a5387000000000000000000000000000000000000000000000000000000000000000000000000000ffffff000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 11,
+              "checksum": 165,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 112,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000ffffff000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "550b00dd38a80000000000ffffff0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 11,
+              "checksum": 221,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 168,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "000000ffffff0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "550b001838e000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 11,
+              "checksum": 24,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 224,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "550b0051381801000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 11,
+              "checksum": 81,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 280,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "550b0089385001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 11,
+              "checksum": 137,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 336,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "550b00ae387501000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 11,
+              "checksum": 174,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 373,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55060083380000000000000000000000004b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 6,
+              "checksum": 131,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000004b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "5506008b38080000004b000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 6,
+              "checksum": 139,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 8,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "004b000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "55050038380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 56,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050040083800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 8,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000",
+              "trailing_is_all_zero": true
+            }
+          }
+        ],
+        "100": [
+          {
+            "payload_hex": "55050038380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 56,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050040083800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 8,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "550b003238000000000000000000000000000000000000000000000000000000ffffffffffff0000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 11,
+              "checksum": 50,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "000000000000000000000000000000000000000000000000ffffffffffff0000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "550b0070383800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 11,
+              "checksum": 112,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "550b00a5387000000000000000000000000000000000000000000000000000000000000000000000000000ffffff000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 11,
+              "checksum": 165,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 112,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000ffffff000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "550b00dd38a80000000000ffffff0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 11,
+              "checksum": 221,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 168,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "000000ffffff0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "550b001838e000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 11,
+              "checksum": 24,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 224,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "550b0051381801000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 11,
+              "checksum": 81,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 280,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "550b0089385001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 11,
+              "checksum": 137,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 336,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "550b00ae387501000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 11,
+              "checksum": 174,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 373,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "5506009c380000000000000000000000006400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 6,
+              "checksum": 156,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000006400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "550600a4380800000064000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 6,
+              "checksum": 164,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 8,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0064000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "55050038380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 56,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050040083800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 8,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000",
+              "trailing_is_all_zero": true
+            }
+          }
+        ]
+      }
+    },
+    {
+      "tab": "Tриггера",
+      "control": {
+        "sel_index": 15,
+        "tag": "INPUT",
+        "type": "range",
+        "role": null,
+        "cls": "",
+        "min": 1,
+        "max": 331,
+        "step": 1,
+        "value": 331
+      },
+      "values": [
+        1,
+        83,
+        166,
+        249,
+        331
+      ],
+      "provenance": "OBSERVED_FROM_VENDOR_UI in a SYNTHETIC_ENVIRONMENT",
+      "confidence_note": "the vendor's client built these frames from its own control; the device that answered its reads was this harness, so displayed values are not observations and only the values we set are ours to reason from",
+      "groups": [],
+      "raw_frames_by_value": {
+        "1": [],
+        "83": [],
+        "166": [],
+        "249": [],
+        "331": []
+      }
+    },
+    {
+      "tab": "Tриггера",
+      "control": {
+        "sel_index": 28,
+        "tag": "INPUT",
+        "type": "range",
+        "role": null,
+        "cls": "",
+        "min": 2,
+        "max": 340,
+        "step": 1,
+        "value": 2
+      },
+      "values": [
+        2,
+        86,
+        171,
+        256,
+        340
+      ],
+      "provenance": "OBSERVED_FROM_VENDOR_UI in a SYNTHETIC_ENVIRONMENT",
+      "confidence_note": "the vendor's client built these frames from its own control; the device that answered its reads was this harness, so displayed values are not observations and only the values we set are ours to reason from",
+      "groups": [],
+      "raw_frames_by_value": {
+        "2": [],
+        "86": [],
+        "171": [],
+        "256": [],
+        "340": []
+      }
+    },
+    {
+      "tab": "Tриггера",
+      "control": {
+        "sel_index": 34,
+        "tag": "INPUT",
+        "type": "range",
+        "role": null,
+        "cls": "",
+        "min": 2,
+        "max": 340,
+        "step": 1,
+        "value": 2
+      },
+      "values": [
+        2,
+        86,
+        171,
+        256,
+        340
+      ],
+      "provenance": "OBSERVED_FROM_VENDOR_UI in a SYNTHETIC_ENVIRONMENT",
+      "confidence_note": "the vendor's client built these frames from its own control; the device that answered its reads was this harness, so displayed values are not observations and only the values we set are ours to reason from",
+      "groups": [],
+      "raw_frames_by_value": {
+        "2": [],
+        "86": [],
+        "171": [],
+        "256": [],
+        "340": []
+      }
+    },
+    {
+      "tab": "Производительность",
+      "control": {
+        "sel_index": 7,
+        "tag": "INPUT",
+        "type": "range",
+        "role": null,
+        "cls": "",
+        "min": 60,
+        "max": 1800,
+        "step": 60,
+        "value": 60
+      },
+      "values": [
+        60,
+        480,
+        900,
+        1380,
+        1800
+      ],
+      "provenance": "OBSERVED_FROM_VENDOR_UI in a SYNTHETIC_ENVIRONMENT",
+      "confidence_note": "the vendor's client built these frames from its own control; the device that answered its reads was this harness, so displayed values are not observations and only the values we set are ours to reason from",
+      "groups": [
+        {
+          "command": "0x05",
+          "offset": 0,
+          "values_seen": [
+            480,
+            900,
+            1380,
+            1800
+          ],
+          "frame_bytes": 64,
+          "transport_derived_bytes_that_moved": [],
+          "transport_note": "byte 3 is sum(bytes 4..) & 0xFF, so it moves whenever the payload does; it is not a field",
+          "semantic_bytes_that_moved": [],
+          "fields": [],
+          "record_offsets": [],
+          "verdict": "NO_PAYLOAD_MOVEMENT",
+          "why": "the frame did not change with the control; this command does not carry it"
+        },
+        {
+          "command": "0x05",
+          "offset": 56,
+          "values_seen": [
+            480,
+            900,
+            1380,
+            1800
+          ],
+          "frame_bytes": 64,
+          "transport_derived_bytes_that_moved": [],
+          "transport_note": "byte 3 is sum(bytes 4..) & 0xFF, so it moves whenever the payload does; it is not a field",
+          "semantic_bytes_that_moved": [],
+          "fields": [],
+          "record_offsets": [],
+          "verdict": "NO_PAYLOAD_MOVEMENT",
+          "why": "the frame did not change with the control; this command does not carry it"
+        },
+        {
+          "command": "0x06",
+          "offset": 0,
+          "values_seen": [
+            480,
+            900,
+            1380,
+            1800
+          ],
+          "frame_bytes": 64,
+          "transport_derived_bytes_that_moved": [
+            3
+          ],
+          "transport_note": "byte 3 is sum(bytes 4..) & 0xFF, so it moves whenever the payload does; it is not a field",
+          "semantic_bytes_that_moved": [
+            43
+          ],
+          "fields": [
+            {
+              "payload_offset": 35,
+              "frame_offset": 43,
+              "record_offset": 35,
+              "values": [
+                16,
+                30,
+                46,
+                60
+              ],
+              "control_values": [
+                480,
+                900,
+                1380,
+                1800
+              ],
+              "tracks_control_value_exactly": false,
+              "scale_factor": 30,
+              "encoding": "byte == control value / 30",
+              "encoding_note": "control value = byte * 30 across all 4 points",
+              "monotonic_in_control_value": true,
+              "width_bits": 8,
+              "width_note": "one byte moved; a wider field would show adjacent bytes moving together"
+            }
+          ],
+          "record_offsets": [
+            35
+          ],
+          "verdict": "FIELDS_OBSERVED",
+          "why": "payload bytes moved with the control and nothing else was touched"
+        },
+        {
+          "command": "0x06",
+          "offset": 8,
+          "values_seen": [
+            480,
+            900,
+            1380,
+            1800
+          ],
+          "frame_bytes": 64,
+          "transport_derived_bytes_that_moved": [
+            3
+          ],
+          "transport_note": "byte 3 is sum(bytes 4..) & 0xFF, so it moves whenever the payload does; it is not a field",
+          "semantic_bytes_that_moved": [
+            35
+          ],
+          "fields": [
+            {
+              "payload_offset": 27,
+              "frame_offset": 35,
+              "record_offset": 35,
+              "values": [
+                16,
+                30,
+                46,
+                60
+              ],
+              "control_values": [
+                480,
+                900,
+                1380,
+                1800
+              ],
+              "tracks_control_value_exactly": false,
+              "scale_factor": 30,
+              "encoding": "byte == control value / 30",
+              "encoding_note": "control value = byte * 30 across all 4 points",
+              "monotonic_in_control_value": true,
+              "width_bits": 8,
+              "width_note": "one byte moved; a wider field would show adjacent bytes moving together"
+            }
+          ],
+          "record_offsets": [
+            35
+          ],
+          "verdict": "FIELDS_OBSERVED",
+          "why": "payload bytes moved with the control and nothing else was touched"
+        }
+      ],
+      "raw_frames_by_value": {
+        "60": [],
+        "480": [
+          {
+            "payload_hex": "55050038380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 56,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050040083800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 8,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55060048380000000000000000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 6,
+              "checksum": 72,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "55060050380800000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 6,
+              "checksum": 80,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 8,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "55050038380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 56,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050040083800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 8,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000",
+              "trailing_is_all_zero": true
+            }
+          }
+        ],
+        "900": [
+          {
+            "payload_hex": "55050038380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 56,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050040083800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 8,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "550600563800000000000000000000000000000000000000000000000000000000000000000000000000001e0000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 6,
+              "checksum": 86,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "00000000000000000000000000000000000000000000000000000000000000000000001e0000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "5506005e380800000000000000000000000000000000000000000000000000000000001e00000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 6,
+              "checksum": 94,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 8,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000001e00000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "55050038380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 56,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050040083800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 8,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000",
+              "trailing_is_all_zero": true
+            }
+          }
+        ],
+        "1380": [
+          {
+            "payload_hex": "55050038380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 56,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050040083800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 8,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "550600663800000000000000000000000000000000000000000000000000000000000000000000000000002e0000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 6,
+              "checksum": 102,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "00000000000000000000000000000000000000000000000000000000000000000000002e0000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "5506006e380800000000000000000000000000000000000000000000000000000000002e00000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 6,
+              "checksum": 110,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 8,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000002e00000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "55050038380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 56,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050040083800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 8,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000",
+              "trailing_is_all_zero": true
+            }
+          }
+        ],
+        "1800": [
+          {
+            "payload_hex": "55050038380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 56,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050040083800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 8,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "550600743800000000000000000000000000000000000000000000000000000000000000000000000000003c0000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 6,
+              "checksum": 116,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "00000000000000000000000000000000000000000000000000000000000000000000003c0000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "5506007c380800000000000000000000000000000000000000000000000000000000003c00000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 6,
+              "checksum": 124,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 8,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000003c00000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "55050038380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 56,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050040083800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 8,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000",
+              "trailing_is_all_zero": true
+            }
+          }
+        ]
+      }
+    },
+    {
+      "tab": "Производительность",
+      "control": {
+        "sel_index": 45,
+        "tag": "INPUT",
+        "type": "range",
+        "role": null,
+        "cls": "",
+        "min": 1,
+        "max": 15,
+        "step": 1,
+        "value": 1
+      },
+      "values": [
+        1,
+        5,
+        8,
+        11,
+        15
+      ],
+      "provenance": "OBSERVED_FROM_VENDOR_UI in a SYNTHETIC_ENVIRONMENT",
+      "confidence_note": "the vendor's client built these frames from its own control; the device that answered its reads was this harness, so displayed values are not observations and only the values we set are ours to reason from",
+      "groups": [
+        {
+          "command": "0x05",
+          "offset": 0,
+          "values_seen": [
+            5,
+            8,
+            11,
+            15
+          ],
+          "frame_bytes": 64,
+          "transport_derived_bytes_that_moved": [],
+          "transport_note": "byte 3 is sum(bytes 4..) & 0xFF, so it moves whenever the payload does; it is not a field",
+          "semantic_bytes_that_moved": [],
+          "fields": [],
+          "record_offsets": [],
+          "verdict": "NO_PAYLOAD_MOVEMENT",
+          "why": "the frame did not change with the control; this command does not carry it"
+        },
+        {
+          "command": "0x05",
+          "offset": 56,
+          "values_seen": [
+            5,
+            8,
+            11,
+            15
+          ],
+          "frame_bytes": 64,
+          "transport_derived_bytes_that_moved": [],
+          "transport_note": "byte 3 is sum(bytes 4..) & 0xFF, so it moves whenever the payload does; it is not a field",
+          "semantic_bytes_that_moved": [],
+          "fields": [],
+          "record_offsets": [],
+          "verdict": "NO_PAYLOAD_MOVEMENT",
+          "why": "the frame did not change with the control; this command does not carry it"
+        },
+        {
+          "command": "0x06",
+          "offset": 0,
+          "values_seen": [
+            5,
+            8,
+            11,
+            15
+          ],
+          "frame_bytes": 64,
+          "transport_derived_bytes_that_moved": [
+            3
+          ],
+          "transport_note": "byte 3 is sum(bytes 4..) & 0xFF, so it moves whenever the payload does; it is not a field",
+          "semantic_bytes_that_moved": [
+            28
+          ],
+          "fields": [
+            {
+              "payload_offset": 20,
+              "frame_offset": 28,
+              "record_offset": 20,
+              "values": [
+                5,
+                8,
+                11,
+                15
+              ],
+              "control_values": [
+                5,
+                8,
+                11,
+                15
+              ],
+              "tracks_control_value_exactly": true,
+              "scale_factor": null,
+              "encoding": "byte == control value",
+              "encoding_note": null,
+              "monotonic_in_control_value": true,
+              "width_bits": 8,
+              "width_note": "one byte moved; a wider field would show adjacent bytes moving together"
+            }
+          ],
+          "record_offsets": [
+            20
+          ],
+          "verdict": "FIELDS_OBSERVED",
+          "why": "payload bytes moved with the control and nothing else was touched"
+        },
+        {
+          "command": "0x06",
+          "offset": 8,
+          "values_seen": [
+            5,
+            8,
+            11,
+            15
+          ],
+          "frame_bytes": 64,
+          "transport_derived_bytes_that_moved": [
+            3
+          ],
+          "transport_note": "byte 3 is sum(bytes 4..) & 0xFF, so it moves whenever the payload does; it is not a field",
+          "semantic_bytes_that_moved": [
+            20
+          ],
+          "fields": [
+            {
+              "payload_offset": 12,
+              "frame_offset": 20,
+              "record_offset": 20,
+              "values": [
+                5,
+                8,
+                11,
+                15
+              ],
+              "control_values": [
+                5,
+                8,
+                11,
+                15
+              ],
+              "tracks_control_value_exactly": true,
+              "scale_factor": null,
+              "encoding": "byte == control value",
+              "encoding_note": null,
+              "monotonic_in_control_value": true,
+              "width_bits": 8,
+              "width_note": "one byte moved; a wider field would show adjacent bytes moving together"
+            }
+          ],
+          "record_offsets": [
+            20
+          ],
+          "verdict": "FIELDS_OBSERVED",
+          "why": "payload bytes moved with the control and nothing else was touched"
+        }
+      ],
+      "raw_frames_by_value": {
+        "1": [],
+        "5": [
+          {
+            "payload_hex": "55050038380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 56,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050040083800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 8,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "5506003d380000000000000000000000000000000000000000000000050000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 6,
+              "checksum": 61,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000050000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "55060045380800000000000000000000000000000500000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 6,
+              "checksum": 69,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 8,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000500000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "55050038380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 56,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050040083800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 8,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000",
+              "trailing_is_all_zero": true
+            }
+          }
+        ],
+        "8": [
+          {
+            "payload_hex": "55050038380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 56,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050040083800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 8,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55060040380000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 6,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "55060048380800000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 6,
+              "checksum": 72,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 8,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000800000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "55050038380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 56,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050040083800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 8,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000",
+              "trailing_is_all_zero": true
+            }
+          }
+        ],
+        "11": [
+          {
+            "payload_hex": "55050038380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 56,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050040083800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 8,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "550600433800000000000000000000000000000000000000000000000b0000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 6,
+              "checksum": 67,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "00000000000000000000000000000000000000000b0000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "5506004b380800000000000000000000000000000b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 6,
+              "checksum": 75,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 8,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "55050038380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 56,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050040083800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 8,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000",
+              "trailing_is_all_zero": true
+            }
+          }
+        ],
+        "15": [
+          {
+            "payload_hex": "55050038380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 56,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050040083800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 8,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "550600473800000000000000000000000000000000000000000000000f0000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 6,
+              "checksum": 71,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "00000000000000000000000000000000000000000f0000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "5506004f380800000000000000000000000000000f00000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 6,
+              "checksum": 79,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 8,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000f00000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "55050038380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 56,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050040083800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 8,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000",
+              "trailing_is_all_zero": true
+            }
+          }
+        ]
+      }
+    },
+    {
+      "tab": "Другие",
+      "control": {
+        "sel_index": 7,
+        "tag": "INPUT",
+        "type": "range",
+        "role": null,
+        "cls": "",
+        "min": 60,
+        "max": 1800,
+        "step": 60,
+        "value": 60
+      },
+      "values": [
+        60,
+        480,
+        900,
+        1380,
+        1800
+      ],
+      "provenance": "OBSERVED_FROM_VENDOR_UI in a SYNTHETIC_ENVIRONMENT",
+      "confidence_note": "the vendor's client built these frames from its own control; the device that answered its reads was this harness, so displayed values are not observations and only the values we set are ours to reason from",
+      "groups": [
+        {
+          "command": "0x05",
+          "offset": 0,
+          "values_seen": [
+            480,
+            900,
+            1380,
+            1800
+          ],
+          "frame_bytes": 64,
+          "transport_derived_bytes_that_moved": [],
+          "transport_note": "byte 3 is sum(bytes 4..) & 0xFF, so it moves whenever the payload does; it is not a field",
+          "semantic_bytes_that_moved": [],
+          "fields": [],
+          "record_offsets": [],
+          "verdict": "NO_PAYLOAD_MOVEMENT",
+          "why": "the frame did not change with the control; this command does not carry it"
+        },
+        {
+          "command": "0x05",
+          "offset": 56,
+          "values_seen": [
+            480,
+            900,
+            1380,
+            1800
+          ],
+          "frame_bytes": 64,
+          "transport_derived_bytes_that_moved": [],
+          "transport_note": "byte 3 is sum(bytes 4..) & 0xFF, so it moves whenever the payload does; it is not a field",
+          "semantic_bytes_that_moved": [],
+          "fields": [],
+          "record_offsets": [],
+          "verdict": "NO_PAYLOAD_MOVEMENT",
+          "why": "the frame did not change with the control; this command does not carry it"
+        },
+        {
+          "command": "0x06",
+          "offset": 0,
+          "values_seen": [
+            480,
+            900,
+            1380,
+            1800
+          ],
+          "frame_bytes": 64,
+          "transport_derived_bytes_that_moved": [
+            3
+          ],
+          "transport_note": "byte 3 is sum(bytes 4..) & 0xFF, so it moves whenever the payload does; it is not a field",
+          "semantic_bytes_that_moved": [
+            43
+          ],
+          "fields": [
+            {
+              "payload_offset": 35,
+              "frame_offset": 43,
+              "record_offset": 35,
+              "values": [
+                16,
+                30,
+                46,
+                60
+              ],
+              "control_values": [
+                480,
+                900,
+                1380,
+                1800
+              ],
+              "tracks_control_value_exactly": false,
+              "scale_factor": 30,
+              "encoding": "byte == control value / 30",
+              "encoding_note": "control value = byte * 30 across all 4 points",
+              "monotonic_in_control_value": true,
+              "width_bits": 8,
+              "width_note": "one byte moved; a wider field would show adjacent bytes moving together"
+            }
+          ],
+          "record_offsets": [
+            35
+          ],
+          "verdict": "FIELDS_OBSERVED",
+          "why": "payload bytes moved with the control and nothing else was touched"
+        },
+        {
+          "command": "0x06",
+          "offset": 8,
+          "values_seen": [
+            480,
+            900,
+            1380,
+            1800
+          ],
+          "frame_bytes": 64,
+          "transport_derived_bytes_that_moved": [
+            3
+          ],
+          "transport_note": "byte 3 is sum(bytes 4..) & 0xFF, so it moves whenever the payload does; it is not a field",
+          "semantic_bytes_that_moved": [
+            35
+          ],
+          "fields": [
+            {
+              "payload_offset": 27,
+              "frame_offset": 35,
+              "record_offset": 35,
+              "values": [
+                16,
+                30,
+                46,
+                60
+              ],
+              "control_values": [
+                480,
+                900,
+                1380,
+                1800
+              ],
+              "tracks_control_value_exactly": false,
+              "scale_factor": 30,
+              "encoding": "byte == control value / 30",
+              "encoding_note": "control value = byte * 30 across all 4 points",
+              "monotonic_in_control_value": true,
+              "width_bits": 8,
+              "width_note": "one byte moved; a wider field would show adjacent bytes moving together"
+            }
+          ],
+          "record_offsets": [
+            35
+          ],
+          "verdict": "FIELDS_OBSERVED",
+          "why": "payload bytes moved with the control and nothing else was touched"
+        }
+      ],
+      "raw_frames_by_value": {
+        "60": [],
+        "480": [
+          {
+            "payload_hex": "55050038380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 56,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050040083800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 8,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55060048380000000000000000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 6,
+              "checksum": 72,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "55060050380800000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 6,
+              "checksum": 80,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 8,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "55050038380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 56,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050040083800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 8,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000",
+              "trailing_is_all_zero": true
+            }
+          }
+        ],
+        "900": [
+          {
+            "payload_hex": "55050038380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 56,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050040083800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 8,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "550600563800000000000000000000000000000000000000000000000000000000000000000000000000001e0000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 6,
+              "checksum": 86,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "00000000000000000000000000000000000000000000000000000000000000000000001e0000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "5506005e380800000000000000000000000000000000000000000000000000000000001e00000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 6,
+              "checksum": 94,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 8,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000001e00000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "55050038380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 56,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050040083800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 8,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000",
+              "trailing_is_all_zero": true
+            }
+          }
+        ],
+        "1380": [
+          {
+            "payload_hex": "55050038380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 56,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050040083800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 8,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "550600663800000000000000000000000000000000000000000000000000000000000000000000000000002e0000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 6,
+              "checksum": 102,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "00000000000000000000000000000000000000000000000000000000000000000000002e0000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "5506006e380800000000000000000000000000000000000000000000000000000000002e00000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 6,
+              "checksum": 110,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 8,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000002e00000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "55050038380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 56,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050040083800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 8,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000",
+              "trailing_is_all_zero": true
+            }
+          }
+        ],
+        "1800": [
+          {
+            "payload_hex": "55050038380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 56,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050040083800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 8,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "550600743800000000000000000000000000000000000000000000000000000000000000000000000000003c0000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 6,
+              "checksum": 116,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "00000000000000000000000000000000000000000000000000000000000000000000003c0000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "5506007c380800000000000000000000000000000000000000000000000000000000003c00000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 6,
+              "checksum": 124,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 8,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000003c00000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "55050038380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 56,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050040083800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 8,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000",
+              "trailing_is_all_zero": true
+            }
+          }
+        ]
+      }
+    },
+    {
+      "tab": "Другие",
+      "control": {
+        "sel_index": 45,
+        "tag": "INPUT",
+        "type": "range",
+        "role": null,
+        "cls": "",
+        "min": 1,
+        "max": 15,
+        "step": 1,
+        "value": 15
+      },
+      "values": [
+        1,
+        5,
+        8,
+        11,
+        15
+      ],
+      "provenance": "OBSERVED_FROM_VENDOR_UI in a SYNTHETIC_ENVIRONMENT",
+      "confidence_note": "the vendor's client built these frames from its own control; the device that answered its reads was this harness, so displayed values are not observations and only the values we set are ours to reason from",
+      "groups": [
+        {
+          "command": "0x05",
+          "offset": 0,
+          "values_seen": [
+            1,
+            5,
+            8,
+            11,
+            15
+          ],
+          "frame_bytes": 64,
+          "transport_derived_bytes_that_moved": [],
+          "transport_note": "byte 3 is sum(bytes 4..) & 0xFF, so it moves whenever the payload does; it is not a field",
+          "semantic_bytes_that_moved": [],
+          "fields": [],
+          "record_offsets": [],
+          "verdict": "NO_PAYLOAD_MOVEMENT",
+          "why": "the frame did not change with the control; this command does not carry it"
+        },
+        {
+          "command": "0x05",
+          "offset": 56,
+          "values_seen": [
+            1,
+            5,
+            8,
+            11,
+            15
+          ],
+          "frame_bytes": 64,
+          "transport_derived_bytes_that_moved": [],
+          "transport_note": "byte 3 is sum(bytes 4..) & 0xFF, so it moves whenever the payload does; it is not a field",
+          "semantic_bytes_that_moved": [],
+          "fields": [],
+          "record_offsets": [],
+          "verdict": "NO_PAYLOAD_MOVEMENT",
+          "why": "the frame did not change with the control; this command does not carry it"
+        },
+        {
+          "command": "0x06",
+          "offset": 0,
+          "values_seen": [
+            1,
+            5,
+            8,
+            11,
+            15
+          ],
+          "frame_bytes": 64,
+          "transport_derived_bytes_that_moved": [
+            3
+          ],
+          "transport_note": "byte 3 is sum(bytes 4..) & 0xFF, so it moves whenever the payload does; it is not a field",
+          "semantic_bytes_that_moved": [
+            28
+          ],
+          "fields": [
+            {
+              "payload_offset": 20,
+              "frame_offset": 28,
+              "record_offset": 20,
+              "values": [
+                1,
+                5,
+                8,
+                11,
+                15
+              ],
+              "control_values": [
+                1,
+                5,
+                8,
+                11,
+                15
+              ],
+              "tracks_control_value_exactly": true,
+              "scale_factor": null,
+              "encoding": "byte == control value",
+              "encoding_note": null,
+              "monotonic_in_control_value": true,
+              "width_bits": 8,
+              "width_note": "one byte moved; a wider field would show adjacent bytes moving together"
+            }
+          ],
+          "record_offsets": [
+            20
+          ],
+          "verdict": "FIELDS_OBSERVED",
+          "why": "payload bytes moved with the control and nothing else was touched"
+        },
+        {
+          "command": "0x06",
+          "offset": 8,
+          "values_seen": [
+            1,
+            5,
+            8,
+            11,
+            15
+          ],
+          "frame_bytes": 64,
+          "transport_derived_bytes_that_moved": [
+            3
+          ],
+          "transport_note": "byte 3 is sum(bytes 4..) & 0xFF, so it moves whenever the payload does; it is not a field",
+          "semantic_bytes_that_moved": [
+            20
+          ],
+          "fields": [
+            {
+              "payload_offset": 12,
+              "frame_offset": 20,
+              "record_offset": 20,
+              "values": [
+                1,
+                5,
+                8,
+                11,
+                15
+              ],
+              "control_values": [
+                1,
+                5,
+                8,
+                11,
+                15
+              ],
+              "tracks_control_value_exactly": true,
+              "scale_factor": null,
+              "encoding": "byte == control value",
+              "encoding_note": null,
+              "monotonic_in_control_value": true,
+              "width_bits": 8,
+              "width_note": "one byte moved; a wider field would show adjacent bytes moving together"
+            }
+          ],
+          "record_offsets": [
+            20
+          ],
+          "verdict": "FIELDS_OBSERVED",
+          "why": "payload bytes moved with the control and nothing else was touched"
+        }
+      ],
+      "raw_frames_by_value": {
+        "1": [
+          {
+            "payload_hex": "55050038380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 56,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050040083800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 8,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55060039380000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 6,
+              "checksum": 57,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "55060041380800000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 6,
+              "checksum": 65,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 8,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "55050038380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 56,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050040083800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 8,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000",
+              "trailing_is_all_zero": true
+            }
+          }
+        ],
+        "5": [
+          {
+            "payload_hex": "55050038380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 56,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050040083800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 8,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "5506003d380000000000000000000000000000000000000000000000050000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 6,
+              "checksum": 61,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000050000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "55060045380800000000000000000000000000000500000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 6,
+              "checksum": 69,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 8,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000500000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "55050038380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 56,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050040083800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 8,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000",
+              "trailing_is_all_zero": true
+            }
+          }
+        ],
+        "8": [
+          {
+            "payload_hex": "55050038380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 56,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050040083800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 8,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55060040380000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 6,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "55060048380800000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 6,
+              "checksum": 72,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 8,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000800000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "55050038380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 56,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050040083800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 8,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000",
+              "trailing_is_all_zero": true
+            }
+          }
+        ],
+        "11": [
+          {
+            "payload_hex": "55050038380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 56,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050040083800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 8,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "550600433800000000000000000000000000000000000000000000000b0000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 6,
+              "checksum": 67,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "00000000000000000000000000000000000000000b0000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "5506004b380800000000000000000000000000000b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 6,
+              "checksum": 75,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 8,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000b00000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "55050038380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 56,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050040083800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 8,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000",
+              "trailing_is_all_zero": true
+            }
+          }
+        ],
+        "15": [
+          {
+            "payload_hex": "55050038380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 56,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050040083800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 8,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "550600473800000000000000000000000000000000000000000000000f0000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 6,
+              "checksum": 71,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "00000000000000000000000000000000000000000f0000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "5506004f380800000000000000000000000000000f00000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 6,
+              "checksum": 79,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 8,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000f00000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": false
+            }
+          },
+          {
+            "payload_hex": "55050038380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 56,
+              "checksum_ok": true,
+              "size": 56,
+              "offset": 0,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+              "trailing_is_all_zero": true
+            }
+          },
+          {
+            "payload_hex": "55050040083800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+            "decoded": {
+              "flag": 85,
+              "flag_role": "request",
+              "command": 5,
+              "checksum": 64,
+              "checksum_ok": true,
+              "size": 8,
+              "offset": 56,
+              "direction": "UNKNOWN",
+              "direction_note": "byte 4 carries 'bytes requested' for a read and 'bytes supplied' for a write; the frame does not distinguish them",
+              "trailing_hex": "0000000000000000",
+              "trailing_is_all_zero": true
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

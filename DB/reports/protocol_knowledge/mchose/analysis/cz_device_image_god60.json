@@ -1,0 +1,47 @@
+{
+  "_what": "synthetic CZ device image, TICKET-25",
+  "evidence_class": "synthetic_from_vendor_schema",
+  "not_hardware_evidence": "These bytes are the vendor's own shipped defaults, not a device's answer. No parameter value read back from them is an observation.",
+  "source_file": "default-keys-god-60.0a1fab306ca3289739c5.js",
+  "key_count": 128,
+  "bytes_per_key": 3,
+  "used_key_area_size": 384,
+  "total_key_area_size": 512,
+  "layer_slots_filled": 8,
+  "layer_slots_note": "the shipped file contains layer 0 only; the same table is served for every slot, which is a harness choice and is recorded as one",
+  "commands_backed": {
+    "0x07": {
+      "bytes": 3968,
+      "provenance": "default-keys-god-60.0a1fab306ca3289739c5.js layer-0 table, re-serialised as [type,code1,code2]"
+    }
+  },
+  "required_code_patches": [
+    {
+      "code": 252,
+      "triple": [
+        240,
+        250,
+        0
+      ],
+      "slot_index": 64,
+      "replaced": [
+        0,
+        0,
+        0
+      ],
+      "triple_provenance": "vendor getKeyCode mapping in CZ_SHARED_DATA/main.js",
+      "slot_provenance": "HARNESS CHOICE: first placeholder slot; the vendor states no index",
+      "why_required": "the shipped God60 layout dereferences defaultKeyDict[252].index"
+    }
+  ],
+  "commands_left_as_zeros": [
+    "0x03 getInfo",
+    "0x04 getBase",
+    "0x05 getFuncConfig",
+    "0x0c",
+    "0x0d",
+    "0xa9",
+    "0xf1",
+    "0xf2"
+  ]
+}

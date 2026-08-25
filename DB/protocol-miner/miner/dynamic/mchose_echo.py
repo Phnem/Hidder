@@ -109,9 +109,17 @@ def main() -> int:
     rows = []
     p = Path(args.frames)
     if p.exists():
-        for line in p.read_text(encoding="utf-8").splitlines():
-            if line.strip():
-                rows.append(json.loads(line))
+        if p.suffix == ".jsonl":
+            for line in p.read_text(encoding="utf-8").splitlines():
+                if line.strip():
+                    rows.append(json.loads(line))
+        else:
+            # A UI-walk inventory. Same frames, grouped by the action that
+            # produced them; the audit reads them flat and keeps the label.
+            doc = json.loads(p.read_text(encoding="utf-8"))
+            for action, entries in (doc.get("by_action") or {}).items():
+                for e in entries:
+                    rows.append({**e, "ui_action": action})
 
     per_command: dict[str, collections.Counter] = collections.defaultdict(collections.Counter)
     classified = []
@@ -162,8 +170,13 @@ def main() -> int:
             ),
         }
 
+    by_action: dict[str, collections.Counter] = collections.defaultdict(collections.Counter)
+    for r in classified:
+        by_action[r.get("ui_action", "<none>")][r["evidence_class"]] += 1
+
     doc = {
         "_what": "MCHOSE echo / EVIDENCE_VOID audit, TICKET-25 point 3",
+        "_per_action": {k: dict(v) for k, v in sorted(by_action.items())},
         "_source": str(p),
         "_harness_note": (
             "This oracle answers nothing by design, so a fully EVIDENCE_VOID result is the "
