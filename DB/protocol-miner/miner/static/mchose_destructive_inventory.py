@@ -19,21 +19,45 @@ from pathlib import Path
 # (`hpe` table, `navigator.deviceHandler`). Nothing in the CZ lane touches these.
 BY_FAMILY = {
     "transport": "navigator.deviceHandler.sendCommand, hpe command table (M HUB purify.es)",
-    "coverage": "static only; no BY frame has ever been captured",
+    "coverage": ("driven live through the native Vue configurator against a fake K99: wired "
+                 "reads 0x87/0x83/0x84/0x8a observed, setPerformance and setReset captured in "
+                 "full; no hardware involved"),
     "paths": [
         {
             "name": "setReset",
             "classification": "DESTRUCTIVE_CONFIRMED",
-            "why": ("traced from the restoreFactorySetting UI action through the dispatcher "
-                    "to sendCommand('set','setReset',...)"),
+            "why": ("traced from the restoreFactorySetting UI action through the dispatcher to "
+                    "sendCommand('set','setReset',...), and its full 519-byte wired frame is "
+                    "captured -- produced by the vendor's own confirmation dialog against a "
+                    "fake device, so nobody had to send one to a keyboard"),
+            "frame_captured": True,
+            "evidence": "analysis/by_0x04_identity_k99.json",
+            "sequence": ("the confirm handler emits 0x04 (setReset) and then 0x0a, 0x06 and "
+                         "three 0x03 frames; only the first is setReset"),
         },
         {
             "name": "setPerformance",
             "classification": "POTENTIALLY_DESTRUCTIVE",
+            "classification_is_final": True,
             "why": ("same wired lead byte 0x04 as setReset and built by literally the same "
                     "parser function j_(!0); nothing in the frame shape separates them"),
-            "closes_when": ("both full frames are captured through fake-WebHID and byte-diffed, "
-                            "and a value-level discriminator either appears or is shown absent"),
+            "wire_level_discriminator": "PROVEN IMPOSSIBLE",
+            "proof": (
+                "A routine setPerformance frame and the factory-reset frame were captured in "
+                "one session through the vendor's own UI and are BYTE-IDENTICAL across all 519 "
+                "bytes. The reset's data is the constant x8[model].otherObj -- the factory "
+                "default performance record -- and that value is reachable from the settings "
+                "UI, because it is simply what a factory-fresh keyboard reports. Toggling one "
+                "switch off and back on reproduced it exactly."
+            ),
+            "evidence": "analysis/by_0x04_identity_k99.json; regression in "
+                        "tests/test_mchose_by_0x04_indistinguishable.py",
+            "consequence": (
+                "No classifier reading a wired 0x04 frame can separate a settings write from a "
+                "factory reset. Safety for this path CANNOT be enforced by frame inspection; it "
+                "has to be enforced at the point of intent -- which command is being issued -- "
+                "and a captured 0x04 frame must never be replayed."
+            ),
             "requires_hardware": False,
         },
         {

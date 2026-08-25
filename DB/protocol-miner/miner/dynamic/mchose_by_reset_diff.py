@@ -94,6 +94,44 @@ DIALOG_JS = """() => {
           buttons: btns.map(b => (b.innerText || '').trim().slice(0, 30))};
 }"""
 
+# Arm an in-page observer that confirms the dialog the instant it appears.
+#
+# Why not poll from the driver: a MutationObserver proved the vendor's confirm
+# dialog DOES open, with its own text, and that it is gone again within seconds.
+# Every driver-side check -- at 1.8s, 3.5s, 8s, and finally every 250ms -- kept
+# arriving after it had closed. Round-tripping to the browser to look is simply
+# slower than the thing being looked at.
+#
+# This stays production-equivalent: the dialog is the vendor's, the confirm
+# button is the vendor's (`confirmButtonClass: "red-btn"` in its own options),
+# and the handler that runs afterwards is the vendor's. Nothing is called
+# directly, and the text is recorded BEFORE the click so the action is labelled
+# by what the app said.
+ARM_RESET_OBSERVER_JS = """() => {
+  window.__byReset = {seen: null, confirmed: null, at: null};
+  const grab = () => {
+    const box = document.querySelector('.el-message-box');
+    if (!box || window.__byReset.seen) return;
+    const btns = Array.from(box.querySelectorAll('button'));
+    window.__byReset.seen = {
+      text: (box.innerText || '').trim().slice(0, 400),
+      buttons: btns.map(b => ({text: (b.innerText || '').trim().slice(0, 30),
+                               cls: String(b.className || '').slice(0, 60)}))
+    };
+    window.__byReset.at = Date.now();
+    const confirm = btns.find(b => (b.className || '').includes('red-btn'))
+                 || btns.find(b => (b.className || '').includes('primary'))
+                 || btns[btns.length - 1];
+    if (confirm) {
+      window.__byReset.confirmed = (confirm.innerText || '').trim().slice(0, 30);
+      confirm.click();
+    }
+  };
+  new MutationObserver(grab).observe(document.body, {childList: true, subtree: true});
+  grab();
+  return true;
+}"""
+
 CONFIRM_JS = """() => {
   const box = document.querySelector('.el-message-box, .el-dialog, [role=dialog]');
   if (!box) return false;
@@ -337,62 +375,7 @@ def main() -> int:
         print(f"[tab ids] performance={perf_tab and perf_tab['id']!r} "
               f"other={other_tab and other_tab['id']!r}")
 
-        # --- pass 1: the factory reset --------------------------------------
-        # Run FIRST. With the performance pass ahead of it the reset button
-        # stopped opening its dialog, while a run that probed it on a freshly
-        # entered page opened it every time. The cause was not chased further
-        # because the ordering is free: the diff does not care which capture
-        # happened first, and a walk that reliably produces both frames beats
-        # a tidier one that produces one.
-        # Found by behaviour: enabled buttons in the last section are clicked and
-        # a CONFIRMATION DIALOG is what identifies the destructive one. Its text
-        # is read before it is confirmed, so the action is labelled by the app's
-        # own words rather than by a caption we matched.
-        for tab in ([other_tab] if other_tab else []):
-            page.evaluate("(id) => { const e = document.getElementById(id); if (e) e.click(); }",
-                          tab["id"])
-            page.wait_for_timeout(3500)
-            cands = [c for c in page.evaluate(LIST_VISIBLE_JS, "button.mc-button")
-                     if "is-disabled" not in (c["cls"] or "")]
-            print(f"[other] visible enabled mc-buttons: {[c['text'] for c in cands]}")
-            # Playwright's own click, not a synthesised one. It waits for the
-            # element to be stable, visible, enabled and un-obscured, then
-            # dispatches real input events. Two cheaper methods were tried first
-            # and both left "no dialog appeared" on the record -- a claim about
-            # the app that was actually a claim about the click.
-            locator = page.locator("button.mc-button:visible").filter(
-                has_not=page.locator(".is-disabled"))
-            for c in cands:
-                state["action"] = f"probe:{c['text'][:20]}"
-                try:
-                    locator.filter(has_text=c["text"]).first.click(timeout=8000)
-                except Exception as exc:  # noqa: BLE001
-                    print(f"[probe] {c['text']!r} click failed: {str(exc)[:90]}")
-                    continue
-                # Poll rather than sample once. A single check at 1.8 s missed a
-                # dialog that a 3.5 s check saw, and "no dialog appeared" is a
-                # claim about the app, so it must not rest on one early look.
-                dlg = None
-                for _ in range(8):
-                    page.wait_for_timeout(1000)
-                    dlg = page.evaluate(DIALOG_JS)
-                    if dlg:
-                        break
-                if not dlg:
-                    print(f"[probe] {c['text']!r} opened no dialog within 8s")
-                    continue
-                dlg["opened_by"] = c["text"]
-                dialogs.append(dlg)
-                print(f"[dialog] opened by {c['text']!r}: {dlg['text'][:120]!r} "
-                      f"buttons={dlg['buttons']}")
-                state["action"] = f"reset_confirm:{c['text'][:20]}"
-                reset_actions.append(state["action"])
-                clicked = page.evaluate(CONFIRM_JS)
-                print(f"[dialog] confirmed with {clicked!r}")
-                page.wait_for_timeout(6000)
-            break
-
-        # --- pass 2: routine performance writes -----------------------------
+        # --- pass 1: routine performance writes -----------------------------
         # Element Plus, so: radios and switches are clicked, and sliders are
         # driven with ArrowRight on their own role=slider element, which runs the
         # component's handler exactly as a drag would. The point is that the
@@ -428,6 +411,58 @@ def main() -> int:
                     page.evaluate(FOCUS_VISIBLE_JS, {"sel": "[role=slider]", "i": i})
                     page.keyboard.press("ArrowRight")
                     page.wait_for_timeout(1500)
+            break
+
+        # --- pass 2: the factory reset --------------------------------------
+        # Runs LAST, because the vendor's own handler ends with
+        # `router.push({name: 'ConnectDevice'})` -- after a reset the page
+        # leaves the keyboard entirely, so anything that needs the
+        # configurator has to happen before it.
+        #
+        # An earlier note here blamed ordering for the dialog not opening.
+        # That was wrong and is corrected: the dialog always opened, and the
+        # driver was simply looking after it had closed again.
+        # Found by behaviour: enabled buttons in the last section are clicked and
+        # a CONFIRMATION DIALOG is what identifies the destructive one. Its text
+        # is read before it is confirmed, so the action is labelled by the app's
+        # own words rather than by a caption we matched.
+        for tab in ([other_tab] if other_tab else []):
+            page.evaluate("(id) => { const e = document.getElementById(id); if (e) e.click(); }",
+                          tab["id"])
+            page.wait_for_timeout(3500)
+            cands = [c for c in page.evaluate(LIST_VISIBLE_JS, "button.mc-button")
+                     if "is-disabled" not in (c["cls"] or "")]
+            print(f"[other] visible enabled mc-buttons: {[c['text'] for c in cands]}")
+            for c in cands:
+                state["action"] = f"probe:{c['text'][:20]}"
+                page.evaluate(ARM_RESET_OBSERVER_JS)
+                # The same click shape that a MutationObserver confirmed does open
+                # the dialog: a plain `.click()` on the visible, enabled button.
+                # A Playwright locator click and a real mouse click at its centre
+                # were both tried and neither opened it.
+                page.evaluate(
+                    """(i) => { const els = Array.from(document.querySelectorAll('button'))
+                          .filter(e => { const r = e.getBoundingClientRect();
+                                         return r.width > 0 && r.height > 0 && e.offsetParent !== null; })
+                          .filter(e => (e.className || '').includes('mc-button') && !e.disabled);
+                        const e = els[i]; if (e) e.click(); }""",
+                    cands.index(c))
+                # The confirm already happened in-page if the dialog appeared, so
+                # the label has to be set before the frames arrive.
+                state["action"] = f"reset_confirm:{c['text'][:20]}"
+                reset_actions.append(state["action"])
+                page.wait_for_timeout(7000)
+                seen = page.evaluate("() => window.__byReset || null")
+                if not (seen and seen.get("seen")):
+                    print(f"[probe] {c['text']!r} opened no dialog")
+                    reset_actions.remove(state["action"])
+                    continue
+                dlg = seen["seen"]
+                dlg["opened_by"] = c["text"]
+                dlg["confirmed_with"] = seen.get("confirmed")
+                dialogs.append(dlg)
+                print(f"[dialog] opened by {c['text']!r}: {dlg['text'][:110]!r}")
+                print(f"[dialog] confirmed with {seen.get('confirmed')!r}")
             break
 
         state["action"] = "idle"

@@ -1,0 +1,719 @@
+{
+  "_what": "BY reset-dialog state diff across synthetic reply sizes, TICKET-25",
+  "_method": "one variable changed between runs: the size of the synthetic receiveFeatureReport reply. Everything else identical.",
+  "_bundle_fact": "the reset branch of the otherSetting handler has NO status guard, so if v(item) runs the confirm dialog opens unconditionally; the question is whether the click reaches the handler",
+  "at": "2026-08-25T19:32:24.463564+00:00",
+  "profile": {
+    "label": "K99",
+    "vendorId": 1452,
+    "productId": 591,
+    "productName": "MCHOSE K99 Gaming Keyboard",
+    "usagePage": 65280,
+    "usage": 1,
+    "provenance": "purify.es device predicate vid 1452 / pid 591 / usagePage 0xff00; getDevName maps pid 591 + name containing 'K99' to model key 'K99'; 'MCHOSE K99 Gaming Keyboard' is in the BY branch's own name list"
+  },
+  "runs": {
+    "64": {
+      "reply_size": 64,
+      "state_before_click": {
+        "route": "Keyboard",
+        "hasHandler": true,
+        "handlerWired": true,
+        "whichDevice": "K99",
+        "visible_mc_buttons": [
+          {
+            "text": "Последняя",
+            "disabled": true,
+            "cls": "el-button is-disabled mc-button mc-button--bsp3"
+          },
+          {
+            "text": "Последняя",
+            "disabled": true,
+            "cls": "el-button is-disabled mc-button mc-button--bsp3"
+          },
+          {
+            "text": "Сброс",
+            "disabled": false,
+            "cls": "el-button mc-button mc-button--bsp3"
+          }
+        ],
+        "active_tab": "tab-otherSetting",
+        "body_head": "Вернуться на главную\nK99\n100%\nКабельный\nинст.\nСоздать\nИмпорт\nВстроеная конфигурация\nНастройка клавиш\nOсвещения\nПроизводительность\nДругие\nВерсия прошивки клавиатуры:\nПоследняя версия уже установлена, о",
+        "probe": {
+          "clicks": [
+            {
+              "tag": "BUTTON",
+              "cls": "el-button mc-button mc-button--bsp1",
+              "text": "Подключить",
+              "closestButton": true,
+              "buttonDisabled": false,
+              "at": 1787686201230
+            },
+            {
+              "tag": "DIV",
+              "cls": "",
+              "text": "K99",
+              "closestButton": false,
+              "buttonDisabled": false,
+              "at": 1787686231284
+            },
+            {
+              "tag": "DIV",
+              "cls": "el-tabs__item is-top",
+              "text": "Другие",
+              "closestButton": false,
+              "buttonDisabled": false,
+              "at": 1787686251936
+            }
+          ],
+          "dialogs": [
+            {
+              "cls": "el-overlay privacy-dialog-overlay",
+              "text": "",
+              "at": 1787686231309
+            },
+            {
+              "cls": "el-overlay privacy-dialog-overlay",
+              "text": "",
+              "at": 1787686231309
+            },
+            {
+              "cls": "el-overlay mc-dialog-overlay",
+              "text": "",
+              "at": 1787686231719
+            },
+            {
+              "cls": "el-overlay mc-dialog-overlay",
+              "text": "",
+              "at": 1787686231720
+            },
+            {
+              "cls": "el-overlay mc-dialog-overlay",
+              "text": "",
+              "at": 1787686231720
+            }
+          ],
+          "errors": [
+            "rejection: RangeError: Offset is outside the bounds of the DataView",
+            "rejection: RangeError: Offset is outside the bounds of the DataView",
+            "rejection: RangeError: Offset is outside the bounds of the DataView",
+            "rejection: RangeError: Offset is outside the bounds of the DataView"
+          ]
+        }
+      },
+      "clicked": {
+        "text": "Сброс",
+        "cls": "el-button mc-button mc-button--bsp3"
+      },
+      "state_after_click": {
+        "route": "Keyboard",
+        "hasHandler": true,
+        "handlerWired": true,
+        "whichDevice": "K99",
+        "visible_mc_buttons": [
+          {
+            "text": "Последняя",
+            "disabled": true,
+            "cls": "el-button is-disabled mc-button mc-button--bsp3"
+          },
+          {
+            "text": "Последняя",
+            "disabled": true,
+            "cls": "el-button is-disabled mc-button mc-button--bsp3"
+          },
+          {
+            "text": "Сброс",
+            "disabled": false,
+            "cls": "el-button mc-button mc-button--bsp3"
+          }
+        ],
+        "active_tab": "tab-otherSetting",
+        "body_head": "Вернуться на главную\nK99\n100%\nКабельный\nинст.\nСоздать\nИмпорт\nВстроеная конфигурация\nНастройка клавиш\nOсвещения\nПроизводительность\nДругие\nВерсия прошивки клавиатуры:\nПоследняя версия уже установлена, о",
+        "probe": {
+          "clicks": [
+            {
+              "tag": "BUTTON",
+              "cls": "el-button mc-button mc-button--bsp1",
+              "text": "Подключить",
+              "closestButton": true,
+              "buttonDisabled": false,
+              "at": 1787686201230
+            },
+            {
+              "tag": "DIV",
+              "cls": "",
+              "text": "K99",
+              "closestButton": false,
+              "buttonDisabled": false,
+              "at": 1787686231284
+            },
+            {
+              "tag": "DIV",
+              "cls": "el-tabs__item is-top",
+              "text": "Другие",
+              "closestButton": false,
+              "buttonDisabled": false,
+              "at": 1787686251936
+            },
+            {
+              "tag": "BUTTON",
+              "cls": "el-button mc-button mc-button--bsp3",
+              "text": "Сброс",
+              "closestButton": true,
+              "buttonDisabled": false,
+              "at": 1787686255977
+            }
+          ],
+          "dialogs": [
+            {
+              "cls": "el-overlay privacy-dialog-overlay",
+              "text": "",
+              "at": 1787686231309
+            },
+            {
+              "cls": "el-overlay privacy-dialog-overlay",
+              "text": "",
+              "at": 1787686231309
+            },
+            {
+              "cls": "el-overlay mc-dialog-overlay",
+              "text": "",
+              "at": 1787686231719
+            },
+            {
+              "cls": "el-overlay mc-dialog-overlay",
+              "text": "",
+              "at": 1787686231720
+            },
+            {
+              "cls": "el-overlay mc-dialog-overlay",
+              "text": "",
+              "at": 1787686231720
+            },
+            {
+              "cls": "el-overlay is-message-box fade-in-linear-enter-from fade-in-linear-ent",
+              "text": "Подсказка\n\nЭта операция приведет к сбросу всех настроек. Вы уверены, что хотите восстановить заводские настройки?\n\nОтмена\nСброс",
+              "at": 1787686255990
+            },
+            {
+              "cls": "el-message-box__message",
+              "text": "Эта операция приведет к сбросу всех настроек. Вы уверены, что хотите восстановить заводские настройки?",
+              "at": 1787686255991
+            },
+            {
+              "cls": "el-message-box__header show-close",
+              "text": "Подсказка",
+              "at": 1787686255991
+            }
+          ],
+          "errors": [
+            "rejection: RangeError: Offset is outside the bounds of the DataView",
+            "rejection: RangeError: Offset is outside the bounds of the DataView",
+            "rejection: RangeError: Offset is outside the bounds of the DataView",
+            "rejection: RangeError: Offset is outside the bounds of the DataView"
+          ]
+        }
+      },
+      "dialog": null,
+      "confirm_button": null,
+      "frames_after_confirm": 0,
+      "frames": [
+        {
+          "ui_action": "connect",
+          "method": "sendFeatureReport",
+          "report_id": 6,
+          "payload_hex": "870000010002000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        },
+        {
+          "ui_action": "connect",
+          "method": "receiveFeatureReport",
+          "report_id": 6,
+          "payload_hex": null
+        },
+        {
+          "ui_action": "open_device",
+          "method": "sendFeatureReport",
+          "report_id": 6,
+          "payload_hex": "870000010002000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        },
+        {
+          "ui_action": "open_device",
+          "method": "receiveFeatureReport",
+          "report_id": 6,
+          "payload_hex": null
+        },
+        {
+          "ui_action": "open_device",
+          "method": "sendFeatureReport",
+          "report_id": 6,
+          "payload_hex": "8300000100f8010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        },
+        {
+          "ui_action": "open_device",
+          "method": "receiveFeatureReport",
+          "report_id": 6,
+          "payload_hex": null
+        },
+        {
+          "ui_action": "open_device",
+          "method": "sendFeatureReport",
+          "report_id": 6,
+          "payload_hex": "840000010080000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        },
+        {
+          "ui_action": "open_device",
+          "method": "receiveFeatureReport",
+          "report_id": 6,
+          "payload_hex": null
+        },
+        {
+          "ui_action": "open_device",
+          "method": "sendFeatureReport",
+          "report_id": 6,
+          "payload_hex": "8a0000010000020000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        },
+        {
+          "ui_action": "open_device",
+          "method": "receiveFeatureReport",
+          "report_id": 6,
+          "payload_hex": null
+        },
+        {
+          "ui_action": "open_device",
+          "method": "sendFeatureReport",
+          "report_id": 6,
+          "payload_hex": "8300000100f8010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        },
+        {
+          "ui_action": "open_device",
+          "method": "receiveFeatureReport",
+          "report_id": 6,
+          "payload_hex": null
+        }
+      ],
+      "console_tail": [
+        "error: Failed to load resource: net::ERR_CONNECTION_TIMED_OUT",
+        "error: Failed to load resource: net::ERR_CONNECTION_TIMED_OUT",
+        "log: CZ initialized: {deviceStateMap: Proxy(Map), sharedStoreMap: Proxy(Map), setupDeviceSDK: , notifyAllConfigChange: , cleanDeviceSDK: }",
+        "info: support OffscreenCanvas",
+        "error: [innerLoadCZSharedData:0] catch script error ErrorEvent",
+        "pageerror: wrapRemoteConfig::> keyboard config not found, check url: https://cdn.mchose.com.cn/configCenter/custom/keyboardConfig.json",
+        "warning: [innerLoadCZSharedData:0] will call plugins.onError: ErrorEvent",
+        "warning: [innerLoadCZSharedData:0] error handled, will reload",
+        "log: [innerLoadCZSharedData:1] will call plugins.onSuccess",
+        "log: [innerLoadCZSharedData:1] got promise result undefined",
+        "log: [innerLoadCZSharedData:0] reload success, return {DeviceSDK: , createDeviceSDK: , clampDevices: , QhwSDK: , connectHID: }",
+        "log: [innerLoadCZSharedData:0] got promise result {DeviceSDK: , createDeviceSDK: , clampDevices: , QhwSDK: , connectHID: }",
+        "info: CZRemoteConfigList modify HidIndexDeviceFilters [Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object,",
+        "info: CZRemoteConfigList modify KEYBOARD_MODELS {Ace60ProNordic: Object, G87: Object, K87S: Object, ZERO75X: Object, ACE68: Object}",
+        "info: CZRemoteConfigList modify deviceImageMap {Ace 60: Object, Ace 60 Pro: Object, Ace 60 Pro Nordic: Object, Ace 60X: Object, Ace 68: Object}",
+        "info: CZRemoteConfigList modify deviceList {keyboard: Array(21), mouse: Array(34), audio: Array(14)}",
+        "info: CZRemoteConfigList modify czDeviceName [Ace60ProNordic, Ace60ProISOFR, Ace68Turbo, Ace68Air2, Ace68Air, Ace68GT, Ace68V2, ZERO75X, Ace60, Ace68, Ace75, Jet75, Mix87, JET75, G87V2, K99V3, G75V2, G98V3,",
+        "pageerror: Offset is outside the bounds of the DataView",
+        "pageerror: Offset is outside the bounds of the DataView",
+        "pageerror: Offset is outside the bounds of the DataView",
+        "pageerror: Offset is outside the bounds of the DataView"
+      ]
+    },
+    "519": {
+      "reply_size": 519,
+      "state_before_click": {
+        "route": "Keyboard",
+        "hasHandler": true,
+        "handlerWired": true,
+        "whichDevice": "K99",
+        "visible_mc_buttons": [
+          {
+            "text": "Последняя",
+            "disabled": true,
+            "cls": "el-button is-disabled mc-button mc-button--bsp3"
+          },
+          {
+            "text": "Последняя",
+            "disabled": true,
+            "cls": "el-button is-disabled mc-button mc-button--bsp3"
+          },
+          {
+            "text": "Сброс",
+            "disabled": false,
+            "cls": "el-button mc-button mc-button--bsp3"
+          }
+        ],
+        "active_tab": "tab-otherSetting",
+        "body_head": "Вернуться на главную\nK99\n100%\nКабельный\nинст.\nСоздать\nИмпорт\nВстроеная конфигурация\nНастройка клавиш\nOсвещения\nПроизводительность\nДругие\nВерсия прошивки клавиатуры:\nПоследняя версия уже установлена, о",
+        "probe": {
+          "clicks": [
+            {
+              "tag": "BUTTON",
+              "cls": "el-button mc-button mc-button--bsp1",
+              "text": "Подключить",
+              "closestButton": true,
+              "buttonDisabled": false,
+              "at": 1787686283409
+            },
+            {
+              "tag": "DIV",
+              "cls": "",
+              "text": "K99",
+              "closestButton": false,
+              "buttonDisabled": false,
+              "at": 1787686313462
+            },
+            {
+              "tag": "DIV",
+              "cls": "el-tabs__item is-top",
+              "text": "Другие",
+              "closestButton": false,
+              "buttonDisabled": false,
+              "at": 1787686334115
+            }
+          ],
+          "dialogs": [
+            {
+              "cls": "el-overlay privacy-dialog-overlay",
+              "text": "",
+              "at": 1787686313490
+            },
+            {
+              "cls": "el-overlay privacy-dialog-overlay",
+              "text": "",
+              "at": 1787686313490
+            },
+            {
+              "cls": "el-overlay mc-dialog-overlay",
+              "text": "",
+              "at": 1787686313885
+            },
+            {
+              "cls": "el-overlay mc-dialog-overlay",
+              "text": "",
+              "at": 1787686313885
+            },
+            {
+              "cls": "el-overlay mc-dialog-overlay",
+              "text": "",
+              "at": 1787686313885
+            }
+          ],
+          "errors": []
+        }
+      },
+      "clicked": {
+        "text": "Сброс",
+        "cls": "el-button mc-button mc-button--bsp3"
+      },
+      "state_after_click": {
+        "route": "Keyboard",
+        "hasHandler": true,
+        "handlerWired": true,
+        "whichDevice": "K99",
+        "visible_mc_buttons": [
+          {
+            "text": "Последняя",
+            "disabled": true,
+            "cls": "el-button is-disabled mc-button mc-button--bsp3"
+          },
+          {
+            "text": "Последняя",
+            "disabled": true,
+            "cls": "el-button is-disabled mc-button mc-button--bsp3"
+          },
+          {
+            "text": "Сброс",
+            "disabled": false,
+            "cls": "el-button mc-button mc-button--bsp3"
+          }
+        ],
+        "active_tab": "tab-otherSetting",
+        "body_head": "Вернуться на главную\nK99\n100%\nКабельный\nинст.\nСоздать\nИмпорт\nВстроеная конфигурация\nНастройка клавиш\nOсвещения\nПроизводительность\nДругие\nВерсия прошивки клавиатуры:\nПоследняя версия уже установлена, о",
+        "probe": {
+          "clicks": [
+            {
+              "tag": "BUTTON",
+              "cls": "el-button mc-button mc-button--bsp1",
+              "text": "Подключить",
+              "closestButton": true,
+              "buttonDisabled": false,
+              "at": 1787686283409
+            },
+            {
+              "tag": "DIV",
+              "cls": "",
+              "text": "K99",
+              "closestButton": false,
+              "buttonDisabled": false,
+              "at": 1787686313462
+            },
+            {
+              "tag": "DIV",
+              "cls": "el-tabs__item is-top",
+              "text": "Другие",
+              "closestButton": false,
+              "buttonDisabled": false,
+              "at": 1787686334115
+            },
+            {
+              "tag": "BUTTON",
+              "cls": "el-button mc-button mc-button--bsp3",
+              "text": "Сброс",
+              "closestButton": true,
+              "buttonDisabled": false,
+              "at": 1787686338162
+            }
+          ],
+          "dialogs": [
+            {
+              "cls": "el-overlay privacy-dialog-overlay",
+              "text": "",
+              "at": 1787686313490
+            },
+            {
+              "cls": "el-overlay privacy-dialog-overlay",
+              "text": "",
+              "at": 1787686313490
+            },
+            {
+              "cls": "el-overlay mc-dialog-overlay",
+              "text": "",
+              "at": 1787686313885
+            },
+            {
+              "cls": "el-overlay mc-dialog-overlay",
+              "text": "",
+              "at": 1787686313885
+            },
+            {
+              "cls": "el-overlay mc-dialog-overlay",
+              "text": "",
+              "at": 1787686313885
+            },
+            {
+              "cls": "el-overlay is-message-box fade-in-linear-enter-from fade-in-linear-ent",
+              "text": "Подсказка\n\nЭта операция приведет к сбросу всех настроек. Вы уверены, что хотите восстановить заводские настройки?\n\nОтмена\nСброс",
+              "at": 1787686338174
+            },
+            {
+              "cls": "el-message-box__message",
+              "text": "Эта операция приведет к сбросу всех настроек. Вы уверены, что хотите восстановить заводские настройки?",
+              "at": 1787686338174
+            },
+            {
+              "cls": "el-message-box__header show-close",
+              "text": "Подсказка",
+              "at": 1787686338174
+            }
+          ],
+          "errors": []
+        }
+      },
+      "dialog": null,
+      "confirm_button": null,
+      "frames_after_confirm": 0,
+      "frames": [
+        {
+          "ui_action": "connect",
+          "method": "sendFeatureReport",
+          "report_id": 6,
+          "payload_hex": "870000010002000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        },
+        {
+          "ui_action": "connect",
+          "method": "receiveFeatureReport",
+          "report_id": 6,
+          "payload_hex": null
+        },
+        {
+          "ui_action": "open_device",
+          "method": "sendFeatureReport",
+          "report_id": 6,
+          "payload_hex": "870000010002000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        },
+        {
+          "ui_action": "open_device",
+          "method": "receiveFeatureReport",
+          "report_id": 6,
+          "payload_hex": null
+        },
+        {
+          "ui_action": "open_device",
+          "method": "sendFeatureReport",
+          "report_id": 6,
+          "payload_hex": "8300000100f8010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        },
+        {
+          "ui_action": "open_device",
+          "method": "receiveFeatureReport",
+          "report_id": 6,
+          "payload_hex": null
+        },
+        {
+          "ui_action": "open_device",
+          "method": "sendFeatureReport",
+          "report_id": 6,
+          "payload_hex": "840000010080000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        },
+        {
+          "ui_action": "open_device",
+          "method": "receiveFeatureReport",
+          "report_id": 6,
+          "payload_hex": null
+        },
+        {
+          "ui_action": "open_device",
+          "method": "sendFeatureReport",
+          "report_id": 6,
+          "payload_hex": "8a0000010000020000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        },
+        {
+          "ui_action": "open_device",
+          "method": "receiveFeatureReport",
+          "report_id": 6,
+          "payload_hex": null
+        },
+        {
+          "ui_action": "open_device",
+          "method": "sendFeatureReport",
+          "report_id": 6,
+          "payload_hex": "8300000100f8010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        },
+        {
+          "ui_action": "open_device",
+          "method": "receiveFeatureReport",
+          "report_id": 6,
+          "payload_hex": null
+        }
+      ],
+      "console_tail": [
+        "log: CZ initialized: {deviceStateMap: Proxy(Map), sharedStoreMap: Proxy(Map), setupDeviceSDK: , notifyAllConfigChange: , cleanDeviceSDK: }",
+        "info: support OffscreenCanvas",
+        "error: [innerLoadCZSharedData:0] catch script error ErrorEvent",
+        "pageerror: wrapRemoteConfig::> keyboard config not found, check url: https://cdn.mchose.com.cn/configCenter/custom/keyboardConfig.json",
+        "warning: [innerLoadCZSharedData:0] will call plugins.onError: ErrorEvent",
+        "warning: [innerLoadCZSharedData:0] error handled, will reload",
+        "log: [innerLoadCZSharedData:1] will call plugins.onSuccess",
+        "log: [innerLoadCZSharedData:1] got promise result undefined",
+        "log: [innerLoadCZSharedData:0] reload success, return {DeviceSDK: , createDeviceSDK: , clampDevices: , QhwSDK: , connectHID: }",
+        "log: [innerLoadCZSharedData:0] got promise result {DeviceSDK: , createDeviceSDK: , clampDevices: , QhwSDK: , connectHID: }",
+        "info: CZRemoteConfigList modify HidIndexDeviceFilters [Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object, Object,",
+        "info: CZRemoteConfigList modify KEYBOARD_MODELS {Ace60ProNordic: Object, G87: Object, K87S: Object, ZERO75X: Object, ACE68: Object}",
+        "info: CZRemoteConfigList modify deviceImageMap {Ace 60: Object, Ace 60 Pro: Object, Ace 60 Pro Nordic: Object, Ace 60X: Object, Ace 68: Object}",
+        "info: CZRemoteConfigList modify deviceList {keyboard: Array(21), mouse: Array(34), audio: Array(14)}",
+        "info: CZRemoteConfigList modify czDeviceName [Ace60ProNordic, Ace60ProISOFR, Ace68Turbo, Ace68Air2, Ace68Air, Ace68GT, Ace68V2, ZERO75X, Ace60, Ace68, Ace75, Jet75, Mix87, JET75, G87V2, K99V3, G75V2, G98V3,"
+      ]
+    }
+  },
+  "state_diff": {
+    "rows": [
+      {
+        "check": "route reached",
+        "under_sized": "Keyboard",
+        "correct_sized": "Keyboard",
+        "same": true
+      },
+      {
+        "check": "deviceHandler present",
+        "under_sized": true,
+        "correct_sized": true,
+        "same": true
+      },
+      {
+        "check": "deviceHandler wired",
+        "under_sized": true,
+        "correct_sized": true,
+        "same": true
+      },
+      {
+        "check": "active tab",
+        "under_sized": "tab-otherSetting",
+        "correct_sized": "tab-otherSetting",
+        "same": true
+      },
+      {
+        "check": "visible mc-buttons",
+        "under_sized": [
+          "Последняя",
+          "Последняя",
+          "Сброс"
+        ],
+        "correct_sized": [
+          "Последняя",
+          "Последняя",
+          "Сброс"
+        ],
+        "same": true
+      },
+      {
+        "check": "reset button disabled",
+        "under_sized": [
+          true,
+          true,
+          false
+        ],
+        "correct_sized": [
+          true,
+          true,
+          false
+        ],
+        "same": true
+      },
+      {
+        "check": "click landed on a button",
+        "under_sized": true,
+        "correct_sized": true,
+        "same": true
+      },
+      {
+        "check": "click target text",
+        "under_sized": "Сброс",
+        "correct_sized": "Сброс",
+        "same": true
+      },
+      {
+        "check": "click events seen by document",
+        "under_sized": 4,
+        "correct_sized": 4,
+        "same": true
+      },
+      {
+        "check": "dialog nodes observed",
+        "under_sized": 8,
+        "correct_sized": 8,
+        "same": true
+      },
+      {
+        "check": "dialog present after click",
+        "under_sized": false,
+        "correct_sized": false,
+        "same": true
+      },
+      {
+        "check": "frames after confirm",
+        "under_sized": 0,
+        "correct_sized": 0,
+        "same": true
+      },
+      {
+        "check": "page errors",
+        "under_sized": [
+          "rejection: RangeError: Offset is outside the bounds of the DataView",
+          "rejection: RangeError: Offset is outside the bounds of the DataView",
+          "rejection: RangeError: Offset is outside the bounds of the DataView",
+          "rejection: RangeError: Offset is outside the bounds of the DataView"
+        ],
+        "correct_sized": [],
+        "same": false
+      }
+    ],
+    "LAST_COMMON_STATE": "frames after confirm",
+    "FIRST_DIVERGENT_STATE": {
+      "check": "page errors",
+      "under_sized": [
+        "rejection: RangeError: Offset is outside the bounds of the DataView",
+        "rejection: RangeError: Offset is outside the bounds of the DataView",
+        "rejection: RangeError: Offset is outside the bounds of the DataView",
+        "rejection: RangeError: Offset is outside the bounds of the DataView"
+      ],
+      "correct_sized": []
+    }
+  }
+}
