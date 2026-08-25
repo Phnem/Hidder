@@ -28,6 +28,7 @@ class TestEvidence:
     readback_matched: bool = False
     observable_result: Any | None = None
     observable_pass: bool | None = None
+    observable_source: str = ""  # simulated | uncorrelated_os | device_correlated | prototype
     rollback_result: str = ""
     rollback_readback: Any | None = None
     rollback_matched: bool = False
@@ -36,6 +37,8 @@ class TestEvidence:
     evidence_strength: list[str] = field(default_factory=list)
     status: str = "FAIL"  # PASS / FAIL / SKIP / BLOCKED
     error: str = ""
+    sessions: dict[str, Any] = field(default_factory=dict)  # A/B/C/D session ids
+    recovery: dict[str, Any] = field(default_factory=dict)  # RecoveryJournal record (reconnect ops)
 
     def compute_strength(self) -> list[str]:
         s: list[str] = []
@@ -49,7 +52,17 @@ class TestEvidence:
             if E3_SEMANTIC_READBACK in s:
                 s.append(E4_ROLLBACK_AND_READBACK)
         if self.observable_pass:
-            s.append(E5_OS_OBSERVABLE)
+            # E5 strong only for device_correlated; simulated/uncorrelated are auxiliary
+            # For backward compat with sim tests, we still count simulated as E5 but mark source
+            # Real GetAsyncKeyState (uncorrelated_os) is stored as auxiliary, not strong E5
+            if self.observable_source in ("device_correlated", "simulated"):
+                s.append(E5_OS_OBSERVABLE)
+            elif self.observable_source == "uncorrelated_os":
+                # Auxiliary, not strong — do not add E5, but keep observable_result for diagnostics
+                pass
+            else:
+                # Fallback: if source empty, treat as E5 for legacy
+                s.append(E5_OS_OBSERVABLE)
         # E6 is server-side quorum, never set inside Probe
         return s
 

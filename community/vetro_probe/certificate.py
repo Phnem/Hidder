@@ -123,4 +123,6 @@ def _evidence_to_dict(ev: TestEvidence) -> dict[str, Any]:
         "evidence_strength": ev.evidence_strength,
         "status": ev.status,
         "error": ev.error,
+        "sessions": ev.sessions,
+        "recovery": ev.recovery,
     }

@@ -10,10 +10,13 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from typing import Callable, Any
+from typing import Any, Callable
 
 from .identity import PhysicalInstance, ExactIdentityGate, IdentityVerdict
 from .transport import DeviceTransport
+
+# Sentinel returned by enumerate_fn to model "multiple ambiguous candidates".
+AMBIGUOUS = "AMBIGUOUS"
 
 
 @dataclass
@@ -22,6 +25,7 @@ class ReconnectResult:
     error: str = ""
     new_identity: PhysicalInstance | None = None
     attempts: int = 0
+    session: DeviceTransport | None = None  # fresh session handle (B/C/D)
 
 
 class ReconnectManager:
@@ -29,45 +33,65 @@ class ReconnectManager:
         self,
         transport: DeviceTransport,
         identity_gate: ExactIdentityGate,
-        enumerate_fn: Callable[[], PhysicalInstance | None],
+        enumerate_fn: Callable[[], Any],
         timeout_ms: int = 5000,
         poll_ms: int = 200,
+        firmware_check: Callable[[PhysicalInstance], tuple[bool, str]] | None = None,
     ) -> None:
         self.transport = transport
         self.identity_gate = identity_gate
         self.enumerate_fn = enumerate_fn
         self.timeout_ms = timeout_ms
         self.poll_ms = poll_ms
+        self.firmware_check = firmware_check
+        self._current_transport: DeviceTransport = transport
         self._expected_session: int | None = None
 
     def begin_reconnect_write(self) -> None:
         """Call immediately after issuing the write that triggers disconnect."""
-        self._expected_session = self.transport.current_session_id()
-        self.transport.invalidate()
+        self._expected_session = self._current_transport.current_session_id()
+        self._current_transport.invalidate()
 
-    def wait_for_reconnect(self) -> ReconnectResult:
+    def acquire_fresh(self) -> ReconnectResult:
+        """Wait for re-enumeration, verify exact identity + firmware, then return a FRESH session.
+
+        The previous session (even one that gave a bad readback) is NEVER reused.
+        Returns ReconnectResult(session=<new DeviceTransport>) on success.
+        """
         start = time.time()
         attempts = 0
         while (time.time() - start) * 1000 < self.timeout_ms:
             attempts += 1
             inst = self.enumerate_fn()
+            if inst == AMBIGUOUS:
+                return ReconnectResult(False, "ambiguous reacquire: multiple candidate identities", None, attempts, None)
             if inst is None:
                 time.sleep(self.poll_ms / 1000)
                 continue
             verdict = self.identity_gate.evaluate(inst)
             if not verdict.passed:
-                return ReconnectResult(False, f"identity mismatch after reconnect: {verdict.reason}", inst, attempts)
-            # transport must have new session; for FakeTransport we expect caller to simulate_reconnect
-            if self.transport.is_connected():
-                # stale session check: if session id did not change, it's stale
-                if self._expected_session is not None and self.transport.current_session_id() == self._expected_session:
-                    # still stale handle, keep waiting
-                    time.sleep(self.poll_ms / 1000)
-                    continue
-                return ReconnectResult(True, "", inst, attempts)
-            # if still disconnected but identity ok, wait a bit for transport to come back
+                return ReconnectResult(False, f"identity mismatch after reconnect: {verdict.reason}", inst, attempts, None)
+            if self.firmware_check is not None:
+                fw_ok, fw_reason = self.firmware_check(inst)
+                if not fw_ok:
+                    return ReconnectResult(False, f"firmware check failed: {fw_reason}", inst, attempts, None)
+            # identity + firmware OK -> acquire a brand-new session from the CURRENT session base
+            try:
+                base = self._current_transport
+                new_transport = base.fresh_session()
+            except NotImplementedError:
+                return ReconnectResult(False, "transport does not support fresh_session", inst, attempts, None)
+            except Exception as exc:
+                return ReconnectResult(False, f"reacquire failed: {exc}", inst, attempts, None)
+            self._current_transport = new_transport
+            if new_transport is not None and new_transport.is_connected():
+                return ReconnectResult(True, "", inst, attempts, new_transport)
             time.sleep(self.poll_ms / 1000)
-        return ReconnectResult(False, "reconnect timeout", None, attempts)
+        return ReconnectResult(False, "reconnect timeout", None, attempts, None)
+
+    def wait_for_reconnect(self) -> ReconnectResult:
+        # Backward-compat shim: delegate to fresh acquisition.
+        return self.acquire_fresh()
 
 
 def execute_with_reconnect(

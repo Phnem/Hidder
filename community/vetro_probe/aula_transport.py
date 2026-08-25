@@ -48,18 +48,34 @@ def _get_product_by_uuid(uuid: int):
     return reg.resolve_by_uuid(uuid)
 
 
+# Monotonic per-process session counter so A/B/C/D have distinct session ids on real/sim too.
+_session_counter = __import__("itertools").count(1)
+
+
 class AulaHidTransport(DeviceTransport):
     """Typed transport that talks to real hardware via HidRawTransport or simulator."""
 
     def __init__(self, raw: Any, product: Any) -> None:
         self.raw = raw
         self.product = product
-        self._session_id = 1
+        self._session_id = next(_session_counter)
         self._valid = True
+        self._sim_device: Any = None
         # Cache for ops without true GET (he.rt/he.deadzone) — last set value echo
         self._rt_cache: dict[str, Any] = {}
         # cache baseline for simple ops to allow rollback without re-reading product?
         # No, always read fresh.
+
+    def fresh_session(self) -> "AulaHidTransport":
+        """Invalidate current and return a brand-new AulaHidTransport (fresh handle)."""
+        self.invalidate()
+        if self._sim_device is not None:
+            new_raw = self._sim_device.reconnect()
+            new = AulaHidTransport(raw=new_raw, product=self.product)
+            new._sim_device = self._sim_device
+            return new
+        # real hardware: fresh open + identity
+        return AulaHidTransport.open_real(uuid=self.product.uuid)
 
     @classmethod
     def open_real(cls, uuid: int | None = None) -> "AulaHidTransport":

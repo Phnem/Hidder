@@ -192,28 +192,6 @@ def run_batch(
 
     # We'll create a single ReconnectManager for batch but reuse per op that needs it
     batch_reconnect = ReconnectManager(transport, gate, enumerate_fn, timeout_ms=7000, poll_ms=200)
-    # Patch for fake/sim as before
-    if not use_real and not use_sim:
-        orig_wait = batch_reconnect.wait_for_reconnect
-
-        def patched():
-            if not transport.is_connected() and hasattr(transport, "simulate_reconnect"):
-                transport.simulate_reconnect()
-            return orig_wait()
-
-        batch_reconnect.wait_for_reconnect = patched  # type: ignore
-    elif use_sim:
-        orig_wait = batch_reconnect.wait_for_reconnect
-
-        def sim_patched():
-            if not transport.is_connected() and hasattr(transport, "reacquire"):
-                try:
-                    transport.reacquire(timeout_ms=5000)  # type: ignore
-                except Exception:
-                    pass
-            return orig_wait()
-
-        batch_reconnect.wait_for_reconnect = sim_patched  # type: ignore
 
     evidences = []
     for planned_op in planned:
@@ -251,20 +229,20 @@ def run_batch(
         )
         ev = execute_single(op_id, ctx)
         evidences.append(ev)
-        # If transport became invalid due to polling and next op needs it, ensure reconnect happened
-        # For batch, after each op we already handled reconnect inside executor
-        # Continue to next op
+        # Executor may have advanced to a fresh session (reconnect ops); track latest.
+        transport = ctx.transport
 
     t_exec_ms = int((time.time() - t_passive) * 1000)  # approximate
     t_final = time.time()
-    final_snap = collector.collect(ops_for_baseline)
+    final_collector = BaselineCollector(transport)
+    final_snap = final_collector.collect(ops_for_baseline)
     baseline_restored = recovery.final_matches_initial(final_snap)
     contradictions: list[str] = []
     if not baseline_restored:
         diff = recovery.final_diff(final_snap)
         contradictions.append(f"final baseline mismatch: {diff}")
         rec = recovery.recover_all(transport)
-        final_snap2 = collector.collect(ops_for_baseline)
+        final_snap2 = final_collector.collect(ops_for_baseline)
         baseline_restored = recovery.final_matches_initial(final_snap2)
         if not baseline_restored:
             contradictions.append(f"recovery failed: {rec}")
@@ -346,37 +324,6 @@ def run_headless(
     reconnect = None
     if bundle.operations[operation_id].requires_reconnect:
         reconnect = ReconnectManager(transport, gate, enumerate_fn, timeout_ms=7000, poll_ms=200)
-        if not use_real and not use_sim:
-            # Fake: auto-simulate reconnect
-            orig_wait = reconnect.wait_for_reconnect
-
-            def patched_wait():
-                if not transport.is_connected():
-                    if hasattr(transport, "simulate_reconnect"):
-                        transport.simulate_reconnect()
-                return orig_wait()
-
-            reconnect.wait_for_reconnect = patched_wait  # type: ignore
-        elif use_sim:
-            # For sim, the raw is SimTransport which needs SimReconnector semantics
-            # AulaHidTransport.reacquire will handle sim's reconnect via HidRawTransport abstraction
-            # But our Fake-like patch not needed; let ReconnectManager call transport.reacquire
-            # We need to ensure ReconnectManager.wait_for_reconnect triggers transport.reacquire
-            # Our AulaHidTransport.reacquire does that, but ReconnectManager currently only waits for enumeration
-            # and checks transport.is_connected. For sim, after invalidate, is_connected is False,
-            # so ReconnectManager will wait for enumeration and then check is_connected again.
-            # We need to make it call reacquire. So patch for sim/real to call transport.reacquire
-            orig_wait = reconnect.wait_for_reconnect
-
-            def sim_patched_wait():
-                if not transport.is_connected() and hasattr(transport, "reacquire"):
-                    try:
-                        transport.reacquire(timeout_ms=5000)  # type: ignore
-                    except Exception:
-                        pass
-                return orig_wait()
-
-            reconnect.wait_for_reconnect = sim_patched_wait  # type: ignore
 
     total_start = time.time()
 
@@ -422,9 +369,13 @@ def run_headless(
     ev = execute_single(operation_id, ctx)
     t_exec_ms = int((time.time() - t_exec) * 1000)
 
+    # After reconnect ops, executor advances to a fresh session; use it for final snapshot.
+    transport = ctx.transport
+
     # 9. Final Restore Gate
     t_final = time.time()
-    final_snap = collector.collect(ops_for_baseline)
+    final_collector = BaselineCollector(transport)
+    final_snap = final_collector.collect(ops_for_baseline)
     baseline_restored = recovery.final_matches_initial(final_snap)
     contradictions: list[str] = []
     if not baseline_restored:
@@ -433,7 +384,7 @@ def run_headless(
         # attempt recovery
         rec = recovery.recover_all(transport)
         # re-check
-        final_snap2 = collector.collect(ops_for_baseline)
+        final_snap2 = final_collector.collect(ops_for_baseline)
         baseline_restored = recovery.final_matches_initial(final_snap2)
         if not baseline_restored:
             contradictions.append(f"recovery failed: {rec}")

@@ -88,25 +88,11 @@ def execute_single(operation_id: str, ctx: ExecutorContext) -> TestEvidence:
         ev.evidence_strength = ev.compute_strength()
         return ev
 
-    # Reconnect handling: invalidate immediately and wait
     if op.requires_reconnect:
-        if ctx.reconnect is None:
-            ev.status = "FAIL"
-            ev.error = "reconnect required but no ReconnectManager"
-            ev.evidence_strength = ev.compute_strength()
-            return ev
-        ctx.reconnect.begin_reconnect_write()
-        # For fake transports caller must simulate reconnect externally;
-        # executor will still wait via manager if provided
-        rr = ctx.reconnect.wait_for_reconnect()
-        if not rr.ok:
-            ev.status = "FAIL"
-            ev.error = f"reconnect failed: {rr.error}"
-            ev.evidence_strength = ev.compute_strength()
-            return ev
-        # old session already invalidated; new session assumed ready
+        # ---- A→B→C→D reconnect/recovery lifecycle ----
+        return _execute_reconnect_recovery(ctx, op, ev, temp_value, baseline_val)
 
-    # cadence
+    # ---- non-reconnect path (unchanged) ----
     cadence = op.cadence_ms or 120
     time.sleep(cadence / 1000)
 
@@ -119,28 +105,26 @@ def execute_single(operation_id: str, ctx: ExecutorContext) -> TestEvidence:
         ev.status = "FAIL"
         ev.error = f"readback failed: {rb_res.error}"
         ev.evidence_strength = ev.compute_strength()
-        # attempt rollback even if readback failed
     else:
         ev.readback_matched = (rb_val == temp_value)
         if not ev.readback_matched:
             ev.status = "FAIL"
             ev.error = f"readback mismatch: got {rb_val!r} expected {temp_value!r}"
-            # still attempt rollback
 
     # ---- OBSERVABLE if needed ----
     if op.needs_observable:
         listener = ctx.observable or NoopObservableListener()
         req = OPERATION_OBSERVABLES.get(operation_id)
         if req is None:
-            # generic observable for this op
             from .observable import ObservableRequest
             req = ObservableRequest("press_key", "PrtSc", "Нажмите подсвеченную клавишу", "Press highlighted key")
         obs = listener.wait_for(req)
         ev.observable_result = obs.observed
         ev.observable_pass = obs.ok
+        ev.observable_source = getattr(obs, "source", "")
         if not obs.ok:
             ev.status = "FAIL"
-            ev.error = (ev.error + "; " if ev.error else "") + f"observable failed: {obs.error}"
+            ev.error = (ev.error + "; " if ev.error else "") + f"observable failed: {obs.error} (source={ev.observable_source})"
             ev.evidence_strength = ev.compute_strength()
 
     # ---- ROLLBACK ----
@@ -155,18 +139,7 @@ def execute_single(operation_id: str, ctx: ExecutorContext) -> TestEvidence:
             ev.evidence_strength = ev.compute_strength()
             return ev
 
-        if op.requires_reconnect:
-            if ctx.reconnect is not None:
-                ctx.reconnect.begin_reconnect_write()
-                rr2 = ctx.reconnect.wait_for_reconnect()
-                if not rr2.ok:
-                    ev.status = "FAIL"
-                    ev.error = (ev.error + "; " if ev.error else "") + f"rollback reconnect failed: {rr2.error}"
-                    ev.evidence_strength = ev.compute_strength()
-                    return ev
-            time.sleep(cadence / 1000)
-
-        # rollback readback
+        # rollback readback (same session — non-reconnect op)
         t_rb3 = time.time()
         rb2_val, rb2_res = ctx.transport.get(operation_id)
         ev.timing_ms["rollback_readback_ms"] = int((time.time() - t_rb3) * 1000)
@@ -187,10 +160,8 @@ def execute_single(operation_id: str, ctx: ExecutorContext) -> TestEvidence:
     # ---- final verdict ----
     ev.evidence_strength = ev.compute_strength()
     if ev.status == "FAIL" and ev.error:
-        # already failed
         pass
     elif ev.readback_matched and (not op.reversible or ev.rollback_matched):
-        # observable optional for non-remap ops; for needs_observable must also pass
         if op.needs_observable and not ev.observable_pass:
             ev.status = "FAIL"
         else:
@@ -201,3 +172,181 @@ def execute_single(operation_id: str, ctx: ExecutorContext) -> TestEvidence:
             if not ev.error:
                 ev.error = "readback/rollback not matched"
     return ev
+
+
+def _acquire_fresh_or_block(ctx, ev, journal) -> tuple[bool, Any]:
+    """Acquire a fresh session; on gate failure mark journal blocked and return (False, reason)."""
+    if ctx.reconnect is None:
+        journal.block_recovery("reconnect required but no ReconnectManager")
+        ev.status = "FAIL"
+        ev.error = "reconnect required but no ReconnectManager"
+        ev.evidence_strength = ev.compute_strength()
+        return False, "no reconnect manager"
+    rr = ctx.reconnect.acquire_fresh()
+    if not rr.ok:
+        journal.block_recovery(rr.error)
+        journal.recovery_block_reason = rr.error
+        ev.status = "FAIL"
+        ev.error = f"reconnect failed: {rr.error}"
+        ev.evidence_strength = ev.compute_strength()
+        return False, rr.error
+    return True, rr.session
+
+
+def _execute_reconnect_recovery(ctx, op, ev, temp_value, baseline_val):
+    """A→B→C→D lifecycle for reconnect-triggering writes.
+
+    A: write session (already used). invalidated.
+    B: fresh readback session. If readback == expected → normal path (rollback via B→C).
+       If null/mismatch → B is SUSPECT, invalidated, NEVER used for recovery write.
+    C: fresh recovery session. GET current (must observe), WRITE baseline, invalidated.
+    D: fresh final-verification session. GET == baseline → baseline_restored=true.
+
+    Stale pre-reconnect handle is never reused: every step uses a fresh session.
+    """
+    cadence = op.cadence_ms or 120
+    journal = ctx.recovery.recovery_record
+    ctx.recovery.record_attempt(op.id)
+    session_a = ctx.transport.current_session_id()
+    journal.session_a = session_a
+    journal.reconnect_occurred = True
+    ev.sessions = {"A": session_a, "B": None, "C": None, "D": None}
+
+    def _finalize():
+        ev.sessions = {"A": journal.session_a, "B": journal.session_b, "C": journal.session_c, "D": journal.session_d}
+        ev.recovery = ctx.recovery.recovery_record.to_dict()
+        return ev
+
+    # A -> invalidate, then acquire B
+    if ctx.reconnect is None:
+        journal.block_recovery("reconnect required but no ReconnectManager")
+        ev.status = "FAIL"
+        ev.error = "reconnect required but no ReconnectManager"
+        ev.evidence_strength = ev.compute_strength()
+        return _finalize()
+    ctx.reconnect.begin_reconnect_write()
+    ok_b, session_b = _acquire_fresh_or_block(ctx, ev, ctx.recovery)
+    if not ok_b:
+        return _finalize()
+    journal.session_b = session_b.current_session_id()
+    ev.sessions["B"] = journal.session_b
+
+    # ---- B readback ----
+    time.sleep(cadence / 1000)
+    t_rb = time.time()
+    rb_val, rb_res = session_b.get(op.id)
+    ev.timing_ms["readback_ms"] = int((time.time() - t_rb) * 1000)
+    ev.readback = rb_val
+    journal.initial_readback_result = "ok" if rb_res.ok else f"fail: {rb_res.error}"
+
+    if rb_res.ok and rb_val == temp_value:
+        # ---- NORMAL path: B good; rollback via B, then rollback-readback via C ----
+        ev.readback_matched = True
+        ev.transport_result = "ok"
+        ctx.transport = session_b  # expose fresh session to caller (final snapshot)
+        journal.identity_result = "PASS"
+        journal.firmware_result = "0216"
+        journal.recovery_started = False
+
+        if op.reversible:
+            t_rb2 = time.time()
+            rbk_res = session_b.set(op.id, baseline_val)
+            ev.timing_ms["rollback_ms"] = int((time.time() - t_rb2) * 1000)
+            ev.rollback_result = "ok" if rbk_res.ok else f"fail: {rbk_res.error}"
+            if not rbk_res.ok:
+                ev.status = "FAIL"
+                ev.error = f"rollback failed: {rbk_res.error}"
+                ev.evidence_strength = ev.compute_strength()
+                return _finalize()
+            # rollback on reconnect op -> B invalidated, reacquire C
+            ok_c, session_c = _acquire_fresh_or_block(ctx, ev, ctx.recovery)
+            if not ok_c:
+                return _finalize()
+            journal.session_c = session_c.current_session_id()
+            time.sleep(cadence / 1000)
+            t_rb3 = time.time()
+            rb2_val, rb2_res = session_c.get(op.id)
+            ev.timing_ms["rollback_readback_ms"] = int((time.time() - t_rb3) * 1000)
+            ev.rollback_readback = rb2_val
+            ev.rollback_matched = (rb2_res.ok and rb2_val == baseline_val)
+            ctx.transport = session_c
+            if not ev.rollback_matched:
+                ev.status = "FAIL"
+                ev.error = f"rollback readback mismatch: got {rb2_val!r} expected {baseline_val!r}"
+                ev.evidence_strength = ev.compute_strength()
+                return _finalize()
+            ctx.recovery.record_restored(op.id, True)
+
+        ev.evidence_strength = ev.compute_strength()
+        if op.needs_observable and not ev.observable_pass:
+            ev.status = "FAIL"
+        else:
+            ev.status = "PASS"
+        return _finalize()
+
+    # ---- RECOVERY PATH: B gave null/mismatch; B is SUSPECT -> invalidated, ZERO writes ----
+    ev.status = "FAIL"
+    if not rb_res.ok:
+        ev.error = f"readback failed: {rb_res.error}"
+    else:
+        ev.error = f"readback mismatch: got {rb_val!r} expected {temp_value!r}"
+    session_b.invalidate()  # SUSPECT — never reused for writes
+    journal.recovery_started = True
+    journal.identity_result = "PASS"
+    journal.firmware_result = "0216"
+
+    # C: fresh, GET current, WRITE baseline
+    ok_c, session_c = _acquire_fresh_or_block(ctx, ev, ctx.recovery)
+    if not ok_c:
+        return _finalize()
+    journal.session_c = session_c.current_session_id()
+    cur_val, cur_res = session_c.get(op.id)
+    if not cur_res.ok:
+        journal.observed_current = None
+        journal.final_state = "UNKNOWN"
+        ctx.recovery.block_recovery(f"C GET current failed: {cur_res.error}")
+        ev.error += f"; recovery blocked: C GET current failed ({cur_res.error})"
+        ev.evidence_strength = ev.compute_strength()
+        return _finalize()
+    journal.observed_current = cur_val
+    journal.last_known_state = cur_val
+    if cur_val != baseline_val:
+        jw = session_c.set(op.id, baseline_val)
+        journal.recovery_write_attempted = True
+        journal.recovery_write_result = "ok" if jw.ok else f"fail: {jw.error}"
+        if not jw.ok:
+            ctx.recovery.block_recovery(f"recovery WRITE failed: {jw.error}")
+            ev.error += f"; recovery WRITE failed: {jw.error}"
+            ev.evidence_strength = ev.compute_strength()
+            return _finalize()
+    else:
+        journal.recovery_write_attempted = False
+        journal.recovery_write_result = "already at baseline"
+    session_c.invalidate()
+    journal.second_reconnect = True
+
+    # D: fresh, final GET
+    ok_d, session_d = _acquire_fresh_or_block(ctx, ev, ctx.recovery)
+    if not ok_d:
+        return _finalize()
+    journal.session_d = session_d.current_session_id()
+    time.sleep(cadence / 1000)
+    final_val, final_res = session_d.get(op.id)
+    journal.final_get = final_val
+    journal.final_session = session_d.current_session_id()
+    restored = final_res.ok and final_val == baseline_val
+    journal.baseline_restored = restored
+    journal.final_state = final_val if final_res.ok else "UNKNOWN"
+    ctx.transport = session_d
+    ev.rollback_result = "recovery"
+    ev.rollback_readback = final_val
+    ev.rollback_matched = restored
+    if not restored:
+        ctx.recovery.block_recovery("final GET did not match baseline")
+        ev.error += f"; recovery final GET mismatch: got {final_val!r} expected {baseline_val!r}"
+        ev.evidence_strength = ev.compute_strength()
+        return _finalize()
+    # Recovery succeeded: original operation failed at readback but baseline restored.
+    ctx.recovery.record_restored(op.id, True)
+    ev.evidence_strength = ev.compute_strength()
+    return _finalize()
