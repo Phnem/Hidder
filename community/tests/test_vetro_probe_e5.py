@@ -42,10 +42,10 @@ def test_e5_remap_with_observable_via_sim():
     sim = AulaKbV3SimDevice(product=hero)
     transport = AulaHidTransport.from_sim(sim)
 
-    instance = mock_hero84_instance(firmware="1.17.3")
+    instance = mock_hero84_instance(firmware="0216")
     gate = ExactIdentityGate(bundle)
     verdict = gate.evaluate(instance)
-    assert verdict.passed
+    assert verdict.passed, verdict.reason
 
     collector = BaselineCollector(transport)
     # Baseline for remap

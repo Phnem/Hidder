@@ -124,7 +124,7 @@ def example_hero84_bundle() -> Bundle:
         "product": {"vid": "0x372E", "pid": "0x103E", "name": "AULA HERO84 HE", "uuid": "18691697672197"},
         "family": "aula_kb_v3_wired",
         "connection": {"mode": "wired"},
-        "firmware": {"branch": "1.17"},
+        "firmware": {"branch": "0216"},
         "capabilities": {
             "rgb_core": True,
             "polling": True,

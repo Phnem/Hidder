@@ -32,6 +32,11 @@ class ObservableResult:
     observed: dict[str, Any] | None = None
     error: str = ""
     latency_ms: int = 0
+    # Classification for E5 strength (per requirement)
+    # - "simulated": FakeObservable auto-pass (not hardware)
+    # - "uncorrelated_os": GetAsyncKeyState/GetCursorPos (auxiliary, not strong)
+    # - "device_correlated": WM_INPUT hDevice matches PhysicalInstance (strong E5)
+    source: str = "simulated"  # simulated | uncorrelated_os | device_correlated | prototype
 
 
 class ObservableListener(ABC):
@@ -41,7 +46,7 @@ class ObservableListener(ABC):
 
 
 class FakeObservableListener(ObservableListener):
-    """Deterministic fake: pre-program expected observations."""
+    """Deterministic fake: pre-program expected observations. Always simulated, never strong E5."""
 
     def __init__(self, expectations: dict[str, dict[str, Any]] | None = None, auto_pass: bool = True) -> None:
         # key: "press_key:PrtSc" etc
@@ -53,11 +58,11 @@ class FakeObservableListener(ObservableListener):
         if key in self.expectations:
             exp = self.expectations[key]
             if exp.get("fail"):
-                return ObservableResult(False, error=exp.get("error", "expected observable not seen"))
-            return ObservableResult(True, observed=exp, latency_ms=120)
+                return ObservableResult(False, error=exp.get("error", "expected observable not seen"), source="simulated")
+            return ObservableResult(True, observed=exp, latency_ms=120, source="simulated")
         if self.auto_pass:
-            return ObservableResult(True, observed={"kind": req.kind, "target": req.target, "auto": True}, latency_ms=80)
-        return ObservableResult(False, error="timeout — no OS event")
+            return ObservableResult(True, observed={"kind": req.kind, "target": req.target, "auto": True}, latency_ms=80, source="simulated")
+        return ObservableResult(False, error="timeout — no OS event", source="simulated")
 
 
 class NoopObservableListener(ObservableListener):
@@ -90,25 +95,22 @@ def _vk_for_target(target: str) -> int | None:
 
 
 class WinRealKeyboardListener(ObservableListener):
-    """Polls GetAsyncKeyState for the expected VK. Shows prompt, waits for key press."""
+    """Polls GetAsyncKeyState — prototype fallback, NOT strong E5 (uncorrelated_os)."""
 
     def wait_for(self, req: ObservableRequest) -> ObservableResult:
         import ctypes
 
         vk = _vk_for_target(req.target)
         if vk is None:
-            # Unknown target, fall back to generic: wait for any key (user must press highlighted)
             vk = 0x41  # A as default
         prompt = req.prompt_en or f"Press {req.target} once"
-        print(f"\n[Observable] {prompt} (waiting {req.timeout_ms//1000}s)...")
-        # Flush
+        print(f"\n[Observable] {prompt} (uncorrelated OS, prototype — waiting {req.timeout_ms//1000}s)...")
         try:
             ctypes.windll.user32.GetAsyncKeyState(vk)
         except Exception:
             pass
         start = time.time()
         deadline = start + req.timeout_ms / 1000.0
-        # Also handle generic "any key" if vk is None: poll all A-Z
         poll_vks = [vk] if vk else list(VK_MAP.values())[:10]
         while time.time() < deadline:
             for code in poll_vks:
@@ -116,12 +118,12 @@ class WinRealKeyboardListener(ObservableListener):
                     state = ctypes.windll.user32.GetAsyncKeyState(code)
                     if state & 0x8000:
                         latency = int((time.time() - start) * 1000)
-                        print(f"[Observable] Detected VK {code:#x} ({req.target}) after {latency}ms")
-                        return ObservableResult(True, observed={"vk": code, "target": req.target}, latency_ms=latency)
+                        print(f"[Observable] Detected VK {code:#x} ({req.target}) after {latency}ms (uncorrelated)")
+                        return ObservableResult(True, observed={"vk": code, "target": req.target, "uncorrelated": True}, latency_ms=latency, source="uncorrelated_os")
                 except Exception:
                     break
             time.sleep(0.02)
-        return ObservableResult(False, error=f"timeout waiting for {req.target} (VK {vk:#x})")
+        return ObservableResult(False, error=f"timeout waiting for {req.target} (VK {vk:#x})", source="uncorrelated_os")
 
 
 class WinRealMouseMoveListener(ObservableListener):
@@ -136,8 +138,8 @@ class WinRealMouseMoveListener(ObservableListener):
             ctypes.windll.user32.GetCursorPos(ctypes.byref(pt))
             x0, y0 = pt.x, pt.y
         except Exception:
-            return ObservableResult(False, error="GetCursorPos failed")
-        print(f"\n[Observable] {req.prompt_en or 'Move mouse'} (waiting {req.timeout_ms//1000}s)...")
+            return ObservableResult(False, error="GetCursorPos failed", source="uncorrelated_os")
+        print(f"\n[Observable] {req.prompt_en or 'Move mouse'} (uncorrelated, waiting {req.timeout_ms//1000}s)...")
         start = time.time()
         deadline = start + req.timeout_ms / 1000.0
         while time.time() < deadline:
@@ -145,27 +147,49 @@ class WinRealMouseMoveListener(ObservableListener):
                 ctypes.windll.user32.GetCursorPos(ctypes.byref(pt))
                 if abs(pt.x - x0) > 30 or abs(pt.y - y0) > 30:
                     latency = int((time.time() - start) * 1000)
-                    return ObservableResult(True, observed={"dx": pt.x - x0, "dy": pt.y - y0}, latency_ms=latency)
+                    return ObservableResult(True, observed={"dx": pt.x - x0, "dy": pt.y - y0}, latency_ms=latency, source="uncorrelated_os")
             except Exception:
                 break
             time.sleep(0.05)
-        return ObservableResult(False, error="timeout waiting for mouse move")
+        return ObservableResult(False, error="timeout waiting for mouse move", source="uncorrelated_os")
 
 
 class WinRealHEAnalogListener(ObservableListener):
-    """For HE analog press: observes that device sends input report with travel.
-    Currently stub that falls back to keyboard poll (since analog stream needs HID).
-    For real HE, we could open HID input report stream, but for now prompt and fake PASS.
-    """
+    """HE analog — currently unsupported/stub, never PASS for strong E5."""
 
     def wait_for(self, req: ObservableRequest) -> ObservableResult:
-        print(f"\n[Observable] {req.prompt_en or req.prompt_ru} (HE analog — press W fully)")
-        # In real implementation, open HID input report and wait for travel > 90%
-        # For now, treat as keyboard W press as proxy
-        kb = WinRealKeyboardListener()
-        # Map HE W to VK_W
-        he_req = ObservableRequest("press_key", "W", req.prompt_ru, req.prompt_en, timeout_ms=req.timeout_ms)
-        return kb.wait_for(he_req)
+        print(f"\n[Observable] {req.prompt_en or req.prompt_ru} (HE analog — press W fully) [UNSUPPORTED/STUB]")
+        return ObservableResult(False, error="HE analog listener unsupported/stub — not PASS", source="prototype")
+
+
+class WinRawInputListener(ObservableListener):
+    """Strong E5: WM_INPUT with hDevice correlation to PhysicalInstance.
+
+    Registers for Raw Input, waits for WM_INPUT, extracts hDevice, correlates
+    with the HID device path of the PhysicalInstance, and checks scancode/usage.
+    This is the only listener that yields device_correlated source and thus strong E5.
+    Currently stub that explains what would happen; real implementation requires
+    a message loop and RegisterRawInputDevices.
+    """
+
+    def __init__(self, physical_device_path: str | None = None, expected_vk: int | None = None):
+        self.physical_device_path = physical_device_path
+        self.expected_vk = expected_vk
+
+    def wait_for(self, req: ObservableRequest) -> ObservableResult:
+        print(f"\n[Observable] {req.prompt_en} — awaiting WM_INPUT from {self.physical_device_path or 'PhysicalInstance'} (strong, device-correlated)...")
+        # Real implementation:
+        #  1. RegisterRawInputDevices(RIDEV_INPUTSINK) for keyboard/mouse
+        #  2. Create hidden window, message loop
+        #  3. On WM_INPUT, GetRawInputData -> RAWINPUT.header.hDevice
+        #  4. GetRawInputDeviceInfo(hDevice, RIDI_DEVICENAME) -> compare to PhysicalInstance path
+        #  5. Check raw.data.keyboard.VKey / raw.data.mouse.usButtonFlags
+        # For now, return prototype not PASS to avoid false E5
+        return ObservableResult(
+            False,
+            error="WM_INPUT Raw Input listener not yet fully implemented — need hidden window + hDevice correlation",
+            source="prototype",
+        )
 
 
 def real_listener_for(req: ObservableRequest) -> ObservableListener:

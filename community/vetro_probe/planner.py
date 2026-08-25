@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+import json
 import sys
 from pathlib import Path
 
@@ -246,15 +247,51 @@ def _knowledge_completeness(bundle: Bundle) -> dict[str, Any]:
     return {"ratio": round(ratio, 4), "covered": covered, "total": total, "missing": []}
 
 
-def _hardware_shaped_holes(bundle: Bundle, tests: list[Any]) -> dict[str, Any]:
-    """Hardware-shaped holes: where bundle says supported but no validation, or where
-    hardware capability exists but bundle missing.
-    For now: list of bundle capabilities without a covering test PASS, and
-    list of registry caps not in bundle.
+def _load_authoritative_holes(bundle: Bundle) -> dict[str, Any] | None:
+    """Load machine-readable rank artifact for hardware-shaped holes.
+
+    For HERO84, authoritative is community/vetro_probe/knowledge/hero84_a_preview.json
+    state=A_PREVIEW holes=[rapid_trigger_units_crosscheck]. This is the single source;
+    diff is diagnostics only and must not be named authoritative.
     """
-    # Bundle caps without PASS
+    try:
+        # Only for HERO84 currently has authoritative artifact
+        uuid = int(bundle.product.uuid) if bundle.product.uuid else 0
+        if uuid == 18691697672197:
+            p = Path(__file__).resolve().parent / "knowledge" / "hero84_a_preview.json"
+            if p.is_file():
+                data = json.loads(p.read_text(encoding="utf-8"))
+                return data
+    except Exception:
+        pass
+    return None
+
+
+def _hardware_shaped_holes(bundle: Bundle, tests: list[Any]) -> dict[str, Any]:
+    """Authoritative hardware-shaped holes from rank artifact; diff only diagnostics.
+
+    For HERO84, authoritative is knowledge/hero84_a_preview.json.
+    For other products or if artifact missing, fallback to diagnostics diff but mark as such.
+    """
+    authoritative = _load_authoritative_holes(bundle)
+    if authoritative is not None:
+        holes = authoritative.get("hardware_shaped_holes", [])
+        return {
+            "authoritative": holes,
+            "authoritative_source": str(Path(__file__).resolve().parent / "knowledge" / "hero84_a_preview.json"),
+            "diagnostics": _hardware_shaped_holes_diagnostics(bundle, tests),
+            "count": len(holes),
+            "note": "authoritative holes from rank artifact; diagnostics diff is not authoritative",
+        }
+    # Fallback diagnostics only
+    diag = _hardware_shaped_holes_diagnostics(bundle, tests)
+    diag["note"] = "no authoritative artifact found — diagnostics only, not authoritative"
+    return diag
+
+
+def _hardware_shaped_holes_diagnostics(bundle: Bundle, tests: list[Any]) -> dict[str, Any]:
+    """Diagnostics diff: registry vs bundle, bundle caps without PASS. Not authoritative."""
     passed_ops = {t.operation for t in tests if getattr(t, "status", "") == "PASS"}
-    # Expand with aliases
     expanded = set(passed_ops)
     for op in list(passed_ops):
         for base, aliases in ALIASES.items():
@@ -265,8 +302,6 @@ def _hardware_shaped_holes(bundle: Bundle, tests: list[Any]) -> dict[str, Any]:
     for cap_name, supported in bundle.capabilities.items():
         if not supported:
             continue
-        # Find if any op for this cap had PASS
-        # Map cap to op ids via simple heuristic
         cap_to_ops = {
             "actuation": ["he.actuation"],
             "rapid_trigger": ["he.rt", "he.rt.enabled"],
@@ -281,7 +316,6 @@ def _hardware_shaped_holes(bundle: Bundle, tests: list[Any]) -> dict[str, Any]:
         has_pass = any(op in expanded for op in ops_for_cap)
         if not has_pass:
             holes.append(cap_name)
-    # Also registry missing
     registry_missing: list[str] = []
     try:
         import aula_kb_v3.registry as reg  # type: ignore
@@ -294,7 +328,7 @@ def _hardware_shaped_holes(bundle: Bundle, tests: list[Any]) -> dict[str, Any]:
                     registry_missing.append(cap.name)
     except Exception:
         pass
-    return {"unvalidated_bundle_caps": holes, "registry_caps_not_in_bundle": registry_missing, "count": len(holes)}
+    return {"unvalidated_bundle_caps": holes, "registry_caps_not_in_bundle": registry_missing, "count": len(holes), "diagnostics_only": True}
 
 
 def coverage_report(bundle: Bundle, tests: list[Any], kind: str | None = None) -> dict[str, Any]:

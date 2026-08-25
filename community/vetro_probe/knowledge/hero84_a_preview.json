@@ -1,0 +1,25 @@
+{
+  "schema": "vetro.rank-evaluation.v1",
+  "product": {
+    "uuid": 18691697672197,
+    "display_name": "HERO 84 HE",
+    "vid": "0x372E",
+    "pid": "0x103E"
+  },
+  "family": "aula_kb_v3_wired",
+  "state": "A_PREVIEW",
+  "software_shaped_blockers": 0,
+  "hardware_shaped_holes": [
+    {
+      "id": "rapid_trigger_units_crosscheck",
+      "op": "keyboard.he.rapid_trigger.set",
+      "preview_since": "2026-08-22",
+      "quorum_policy": "core_write",
+      "observations": 0,
+      "what_a_user_does_to_produce_one": "меняет единицы измерения rapid trigger (mm vs raw) и проверяет cross-check",
+      "why_hardware_only": "units must be verified on real device, not from vendor JS bounds"
+    }
+  ],
+  "provenance": "DB/reports/oracle/aula_web/AULA_KB_V3_PRODUCT_CAPABILITY_MATRIX_V2.json + PHYSICAL_VALIDATION_PASS.md",
+  "as_of_ir_commit": "ca1d15723479"
+}

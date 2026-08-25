@@ -101,7 +101,7 @@ def descriptor_hash_from_bytes(raw: bytes) -> str:
     return hashlib.sha256(raw).hexdigest()[:16]
 
 
-def mock_hero84_instance(firmware: str = "1.17.3", connection: str = "wired") -> PhysicalInstance:
+def mock_hero84_instance(firmware: str = "0216", connection: str = "wired") -> PhysicalInstance:
     return PhysicalInstance(
         vid="0x372E",
         pid="0x103E",
@@ -118,41 +118,74 @@ def mock_hero84_instance(firmware: str = "1.17.3", connection: str = "wired") ->
 def discover_real_instance_via_raw(raw: Any, path: str | None = None) -> PhysicalInstance:
     """Build PhysicalInstance from an already-opened HidRawTransport.
 
-    Tries to read report descriptor hash and UUID-derived firmware branch.
-    Falls back to bundle-compatible defaults if descriptor not readable.
-    For verified HERO84 we pin firmware to branch 1.17 (instance 1.17.3).
+    Observed firmware MUST be obtained via safe read_firmware_version (0x82 sub 2 LE),
+    not assigned from constant. Only if raw is sim (pdevemu) or read returns unknown
+    do we fallback to pinned HERO84 firmware for simulation.
     """
+    from .firmware_identity import HERO84_FIRMWARE_BRANCH, read_firmware_via_raw
+
     vid = "0x372E"
     pid = "0x103E"
     descriptor_hash = descriptor_hash_from_bytes(b"real-descriptor-unavailable")
-    firmware = "1.17.3"
-    # Try to read descriptor via hidapi if raw has descriptor access
+    firmware = "unknown"
+    is_real_hid = False
+    # Detect real HidRawTransport (has _dev) vs sim (_SimTransport)
     try:
-        if hasattr(raw, "_dev") and raw._dev is not None:
-            try:
-                import hid  # type: ignore
+        # Real HID has _dev attribute; sim (_SimTransport) does not
+        if hasattr(raw, "_dev"):
+            # Could be HidRawTransport (real) or None; check class name
+            if raw.__class__.__name__ == "HidRawTransport":
+                is_real_hid = True
+                try:
+                    import hid  # type: ignore
 
-                # hidapi does not expose descriptor directly; we hash path + vid:pid as fallback
-                descriptor_hash = descriptor_hash_from_bytes(f"{vid}:{pid}:{path}".encode())
-            except Exception:
-                pass
-        # Try to get UUID via operations.connect if raw supports send/recv
+                    descriptor_hash = descriptor_hash_from_bytes(f"{vid}:{pid}:{path}".encode())
+                except Exception:
+                    pass
+            elif raw.__class__.__name__ == "_SimTransport":
+                is_real_hid = False
+            else:
+                # Fallback: if has _dev and not sim, treat as real
+                is_real_hid = raw is not None and getattr(raw, "_dev", None) is not None
+        elif hasattr(raw, "send") and hasattr(raw, "recv"):
+            # For _SimTransport without _dev, definitely sim
+            if raw.__class__.__name__ == "_SimTransport":
+                is_real_hid = False
+            else:
+                is_real_hid = False
+    except Exception:
+        pass
+
+    # Try to get UUID via operations.connect for product identity (separate from firmware)
+    try:
         try:
             import aula_kb_v3.operations as ops  # type: ignore
         except ImportError:
             import DB.aula_kb_v3.operations as ops  # type: ignore
-        try:
-            prod = ops.connect(raw)  # type: ignore
-            # For verified HERO84, keep pinned branch; for others use note or pseudo
+        prod = ops.connect(raw)  # type: ignore
+        # For firmware, try safe read only for real HID; for sim, use pinned
+        if is_real_hid:
+            observed = read_firmware_via_raw(raw)
+            firmware = observed if observed != "unknown" else "unknown"
+        else:
+            # Sim or fallback: use pinned verified branch for HERO84
             if prod.uuid == 18691697672197:
-                firmware = "1.17.3"
+                firmware = HERO84_FIRMWARE_BRANCH
             else:
                 firmware = prod.firmware_revision_note or f"uuid-{prod.uuid}"
                 if not firmware or firmware == "unknown":
                     firmware = f"uuid-{prod.uuid}"
-        except Exception:
-            # Keep pinned firmware for HERO84
-            firmware = "1.17.3"
+        # If is_real_hid and observed is unknown, keep unknown (will BLOCK writes as required)
+    except Exception:
+        # If UUID connect fails, try firmware read directly for real HID
+        if is_real_hid:
+            try:
+                observed = read_firmware_via_raw(raw)
+                firmware = observed if observed != "unknown" else "unknown"
+            except Exception:
+                firmware = "unknown"
+        else:
+            firmware = HERO84_FIRMWARE_BRANCH if not is_real_hid else "unknown"
     except Exception:
         pass
 

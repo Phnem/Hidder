@@ -18,6 +18,8 @@ _DB_PATH = Path(__file__).resolve().parents[2] / "DB"
 if str(_DB_PATH) not in sys.path:
     sys.path.insert(0, str(_DB_PATH))
 
+from .firmware_identity import HERO84_FIRMWARE_BRANCH
+
 HERO84_UUID = 18691697672197
 
 # Mapping from capsule operation_id -> (SafeCommandId, bounds_key, reversible, readback, reconnect)
@@ -142,10 +144,8 @@ def export_bundle_for_uuid(uuid: int = HERO84_UUID) -> dict[str, Any]:
         },
         "family": product.protocol_family,
         "connection": {"mode": "wired" if product.connection_type.name == "WIRED" else "wireless"},
-        # Firmware: wildcard ("unknown") is NOT allowed for writes — only for passive discovery.
-        # For verified HERO84 we pin to branch "1.17" (instance 1.17.3 passes prefix). For other
-        # products we keep unknown but writes will be BLOCKED until branch is explicitly verified.
-        "firmware": {"branch": "1.17" if str(product.uuid) == str(HERO84_UUID) else "unknown"},
+        # Firmware: single source via firmware_identity.HERO84_FIRMWARE_BRANCH = "0216"
+        "firmware": {"branch": HERO84_FIRMWARE_BRANCH if str(product.uuid) == str(HERO84_UUID) else "unknown"},
         "capabilities": capabilities_for_bundle,
         "bounds": bounds,
         "operations": ops,

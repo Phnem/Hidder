@@ -42,8 +42,9 @@ desktop.ini
 $RECYCLE.BIN/
 .DS_Store
 
-# Vetro Probe schemas are tracked (exception to *.json)
+# Vetro Probe schemas + rank/knowledge artifacts are tracked (exception to *.json)
 !community/vetro_probe/schema/*.json
+!community/vetro_probe/knowledge/*.json
 
 # Provenance records are evidence, not downloads. The blanket `*.json` rule
 # above targets fetched vendor packages and databases; these manifests are
