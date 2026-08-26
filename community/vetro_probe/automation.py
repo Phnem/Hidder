@@ -81,6 +81,8 @@ class AutoProbeRun:
         reconnect_timeout_ms: int = 15000,
         allowed_ops: list[str] | None = None,
         label: str = "auto",
+        block_knowledge_holes: bool = False,
+        block_missing_strong_e5: bool = False,
     ) -> None:
         self.bundle = bundle
         self.transport = transport
@@ -92,6 +94,9 @@ class AutoProbeRun:
         self.reconnect_timeout_ms = reconnect_timeout_ms
         self.allowed_ops = allowed_ops
         self.label = label
+        self.block_knowledge_holes = block_knowledge_holes
+        self.block_missing_strong_e5 = block_missing_strong_e5
+        self._block_reasons: dict[str, str] = {}
         self.run_dir = Path(run_dir or Path.cwd() / f"vetro_auto_{int(time.time())}")
         self.store = RunStateStore(self.run_dir)
         self.cp: RunCheckpoint | None = self.store.load()
@@ -233,6 +238,12 @@ class AutoProbeRun:
             return CLS_UNKNOWN
         if op_id in FORBIDDEN_OP_IDS or any(op_id.startswith(p + ".") or op_id == p for p in FORBIDDEN_PREFIXES):
             return CLS_BLOCKED
+        if self.block_knowledge_holes and op_id == "he.rt":
+            self._block_reasons[op_id] = "BLOCKED_BY_KNOWLEDGE_HOLE (rapid_trigger_units_crosscheck is authoritative OPEN)"
+            return CLS_BLOCKED
+        if self.block_missing_strong_e5 and op_id == "keyboard.remap":
+            self._block_reasons[op_id] = "BLOCKED_BY_MISSING_STRONG_E5 (only uncorrelated_os available; strong E5 requires WM_INPUT hDevice correlation)"
+            return CLS_BLOCKED
         if op.kind == "observable":
             return CLS_MANUAL
         if not op.reversible:
@@ -252,12 +263,14 @@ class AutoProbeRun:
             op_id = p.operation_id
             cls = self._classify_op(op_id)
             op = self.bundle.operations[op_id]
+            block_reason = self._block_reasons.get(op_id, "")
             self.plan.append({
                 "operation": op_id,
                 "classification": cls,
                 "why_selected": p.reason,
-                "why_safe": f"production_safe reversible, readback+rollback, bounds present, firmware gate"
-                             if cls == CLS_AUTO_REVERSIBLE else "blocked/unknown",
+                "why_safe": block_reason or (
+                    "production_safe reversible, readback+rollback, bounds present, firmware gate"
+                    if cls == CLS_AUTO_REVERSIBLE else "blocked/unknown"),
                 "expected_observable": op.needs_observable,
                 "rollback_method": "restore_value",
                 "reconnect_required": op.requires_reconnect,
@@ -334,14 +347,29 @@ class AutoProbeRun:
             self.baseline_restored = True
             self.final_state = {"restored": True, "note": "no mutable ops executed"}
             return
-        final_snap = BaselineCollector(self.transport).collect(ops)
+        # Fresh session + cadence between GETs: a burst of reads on one real-HID session can
+        # desync replies (observed on real HERO84) and return stale/temporary values.
+        try:
+            fresh = self.make_transport()
+        except Exception:
+            fresh = self.transport
+        collector = BaselineCollector(fresh)
+        values: dict[str, Any] = {}
+        errors: dict[str, str] = {}
+        for op in ops:
+            time.sleep(0.05)
+            val, res = fresh.get(op)
+            if res.ok:
+                values[op] = val
+            else:
+                errors[op] = res.error
         mismatches = {}
         for op, init in self.baselines.items():
-            final = final_snap.values.get(op)
+            final = values.get(op)
             if final != init:
-                mismatches[op] = {"expected": init, "actual": final, "error": final_snap.errors.get(op, "")}
+                mismatches[op] = {"expected": init, "actual": final, "error": errors.get(op, "")}
         self.baseline_restored = not mismatches
-        self.final_state = {"restored": self.baseline_restored, "mismatches": mismatches}
+        self.final_state = {"restored": self.baseline_restored, "mismatches": mismatches, "fresh_session": True}
         if not self.baseline_restored:
             self.contradictions.append(f"final baseline mismatch: {mismatches}")
 

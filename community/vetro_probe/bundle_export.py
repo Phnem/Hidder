@@ -28,7 +28,8 @@ OP_MAP: dict[str, dict[str, Any]] = {
     # HE surface
     "he.actuation": {
         "kind": "set", "reversible": True, "readback": True, "cadence_ms": 150,
-        "bounds": {"min": 0.0, "max": 4.0, "unit": "mm", "safe_values": [0.6, 1.0, 1.5]},
+        # 0.5mm gridline (ACTUATION_GRIDLINE_MM) — off-grid values (e.g. 0.6) are rejected by hardware (readback 0.0, real HERO84)
+        "bounds": {"min": 0.0, "max": 4.0, "unit": "mm", "safe_values": [0.5, 1.0, 1.5, 2.0]},
         "cap": "actuation",
     },
     "he.rt": {

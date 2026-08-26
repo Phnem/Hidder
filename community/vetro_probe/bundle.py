@@ -133,7 +133,7 @@ def example_hero84_bundle() -> Bundle:
             "profiles": True,
         },
         "bounds": {
-            "he.actuation": {"min": 0.1, "max": 3.4, "unit": "mm", "safe_values": [0.4, 0.6, 0.8, 1.0]},
+            "he.actuation": {"min": 0.1, "max": 3.4, "unit": "mm", "safe_values": [0.5, 1.0, 1.5, 2.0]},
             "he.rt": {"min": 0, "max": 1},
             "keyboard.polling": {"min": 125, "max": 8000, "unit": "hz", "safe_values": [1000, 2000]},
             "light.rgb_core": {"min": 0, "max": 0xFFFFFF, "safe_values": [0xFF0000]},

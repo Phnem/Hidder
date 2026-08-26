@@ -490,9 +490,13 @@ def main(argv: list[str] | None = None) -> int:
             return 1
 
         run_dir = args.auto_dir or Path.cwd() / f"vetro_auto_{int(time.time())}"
+        # Real run policy: do not weaken eligibility to fill the plan.
+        block_holes = args.real
+        block_e5 = args.real
         run = AutoProbeRun(bundle=bundle, transport=transport, instance=instance,
                            enumerate_fn=enumerate_fn, firmware_check=fw_check,
-                           make_transport=make_transport, run_dir=run_dir, label=args.label)
+                           make_transport=make_transport, run_dir=run_dir, label=args.label,
+                           block_knowledge_holes=block_holes, block_missing_strong_e5=block_e5)
         run.run()
         print(run.summary())
         return 0 if run.verdict in ("COMPLETE",) else 2
