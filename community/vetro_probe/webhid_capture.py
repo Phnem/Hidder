@@ -211,34 +211,78 @@ class WebHidCapture:
         self.poll_thread: threading.Thread | None = None
 
     # ------------------------------------------------------------ browser
+    def _profile_dir(self) -> Path:
+        """Dedicated PERSISTENT capture profile (WebHID grants persist across runs).
+        Lives under the repo but is gitignored; contains only Vetro capture state."""
+        return Path(__file__).resolve().parent / ".capture_profile"
+
     def _find_browser(self) -> tuple[str, Path] | None:
         cands = [
-            ("msedge", Path(r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe")),
-            ("msedge", Path(r"C:\Program Files\Microsoft\Edge\Application\msedge.exe")),
             ("chrome", Path(r"C:\Program Files\Google\Chrome\Application\chrome.exe")),
             ("chrome", Path(r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe")),
-            ("msedge", Path(os.environ.get("LOCALAPPDATA", "")) / r"Microsoft\Edge\Application\msedge.exe"),
             ("chrome", Path(os.environ.get("LOCALAPPDATA", "")) / r"Google\Chrome\Application\chrome.exe"),
+            ("msedge", Path(r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe")),
+            ("msedge", Path(r"C:\Program Files\Microsoft\Edge\Application\msedge.exe")),
+            ("msedge", Path(os.environ.get("LOCALAPPDATA", "")) / r"Microsoft\Edge\Application\msedge.exe"),
         ]
         for name, p in cands:
             if p.is_file():
                 return name, p
         return None
 
+    def _kill_stale_profile_browsers(self) -> int:
+        """Kill any browser process already bound to the dedicated capture profile
+        (prevents a handoff to a stale isolated instance). Never touches the personal profile."""
+        killed = 0
+        try:
+            import psutil  # type: ignore
+
+            profile = str(self._profile_dir()).lower()
+            for proc in psutil.process_iter(["name", "cmdline"]):
+                try:
+                    if proc.info["name"] in ("chrome.exe", "msedge.exe", "chrome", "msedge"):
+                        cmd = " ".join(proc.info["cmdline"] or []).lower()
+                        if profile in cmd:
+                            proc.terminate()
+                            killed += 1
+                except Exception:
+                    continue
+            if killed:
+                time.sleep(1.0)
+        except Exception:
+            pass
+        return killed
+
     def launch(self) -> bool:
         bi = self._find_browser()
         if not bi:
             return False
         name, exe = bi
-        self.temp_profile_dir = Path(tempfile.mkdtemp(prefix="VetroCapture_"))
+        self._kill_stale_profile_browsers()
+        self.temp_profile_dir = self._profile_dir()
+        self.temp_profile_dir.mkdir(parents=True, exist_ok=True)
         with socket.socket() as s:
             s.bind(("", 0))
             self.port = s.getsockname()[1]
         cmd = [str(exe), f"--remote-debugging-port={self.port}", f"--user-data-dir={self.temp_profile_dir}",
-               "--no-first-run", "--no-default-browser-check", "--disable-popup-blocking", self.target_url]
+               "--no-first-run", "--no-default-browser-check", "--disable-sync",
+               "--disable-extensions", "--disable-component-extensions-with-background-pages",
+               "--disable-default-apps", "--disable-popup-blocking",
+               "--disable-features=msEdgeFirstRunExperience,msEdgeWelcomePage,msEdgeFre,msEdgeSyncPromo,msEdgeSidebarV2",
+               self.target_url]
         self.browser_proc = subprocess.Popen(cmd)
-        time.sleep(2.0)
+        time.sleep(2.5)
         return True
+
+    def isolation_panel(self) -> dict[str, Any]:
+        return {
+            "dedicated_user_data_dir": "YES",
+            "existing_personal_profile": "NO",
+            "third_party_extensions": "NONE",
+            "first_run_sync_modal": "NO",
+            "startup_url": self.target_url,
+            "capture_profile": str(self._profile_dir()),
+        }
 
     def _fetch_targets(self) -> list[dict[str, Any]]:
         try:
@@ -369,7 +413,10 @@ def run_health_and_sweep(trace_path: Path, url: str, idle_seconds: int) -> int:
         print("FAIL: browser not found", file=sys.stderr)
         return 1
     cap.start()
-    print("Browser launched. Connect the HERO84 and open the Lighting tab in the browser window.")
+    print("BROWSER ISOLATION:")
+    for k, v in cap.isolation_panel().items():
+        print(f"  {k} = {v}")
+    print("Browser launched (dedicated isolated profile). Connect the HERO84 and open the Lighting tab.")
     input("Press Enter AFTER the app recognizes HERO84: ")
     time.sleep(1.0)
     h = cap.health_status()
@@ -415,7 +462,10 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     cap.start()
     if args.health:
-        print("Browser launched. Connect HERO84 and grant WebHID permission, then press Enter.")
+        print("BROWSER ISOLATION:")
+        for k, v in cap.isolation_panel().items():
+            print(f"  {k} = {v}")
+        print("Browser launched (dedicated isolated profile). Connect HERO84 and grant WebHID permission, then press Enter.")
         input("Press Enter: ")
         time.sleep(1.0)
         h = cap.health_status()
@@ -432,6 +482,9 @@ def _self_check(url: str) -> int:
         print("FAIL: browser not found", file=sys.stderr)
         return 1
     cap.start()
+    print("BROWSER ISOLATION:")
+    for k, v in cap.isolation_panel().items():
+        print(f"  {k} = {v}")
     time.sleep(8)  # allow targets to attach + controlled reload to settle
     print("TARGETS:")
     for t in cap.targets.values():
@@ -440,7 +493,7 @@ def _self_check(url: str) -> int:
         hooked = t.evaluate("typeof window.HIDDevice !== 'undefined' && !!window.HIDDevice.prototype.sendReport.__vetroHooked")
         print(f"  {t.id[:8]} url={t.url[:70]} injected={injected} navigator.hid={hid} sendReport_hooked={hooked}")
     cap.close()
-    print("SELF-CHECK done. injected=YES on a hero.aulastar.com page proves main-world injection.")
+    print("SELF-CHECK done. injected=YES on a hero.aulastar.com page proves main-world injection in the isolated profile.")
     return 0
 
 

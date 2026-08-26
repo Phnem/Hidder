@@ -46,6 +46,9 @@ $RECYCLE.BIN/
 !community/vetro_probe/schema/*.json
 !community/vetro_probe/knowledge/*.json
 
+# Vetro Probe dedicated capture browser profile (persistent WebHID grants; not committed)
+community/vetro_probe/.capture_profile/
+
 # Provenance records are evidence, not downloads. The blanket `*.json` rule
 # above targets fetched vendor packages and databases; these manifests are
 # hand-produced records of WHERE an artifact came from and WHAT its hash was,
