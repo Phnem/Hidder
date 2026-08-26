@@ -1,0 +1,785 @@
+{
+  "schema": "vetro.brand-strategy-registry.v1",
+  "generated": "deterministic audit snapshot",
+  "note": "Brand grouping = RESEARCH STRATEGY only, NOT protocol-family equivalence. Brand != family; routing is brand -> candidate families -> exact family -> strategy.",
+  "groups": [
+    {
+      "group": "aula",
+      "brands": [
+        "AULA",
+        "aula",
+        "Aula"
+      ],
+      "aliases": [
+        "aula-bytech"
+      ],
+      "families": [
+        "aula_kb_v3_wired",
+        "kb_by_v3_wired",
+        "aula_he_v3"
+      ],
+      "k_matrix": {
+        "K0": "FULL",
+        "K1": "FULL",
+        "K2": "FULL",
+        "K3": "FULL",
+        "K4": "FULL",
+        "K5": "FULL",
+        "K6": "FULL",
+        "K7": "FULL",
+        "K8": "FULL",
+        "K9": "FULL",
+        "K10": "FULL",
+        "K11": "FULL",
+        "K12": "FULL",
+        "K13": "FULL",
+        "K14": "FULL",
+        "K15": "FULL",
+        "K16": "FULL",
+        "K17": "FULL",
+        "K18": "PART",
+        "K19": "FULL",
+        "K20": "PART"
+      },
+      "protocol_rank": "A Preview",
+      "hardware_rank": "HIGH (K19 confirmed on HERO84; K20 PART)",
+      "family_confidence": "HIGH",
+      "research_strategy": "REFERENCE_REGRESSION",
+      "research_targets": [
+        "K20 cross-device/cross-firmware",
+        "lighting full-state restoration",
+        "rapid_trigger_units_crosscheck",
+        "strong observable (WM_INPUT)",
+        "firmware-specific boundaries",
+        "deviation detection from known aula family"
+      ],
+      "avoid_redundant_targets": [
+        "K0",
+        "K3",
+        "K4",
+        "K5",
+        "K6",
+        "K7",
+        "K8",
+        "K9"
+      ],
+      "known_destructive_classes": [
+        "factory_reset(0x11/0)",
+        "reset_layer_keys(0x11/1)",
+        "remove_advanced_key(0x12)",
+        "full_he_calibration(0x94/0x98)"
+      ],
+      "provenance": [
+        "PHYSICAL_VALIDATION_PASS.md",
+        "AULA_KB_V3_PRODUCT_CAPABILITY_MATRIX_V2.json",
+        "HERO84 physical captures"
+      ]
+    },
+    {
+      "group": "mchose",
+      "brands": [
+        "MCHOSE",
+        "Mchose",
+        "BY",
+        "CZ"
+      ],
+      "aliases": [
+        "by",
+        "cz",
+        "mchose"
+      ],
+      "families": [
+        "by_wired",
+        "cz_*"
+      ],
+      "k_matrix": {
+        "K0": "FULL",
+        "K1": "FULL",
+        "K2": "FULL",
+        "K3": "FULL",
+        "K4": "FULL",
+        "K5": "FULL",
+        "K6": "FULL",
+        "K7": "FULL",
+        "K8": "FULL",
+        "K9": "FULL",
+        "K10": "FULL",
+        "K11": "PART",
+        "K12": "FULL",
+        "K13": "PART",
+        "K14": "CAND",
+        "K15": "FULL",
+        "K16": "FULL",
+        "K17": "FULL",
+        "K18": "PART",
+        "K19": "NONE",
+        "K20": "PART"
+      },
+      "protocol_rank": "A Preview",
+      "hardware_rank": "NONE (no real hardware)",
+      "family_confidence": "MEDIUM",
+      "research_strategy": "HARDWARE_GROUND_TRUTH_CLOSURE",
+      "research_targets": [
+        "K13",
+        "K14",
+        "K15",
+        "K18",
+        "K19",
+        "K20",
+        "real bounds",
+        "BY/CZ semantic intent",
+        "factory-default 0x04 without reset",
+        "polling",
+        "HE ops",
+        "profiles/keymap"
+      ],
+      "avoid_redundant_targets": [
+        "K0",
+        "K1",
+        "K3",
+        "K4",
+        "K5",
+        "K6",
+        "K7",
+        "K8",
+        "K9"
+      ],
+      "known_destructive_classes": [
+        "factory reset",
+        "calibration",
+        "flash/DFU"
+      ],
+      "provenance": [
+        "mchose oracle corpus (repo)"
+      ]
+    },
+    {
+      "group": "conformance_open_spec",
+      "brands": [
+        "Logitech",
+        "Logitech G",
+        "Razer",
+        "Corsair",
+        "SteelSeries",
+        "Wooting"
+      ],
+      "aliases": [
+        "logitech",
+        "razer",
+        "corsair",
+        "steelseries",
+        "wooting"
+      ],
+      "families": [
+        "*"
+      ],
+      "k_matrix": {
+        "K0": "FULL",
+        "K1": "FULL",
+        "K2": "PART",
+        "K3": "FULL",
+        "K4": "FULL",
+        "K5": "FULL",
+        "K6": "FULL",
+        "K7": "FULL",
+        "K8": "FULL",
+        "K9": "FULL",
+        "K10": "PART",
+        "K11": "PART",
+        "K12": "PART",
+        "K13": "PART",
+        "K14": "PART",
+        "K15": "PART",
+        "K16": "PART",
+        "K17": "FULL",
+        "K18": "PART",
+        "K19": "PART",
+        "K20": "PART"
+      },
+      "protocol_rank": "B+",
+      "hardware_rank": "MEDIUM",
+      "family_confidence": "HIGH",
+      "research_strategy": "CONFORMANCE_VALIDATION",
+      "research_targets": [
+        "concrete VID/PID/model",
+        "firmware variant",
+        "representative GET",
+        "representative reversible WRITE",
+        "rollback",
+        "device-specific exceptions",
+        "vendor extensions",
+        "deviation from open-source impl",
+        "K19/K20 confidence"
+      ],
+      "avoid_redundant_targets": [
+        "K6",
+        "K7",
+        "K8",
+        "K9"
+      ],
+      "known_destructive_classes": [
+        "vendor-specific reset/DFU"
+      ],
+      "provenance": [
+        "open-source/spec ecosystem prior art"
+      ]
+    },
+    {
+      "group": "conformance_qmk",
+      "brands": [
+        "Keychron",
+        "MonsGeek",
+        "KBDfans",
+        "Glorious",
+        "NuPhy",
+        "MelGeek",
+        "Akko",
+        "YMDK",
+        "Meletrix",
+        "Wuque",
+        "Qwertykeys",
+        "Mode Designs",
+        "Drop"
+      ],
+      "aliases": [
+        "keychron",
+        "monsgeek",
+        "kbdfans",
+        "glorious",
+        "nuphy",
+        "melgeek",
+        "akko",
+        "ymdk",
+        "meletrix",
+        "wuque",
+        "qwertykeys",
+        "mode",
+        "drop"
+      ],
+      "families": [
+        "via",
+        "qmk",
+        "vial",
+        "*"
+      ],
+      "k_matrix": {
+        "K0": "FULL",
+        "K1": "PART",
+        "K2": "PART",
+        "K3": "FULL",
+        "K4": "FULL",
+        "K5": "FULL",
+        "K6": "FULL",
+        "K7": "FULL",
+        "K8": "FULL",
+        "K9": "FULL",
+        "K10": "PART",
+        "K11": "PART",
+        "K12": "PART",
+        "K13": "PART",
+        "K14": "NONE",
+        "K15": "PART",
+        "K16": "PART",
+        "K17": "FULL",
+        "K18": "PART",
+        "K19": "PART",
+        "K20": "PART"
+      },
+      "protocol_rank": "B+",
+      "hardware_rank": "LOW",
+      "family_confidence": "HIGH",
+      "research_strategy": "CONFORMANCE_VALIDATION",
+      "research_targets": [
+        "prove VIA/QMK/VIAL family FIRST (brand != family)",
+        "Raw HID identity",
+        "protocol/version",
+        "matrix dims",
+        "layer count",
+        "model keymap",
+        "vendor extensions",
+        "HE extensions",
+        "K19 for exact model"
+      ],
+      "avoid_redundant_targets": [
+        "K6",
+        "K7",
+        "K8"
+      ],
+      "known_destructive_classes": [
+        "QMK reset",
+        "EEPROM clear"
+      ],
+      "provenance": [
+        "QMK/VIA/VIAL standard",
+        "model-specific keymap data"
+      ],
+      "family_gate": "VIA/QMK/VIAL must be proven per model; never assume from brand alone"
+    },
+    {
+      "group": "partial_mature",
+      "brands": [
+        "ASUS ROG",
+        "ASUS",
+        "HyperX"
+      ],
+      "aliases": [
+        "asus",
+        "rog",
+        "hyperx"
+      ],
+      "families": [
+        "*"
+      ],
+      "k_matrix": {
+        "K0": "FULL",
+        "K1": "FULL",
+        "K2": "PART",
+        "K3": "FULL",
+        "K4": "FULL",
+        "K5": "FULL",
+        "K6": "FULL",
+        "K7": "PART",
+        "K8": "PART",
+        "K9": "PART",
+        "K10": "PART",
+        "K11": "PART",
+        "K12": "PART",
+        "K13": "PART",
+        "K14": "CAND",
+        "K15": "PART",
+        "K16": "PART",
+        "K17": "PART",
+        "K18": "PART",
+        "K19": "NONE",
+        "K20": "PART"
+      },
+      "protocol_rank": "B",
+      "hardware_rank": "NONE",
+      "family_confidence": "MEDIUM",
+      "research_strategy": "CONFORMANCE_VALIDATION",
+      "research_targets": [
+        "exact family/plugin identification",
+        "bounds",
+        "rollback",
+        "reconnect",
+        "safety",
+        "physical observables",
+        "firmware-specific behavior"
+      ],
+      "avoid_redundant_targets": [
+        "K0",
+        "K1"
+      ],
+      "known_destructive_classes": [
+        "vendor reset",
+        "DFU"
+      ],
+      "provenance": [
+        "multi-plugin prior art",
+        "partial captures"
+      ],
+      "family_gate": "ASUS/HyperX ship multiple protocols; family must be resolved per device"
+    },
+    {
+      "group": "forensic_high",
+      "brands": [
+        "ATK",
+        "VXE",
+        "VGN",
+        "Attack Shark",
+        "Chosfox",
+        "Lamzu",
+        "Darmoshark",
+        "Machenike",
+        "EPOMAKER",
+        "Ajazz",
+        "A4Tech",
+        "Bloody",
+        "Pulsar Gaming",
+        "Dark Project",
+        "ARDOR GAMING",
+        "CHERRY",
+        "Cougar Gaming",
+        "MSI",
+        "NZXT",
+        "Gigabyte",
+        "AORUS",
+        "Alienware",
+        "Turtle Beach",
+        "Cooler Master"
+      ],
+      "aliases": [
+        "atk",
+        "vxe",
+        "vgn",
+        "attack shark",
+        "chosfox",
+        "lamzu",
+        "darmoshark",
+        "machenike",
+        "epomaker",
+        "ajazz",
+        "a4tech",
+        "bloody",
+        "pulsar",
+        "dark project",
+        "ardor",
+        "cherry",
+        "cougar",
+        "msi",
+        "nzxt",
+        "gigabyte",
+        "aorus",
+        "alienware",
+        "turtle beach",
+        "cooler master"
+      ],
+      "families": [
+        "*"
+      ],
+      "k_matrix": {
+        "K0": "FULL",
+        "K1": "FULL",
+        "K2": "PART",
+        "K3": "FULL",
+        "K4": "FULL",
+        "K5": "FULL",
+        "K6": "PART",
+        "K7": "PART",
+        "K8": "PART",
+        "K9": "PART",
+        "K10": "PART",
+        "K11": "PART",
+        "K12": "PART",
+        "K13": "PART",
+        "K14": "CAND",
+        "K15": "PART",
+        "K16": "PART",
+        "K17": "PART",
+        "K18": "PART",
+        "K19": "NONE",
+        "K20": "PART"
+      },
+      "protocol_rank": "B+",
+      "hardware_rank": "NONE",
+      "family_confidence": "MEDIUM",
+      "research_strategy": "FORENSIC_HARDWARE_CLOSURE_HIGH",
+      "research_targets": [
+        "K10 actual encoding",
+        "K11 real bounds/grid",
+        "K12 layouts",
+        "K13 readback",
+        "K14 rollback",
+        "K15 reconnect",
+        "K16 destructive separation",
+        "K17 semantic intent",
+        "K18 observable",
+        "K19 real hardware"
+      ],
+      "avoid_redundant_targets": [
+        "K0",
+        "K1",
+        "K6",
+        "K7",
+        "K8",
+        "K9"
+      ],
+      "known_destructive_classes": [
+        "factory reset",
+        "calibration",
+        "flash/DFU"
+      ],
+      "provenance": [
+        "static protocol inventory (repo)"
+      ],
+      "goal": "turn static hypotheses into hardware facts; generate NEW knowledge, not yes/no confirmation"
+    },
+    {
+      "group": "forensic_partial",
+      "brands": [
+        "Royal Kludge",
+        "Feker",
+        "Skyloong",
+        "Yunzii",
+        "Womier",
+        "Xinmeng",
+        "Zaopin",
+        "WLMOUSE",
+        "WOBKEY",
+        "Scyrox",
+        "Sikakeyb",
+        "Phylina",
+        "Rawm",
+        "Waizowl",
+        "Dareu",
+        "DrunkDeer",
+        "Endgame Gear",
+        "Finalmouse",
+        "Fnatic Gear",
+        "Vaxee",
+        "Ducky",
+        "Filco",
+        "HHKB",
+        "Leopold",
+        "Realforce",
+        "Zowie",
+        "Red Square",
+        "Kzzi",
+        "Gamakay",
+        "X-Bows",
+        "E-Yooso",
+        "Kemove",
+        "Fantech",
+        "Thunderobot",
+        "IQUNIX",
+        "Kysona",
+        "Leobog",
+        "Ninjutso",
+        "Rapoo",
+        "Delux",
+        "FL ESPORTS",
+        "G-Wolves",
+        "Incott",
+        "IROK",
+        "Madlions",
+        "Varmilo",
+        "Weikav",
+        "Chilkey",
+        "Cidoo",
+        "Tecware",
+        "Redragon"
+      ],
+      "aliases": [
+        "royal kludge",
+        "feker",
+        "skyloong",
+        "yunzii",
+        "womier",
+        "xinmeng",
+        "zaopin",
+        "wlmouse",
+        "wobkey",
+        "scyrox",
+        "sikakeyb",
+        "phylina",
+        "rawm",
+        "waizowl",
+        "dareu",
+        "drunkdeer",
+        "endgame",
+        "finalmouse",
+        "fnatic",
+        "vaxee",
+        "ducky",
+        "filco",
+        "hhkb",
+        "leopold",
+        "realforce",
+        "zowie",
+        "red square",
+        "kzzi",
+        "gamakay",
+        "x-bows",
+        "e-yooso",
+        "kemove",
+        "fantech",
+        "thunderobot",
+        "iqunix",
+        "kysona",
+        "leobog",
+        "ninjutso",
+        "rapoo",
+        "delux",
+        "fl esports",
+        "g-wolves",
+        "incott",
+        "irok",
+        "madlions",
+        "varmilo",
+        "weikav",
+        "chilkey",
+        "cidoo",
+        "tecware",
+        "redragon"
+      ],
+      "families": [
+        "*"
+      ],
+      "k_matrix": {
+        "K0": "FULL",
+        "K1": "FULL",
+        "K2": "PART",
+        "K3": "FULL",
+        "K4": "FULL",
+        "K5": "FULL",
+        "K6": "PART",
+        "K7": "CAND",
+        "K8": "CAND",
+        "K9": "CAND",
+        "K10": "CAND",
+        "K11": "CAND",
+        "K12": "CAND",
+        "K13": "CAND",
+        "K14": "CAND",
+        "K15": "CAND",
+        "K16": "CAND",
+        "K17": "CAND",
+        "K18": "CAND",
+        "K19": "NONE",
+        "K20": "PART"
+      },
+      "protocol_rank": "C",
+      "hardware_rank": "NONE",
+      "family_confidence": "LOW",
+      "research_strategy": "FORENSIC_HARDWARE_CLOSURE_PARTIAL",
+      "research_targets": [
+        "K2 firmware",
+        "K6 command confirmation",
+        "K7 serializer",
+        "K8 parser",
+        "K9 semantic mapping",
+        "K10 encoding",
+        "K11 bounds",
+        "K12 layout",
+        "then K13/K14/K15/K18/K19 when safe"
+      ],
+      "avoid_redundant_targets": [
+        "K0",
+        "K1"
+      ],
+      "known_destructive_classes": [
+        "factory reset",
+        "calibration",
+        "flash/DFU"
+      ],
+      "provenance": [
+        "partial static inventories"
+      ],
+      "conservative": true
+    },
+    {
+      "group": "controller_tier3",
+      "brands": [
+        "Roccat",
+        "Turtle Beach",
+        "EVGA",
+        "Lian Li",
+        "ThermalTake",
+        "Phanteks",
+        "Deepcool"
+      ],
+      "aliases": [
+        "roccat",
+        "turtle beach",
+        "evga",
+        "lian li",
+        "thermaltake",
+        "phanteks",
+        "deepcool"
+      ],
+      "families": [
+        "*"
+      ],
+      "k_matrix": {
+        "K0": "FULL",
+        "K1": "PART",
+        "K2": "CAND",
+        "K3": "PART",
+        "K4": "PART",
+        "K5": "CAND",
+        "K6": "CAND",
+        "K7": "CAND",
+        "K8": "CAND",
+        "K9": "CAND",
+        "K10": "CAND",
+        "K11": "CAND",
+        "K12": "CAND",
+        "K13": "CAND",
+        "K14": "CAND",
+        "K15": "CAND",
+        "K16": "CAND",
+        "K17": "CAND",
+        "K18": "CAND",
+        "K19": "NONE",
+        "K20": "NONE"
+      },
+      "protocol_rank": "C",
+      "hardware_rank": "NONE",
+      "family_confidence": "LOW",
+      "research_strategy": "CONFORMANCE_VALIDATION",
+      "research_targets": [
+        "determine device class first (may be non-keyboard)",
+        "K11-K19 gaps",
+        "concrete hardware validation"
+      ],
+      "avoid_redundant_targets": [
+        "K0"
+      ],
+      "known_destructive_classes": [
+        "vendor reset",
+        "DFU"
+      ],
+      "provenance": [
+        "tier3 peripheral inventory"
+      ],
+      "device_class_gate": "if not a keyboard, do not force keyboard ontology"
+    },
+    {
+      "group": "catalog_only",
+      "brands": [
+        "E-DRA",
+        "DarkFlash"
+      ],
+      "aliases": [
+        "e-dra",
+        "darkflash"
+      ],
+      "families": [
+        "*"
+      ],
+      "k_matrix": {
+        "K0": "PART",
+        "K1": "PART",
+        "K2": "NONE",
+        "K3": "CAND",
+        "K4": "NONE",
+        "K5": "NONE",
+        "K6": "NONE",
+        "K7": "NONE",
+        "K8": "NONE",
+        "K9": "NONE",
+        "K10": "NONE",
+        "K11": "NONE",
+        "K12": "NONE",
+        "K13": "NONE",
+        "K14": "NONE",
+        "K15": "NONE",
+        "K16": "NONE",
+        "K17": "NONE",
+        "K18": "NONE",
+        "K19": "NONE",
+        "K20": "NONE"
+      },
+      "protocol_rank": "D",
+      "hardware_rank": "NONE",
+      "family_confidence": "LOW",
+      "research_strategy": "PASSIVE_BOOTSTRAP",
+      "research_targets": [
+        "K0/K1 exact identities",
+        "K3 interfaces",
+        "K4 report sizes",
+        "K5 passive framing",
+        "descriptors",
+        "model strings",
+        "topology",
+        "reconnect behavior from normal enumeration"
+      ],
+      "avoid_redundant_targets": [],
+      "known_destructive_classes": [],
+      "provenance": [
+        "catalog-only entries"
+      ],
+      "conservative": true
+    }
+  ]
+}

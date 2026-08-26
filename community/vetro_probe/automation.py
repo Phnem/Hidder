@@ -111,6 +111,8 @@ class AutoProbeRun:
         self.baseline_restored: bool = False
         self.package_dir: Path | None = None
         self._reconnect: ReconnectManager | None = None
+        self.resolution: Any = None
+        self.knowledge_heading: dict[str, Any] = {}
 
     # ------------------------------------------------------------- transitions
     def _transition(self, state: str, reason: str) -> None:
@@ -259,6 +261,22 @@ class AutoProbeRun:
         planned = planner_plan(self.bundle)
         if self.allowed_ops:
             planned = [p for p in planned if p.operation_id in self.allowed_ops]
+        # Brand/family-aware knowledge routing (additive; never weakens safety)
+        try:
+            from .brand_router import resolve as resolve_brand
+            from .knowledge_planner import knowledge_plan_entry, value_heading
+
+            self.resolution = resolve_brand(
+                brand=self.discovery.get("brand", ""),
+                vid=self.discovery.get("vid", ""), pid=self.discovery.get("pid", ""),
+                family=self.bundle.family,
+                model=self.discovery.get("product_string", ""),
+                firmware=self.discovery.get("firmware", ""),
+            )
+            self.knowledge_heading = value_heading(self.resolution)
+        except Exception:
+            self.resolution = None
+            self.knowledge_heading = {}
         for p in planned:
             op_id = p.operation_id
             cls = self._classify_op(op_id)
@@ -276,6 +294,16 @@ class AutoProbeRun:
                 "reconnect_required": op.requires_reconnect,
                 "failure_policy": "recovery then FAILED_REQUIRES_MANUAL_RESTORE" if op.reversible else "no-op",
             })
+        # enrich with knowledge fields when a resolution is available
+        if getattr(self, "resolution", None) is not None:
+            try:
+                from .knowledge_planner import knowledge_plan_entry
+                for entry in self.plan:
+                    entry.update(knowledge_plan_entry(
+                        self.resolution, entry["operation"], planned=True,
+                        classification=entry["classification"], why_selected=entry.get("why_selected", "")))
+            except Exception:
+                pass
 
     # -------------------------------------------------------------- baselining
     def _baseline(self) -> None:
@@ -405,6 +433,20 @@ class AutoProbeRun:
             terminal=terminal,
         )
         self.package_dir = package_dir
+        # knowledge routing artifacts (additive; Probe proposes, miner accepts)
+        if self.resolution is not None:
+            try:
+                (package_dir / "knowledge.json").write_text(
+                    json.dumps({**self.resolution.to_dict(), "value": self.knowledge_heading},
+                               ensure_ascii=False, indent=2), encoding="utf-8")
+                from .knowledge_delta import build_knowledge_delta, write_knowledge_delta
+                obs = [{"operation": getattr(e, "operation", None), "status": getattr(e, "status", None),
+                        "readback_matched": getattr(e, "readback_matched", False),
+                        "rollback_matched": getattr(e, "rollback_matched", False)} for e in self.results]
+                delta = build_knowledge_delta(self.resolution, obs)
+                write_knowledge_delta(package_dir, delta)
+            except Exception:
+                pass
         self.verdict = terminal
         self.cp.phase = terminal
         if terminal != S_MANUAL or not self.cp.write_may_have_applied:
