@@ -265,3 +265,16 @@ def test_persistence_failure_before_set_b_blocks_write():
     with pytest.raises(OSError):
         run_rollback_flow(env.make, A, B, delay_s=0, on_phase=fail_intent)
     assert env.write_log == []  # ZERO writes (SET B never issued)
+
+
+def test_out_dir_scoped_recovery_ignores_unrelated_pending(tmp_path):
+    # A pending checkpoint in another dir (archived incident) must NOT trigger
+    # recovery when the new --out dir is used. Recovery is scoped to --out only.
+    other = tmp_path / "lighting_rollback_failure_001"
+    other.mkdir()
+    cp = _cp("TEMP_WRITE_APPLIED")
+    RunStateStore(str(other)).save(cp)
+
+    fresh = tmp_path / "lighting_rollback_checkpoint_v2"
+    store = RunStateStore(str(fresh))
+    assert store.load() is None  # no pending recovery for the selected path

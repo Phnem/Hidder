@@ -459,8 +459,21 @@ def run_rollback_brightness(out_dir: Path, require_real: bool) -> int:
         store.save(cp)
         print(f"EXCEPTION during {cp.phase}: {exc!r}", file=sys.stderr)
         return 2
+    print(f"BASELINE_GET = {list(A)}")
     for st in result["stages"]:
-        print(f"  [{st.get('stage')}] {st}")
+        name = st.get("stage")
+        if name == "write_B":
+            print(f"  SET_B = {'PASS' if st.get('ack') else 'FAIL'}   ECHO_B = {'PASS' if st.get('ack') else 'FAIL'}"
+                  f"   written={st.get('written')}   echo={st.get('echo')}")
+        elif name == "readback_B":
+            print(f"  GET_B = {st.get('got')}   GET_B_MATCH = {'PASS' if st.get('match') else 'FAIL'}")
+        elif name == "rollback_A":
+            print(f"  SET_A = {'PASS' if st.get('ack') else 'FAIL'}   ECHO_A = {'PASS' if st.get('ack') else 'FAIL'}"
+                  f"   FINAL_GET_A = {st.get('final_get')}   FINAL_A_MATCH = {'PASS' if st.get('match') else 'FAIL'}"
+                  f"   restore_write_issued = {st.get('restore_write_issued')}"
+                  f"   error_code = {st.get('error_code', '')}   detail = {st.get('error', '')}")
+        else:
+            print(f"  [{name}] {st}")
 
     if result["ok"]:
         cp.phase = "RESTORED"
