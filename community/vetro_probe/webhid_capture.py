@@ -334,6 +334,19 @@ class WebHidCapture:
         with open(self.trace_path, "a", encoding="utf-8") as fh:
             fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
 
+    def collect_frames(self, seconds: float, annotation: str | None = None) -> list[dict[str, Any]]:
+        deadline = time.time() + seconds
+        frames: list[dict[str, Any]] = []
+        while time.time() < deadline:
+            for t in list(self.targets.values()):
+                for ev in t.read_events():
+                    if annotation:
+                        ev["annotation"] = annotation
+                    self._write(ev)
+                    frames.append(ev)
+            time.sleep(0.02)
+        return frames
+
     # ------------------------------------------------------------ health
     def health_status(self) -> dict[str, Any]:
         per_target: list[dict[str, Any]] = []
@@ -444,6 +457,74 @@ def run_health_and_sweep(trace_path: Path, url: str, idle_seconds: int) -> int:
     return 0 if any(n > 0 for n in smoke_counts) else 3
 
 
+def run_smoke_brightness(trace_path: Path, url: str, idle_seconds: int) -> int:
+    """Minimal capture smoke: prove brightness changes produce observed outbound frames."""
+    from .lighting_diff import idle_signatures, filter_idle, byte_diff
+
+    cap = WebHidCapture(trace_path, target_url=url)
+    if not cap.launch():
+        print("FAIL: browser not found", file=sys.stderr)
+        return 1
+    cap.start()
+    print("BROWSER ISOLATION:")
+    for k, v in cap.isolation_panel().items():
+        print(f"  {k} = {v}")
+    print("Connect the HERO84 and open the Lighting tab in the isolated browser.")
+    input("Press Enter AFTER the app recognizes HERO84: ")
+    time.sleep(1.0)
+    h = cap.health_status()
+    cap.print_panel(h)
+    if h["capture_health"] != "PASS":
+        print("\nCAPTURE_HEALTH = FAIL — smoke aborted. Do not change settings.")
+        cap.close()
+        return 2
+    if not h["hero84_detected"] or not h["device_opened"]:
+        print("\nWARN: HERO84 not detected/opened — continuing smoke but may not capture device frames.")
+    print(f"\n[smoke] idle baseline {idle_seconds}s — DO NOT touch settings...")
+    idle = cap.collect_frames(float(idle_seconds), annotation="idle")
+    idle_sig = idle_signatures(idle)
+    print(f"[smoke] idle frames captured: {len(idle)} (signatures: {len(idle_sig)})")
+
+    results = []
+    for label, frm, to, action in (("brightness_1", "current", "different", "brightness change"),
+                                   ("brightness_2", "different", "original", "brightness restore")):
+        print(f"\n>>> [{label}] set BRIGHTNESS {frm} -> {to} in the app")
+        input("Press Enter AFTER applying: ")
+        cap.write_marker(action, frm, to)
+        frames = cap.collect_frames(5.0, annotation=label)
+        out = [f for f in frames if f.get("direction") in ("OUT", "feature_out", "out", "feature_out")]
+        novel = filter_idle(out, idle_sig)
+        results.append({"label": label, "frames": frames, "out": out, "novel": novel})
+        print(f"[smoke] {label}: total={len(frames)} out={len(out)} novel(non-idle)={len(novel)}")
+    cap.close()
+
+    a1 = results[0]
+    a2 = results[1]
+    n1 = a1["novel"]
+    n2 = a2["novel"]
+    smoke_pass = (len(n1) > 0 or len(n2) > 0)
+    print("\n=== BRIGHTNESS SMOKE RESULT ===")
+    for r in results:
+        n = r["novel"]
+        print(f"{r['label']}: correlated OUT frames = {len(n)}")
+        if n:
+            f = n[0]
+            print(f"  report_id={f.get('report_id')} method={f.get('method')} length={f.get('length')} hex={f.get('hex')}")
+    print(f"IDLE FRAMES FILTERED = {len(idle)}")
+    if n1 and n2:
+        diff = byte_diff(n1[0].get("hex", ""), n2[0].get("hex", ""))
+        print(f"ACTION1 <-> ACTION2 BYTE DIFF (first novel out frames): {diff}")
+    elif n1 and not n2:
+        print("ACTION1 <-> ACTION2 BYTE DIFF: only action1 produced novel out frames")
+    elif n2 and not n1:
+        print("ACTION1 <-> ACTION2 BYTE DIFF: only action2 produced novel out frames")
+    else:
+        print("ACTION1 <-> ACTION2 BYTE DIFF: none (no novel out frames)")
+    print(f"CAPTURE_SMOKE = {'PASS' if smoke_pass else 'FAIL'}")
+    print(f"trace path = {trace_path}")
+    return 0 if smoke_pass else 3
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="vetro.webhid_capture", description="Passive WebHID capture v2 (health-gated)")
     parser.add_argument("--trace", type=Path, default=Path("lighting_trace.jsonl"))
@@ -451,10 +532,17 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--health", action="store_true", help="Only show the capture health panel, then exit")
     parser.add_argument("--idle", type=int, default=40)
     parser.add_argument("--self-check", action="store_true", help="Launch browser, verify main-world injection + navigator.hid, exit (no interaction)")
+    parser.add_argument("--smoke", type=str, default=None, help="Minimal capture smoke: 'brightness' (2 brightness actions only)")
     args = parser.parse_args(argv)
 
     if args.self_check:
         return _self_check(args.url)
+
+    if args.smoke:
+        if args.smoke != "brightness":
+            print(f"unknown smoke target: {args.smoke}", file=sys.stderr)
+            return 2
+        return run_smoke_brightness(args.trace, args.url, args.idle)
 
     cap = WebHidCapture(args.trace, target_url=args.url)
     if not cap.launch():
