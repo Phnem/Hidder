@@ -431,6 +431,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--real", action="store_true", help="Use real HID hardware (requires HERO84 connected)")
     parser.add_argument("--sim", action="store_true", help="Use pdevemu simulator (no hardware)")
     parser.add_argument("--list-ops", action="store_true", help="List operations in bundle and exit")
+    parser.add_argument("--auto", action="store_true", help="Run one-command end-to-end auto flow (state machine + miner package)")
+    parser.add_argument("--auto-dir", type=Path, default=None, help="Run-state/package directory for --auto (default: vetro_auto_<ts>)")
+    parser.add_argument("--label", type=str, default="auto", help="Human label for the auto run")
     args = parser.parse_args(argv)
 
     if args.list_ops:
@@ -443,6 +446,56 @@ def main(argv: list[str] | None = None) -> int:
     if args.real and args.sim:
         print("error: --real and --sim are mutually exclusive", file=sys.stderr)
         return 2
+
+    if args.auto:
+        from .automation import AutoProbeRun
+        from .bundle import production_bundle_for_hero84
+
+        bundle = production_bundle_for_hero84() if not (args.bundle and Path(args.bundle).is_file()) else load_bundle(Path(args.bundle))
+        try:
+            if args.real:
+                from .aula_transport import AulaHidTransport
+                from .identity import discover_real_instance_via_raw
+
+                transport = AulaHidTransport.open_real(uuid=int(bundle.product.uuid) if bundle.product.uuid else None)
+                instance = discover_real_instance_via_raw(transport.raw)
+
+                def enumerate_fn():
+                    try:
+                        import hid  # type: ignore
+                        return instance if hid.enumerate(0x372E, 0x103E) else None
+                    except Exception:
+                        return None
+
+                def make_transport():
+                    return AulaHidTransport.open_real(uuid=int(bundle.product.uuid) if bundle.product.uuid else None)
+
+                fw_check = lambda inst: (inst.firmware_version == bundle.firmware_branch, f"observed {inst.firmware_version} expected {bundle.firmware_branch}")
+            else:
+                from .identity import mock_hero84_instance
+                from .transport import FakeTransport
+
+                initial = {p.operation_id: 1.0 for p in plan(bundle)}
+                if "keyboard.polling" in initial:
+                    initial["keyboard.polling"] = 3
+                if "he.actuation" in initial:
+                    initial["he.actuation"] = 1.0
+                transport = FakeTransport(initial_state=initial, reconnect_ops={"keyboard.polling"})
+                instance = mock_hero84_instance()
+                enumerate_fn = lambda: instance
+                make_transport = lambda: transport.fresh_session()
+                fw_check = None
+        except Exception as exc:
+            print(f"[VetroProbe] auto FAIL: {exc}", file=sys.stderr)
+            return 1
+
+        run_dir = args.auto_dir or Path.cwd() / f"vetro_auto_{int(time.time())}"
+        run = AutoProbeRun(bundle=bundle, transport=transport, instance=instance,
+                           enumerate_fn=enumerate_fn, firmware_check=fw_check,
+                           make_transport=make_transport, run_dir=run_dir, label=args.label)
+        run.run()
+        print(run.summary())
+        return 0 if run.verdict in ("COMPLETE",) else 2
 
     try:
         if args.batch:
