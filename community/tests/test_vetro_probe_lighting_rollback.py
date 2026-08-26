@@ -7,7 +7,8 @@ import pytest
 
 from community.vetro_probe.lighting_probe import (
     plan_brightness_temporary, is_valid_baseline, verify_echo,
-    run_rollback_flow, _recovery_required,
+    run_rollback_flow, _recovery_required, recovery_action,
+    recover_pending_checkpoint, UNCERTAIN_STATES, _checkpoint_matches_device,
 )
 from community.vetro_probe.runstate import RunCheckpoint, RunStateStore
 
@@ -83,7 +84,7 @@ def test_run_rollback_flow_happy():
     assert env.write_log == [B, A]  # temp write then immutable baseline rollback
     assert bytes(env.state) == A
     stages = [s["stage"] for s in res["stages"]]
-    assert stages == ["baseline", "write_B", "readback_B", "rollback_A"]
+    assert stages == ["write_B", "readback_B", "rollback_A"]
 
 
 def test_readback_mismatch_recovers_from_immutable_A():
@@ -124,3 +125,72 @@ def test_recovery_required_detects_pending_checkpoint(tmp_path):
     cp.closed = True
     store.save(cp)
     assert _recovery_required(tmp_path) is None
+
+
+def _cp(phase, identity=None, fw="0216"):
+    cp = RunCheckpoint(run_id="crash", operation="lighting.rollback_validation",
+                       baseline=A.hex(), attempted="", phase=phase, closed=False)
+    cp.device = identity or {"vid": "0x372E", "pid": "0x103E", "family": "aula_kb_v3_wired", "firmware": fw}
+    return cp
+
+
+def _inst(vid="0x372E", pid="0x103E", fw="0216"):
+    from types import SimpleNamespace
+    return SimpleNamespace(vid=vid, pid=pid, firmware_version=fw, family="aula_kb_v3_wired")
+
+
+def test_recovery_action_per_boundary():
+    # crash after BASELINE_SAVED, before TEMP_WRITE_INTENT -> zero recovery write
+    assert recovery_action(_cp("BASELINE_SAVED")) == "NONE"
+    # crash after TEMP_WRITE_INTENT, before SET B -> restore A
+    assert recovery_action(_cp("TEMP_WRITE_INTENT")) == "RESTORE_A"
+    # SET B succeeded then crash before TEMP_WRITE_APPLIED -> restore A
+    assert recovery_action(_cp("TEMP_WRITE_APPLIED")) == "RESTORE_A"
+    # crash after RESTORE_INTENT, before SET A -> restore A
+    assert recovery_action(_cp("RESTORE_INTENT")) == "RESTORE_A"
+    # RESTORED -> none
+    assert recovery_action(_cp("RESTORED")) == "NONE"
+    # non-lighting checkpoint -> none
+    cp = RunCheckpoint(run_id="x", operation="other", phase="TEMP_WRITE_INTENT")
+    assert recovery_action(cp) == "NONE"
+
+
+def test_recovery_restores_immutable_A_for_uncertain_states():
+    for phase in UNCERTAIN_STATES:
+        env = FakeEnv(bytes([1, 0, 255, 0, 0, 20, 2]))  # device left at some B-ish state
+        rec = recover_pending_checkpoint(_cp(phase), env.make)
+        assert rec["action"] == "RESTORE_A"
+        assert rec["writes"] == 1
+        assert rec["ok"] is True
+        assert bytes(env.state) == A  # restored to immutable baseline
+        assert env.write_log == [A]  # only baseline rollback write; never B-derived
+
+
+def test_recovery_identity_fw_gate():
+    # different identity/FW -> zero writes (recovery blocked)
+    cp = _cp("TEMP_WRITE_APPLIED")
+    assert _checkpoint_matches_device(cp, _inst()) is True
+    assert _checkpoint_matches_device(cp, _inst(vid="0x1234")) is False
+    assert _checkpoint_matches_device(cp, _inst(fw="9999")) is False
+
+
+def test_run_rollback_flow_write_ahead_phase_order():
+    phases = []
+    env = FakeEnv(A)
+    B, _ = plan_brightness_temporary(A)
+    res = run_rollback_flow(env.make, A, B, delay_s=0, on_phase=phases.append)
+    assert phases == ["BASELINE_SAVED", "TEMP_WRITE_INTENT", "TEMP_WRITE_APPLIED", "RESTORE_INTENT", "RESTORED"]
+    assert res["ok"] is True
+
+
+def test_persistence_failure_before_set_b_blocks_write():
+    # simulate durable persist failing at TEMP_WRITE_INTENT -> no physical SET B
+    env = FakeEnv(A)
+    B, _ = plan_brightness_temporary(A)
+
+    def fail_intent(state):
+        if state == "TEMP_WRITE_INTENT":
+            raise OSError("disk full")
+    with pytest.raises(OSError):
+        run_rollback_flow(env.make, A, B, delay_s=0, on_phase=fail_intent)
+    assert env.write_log == []  # ZERO writes (SET B never issued)

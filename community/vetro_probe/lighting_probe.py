@@ -54,21 +54,28 @@ def verify_echo(written: bytes, echo: bytes | None) -> bool:
     return echo is not None and bytes(echo) == bytes(written)
 
 
-def run_rollback_flow(make_session, A: bytes, B: bytes, echo_fn=None, delay_s: float = 2.5) -> dict:
+def run_rollback_flow(make_session, A: bytes, B: bytes, echo_fn=None, delay_s: float = 2.5,
+                      on_phase=None) -> dict:
     """A -> temp write (echo ACK) -> fresh GET B == B -> rollback write A (echo) ->
-    fresh final GET A == A. Returns {ok, stages, recovered}."""
+    fresh final GET A == A. Write-ahead: on_phase('TEMP_WRITE_INTENT') fires BEFORE the
+    first physical SET B, on_phase('RESTORE_INTENT') BEFORE rollback SET A.
+    Returns {ok, stages, recovered}."""
     stages: list[dict] = []
     res: dict = {"ok": False, "stages": stages, "recovered": False}
 
-    # A: baseline already supplied
-    stages.append({"stage": "baseline", "expected": A.hex()})
+    if on_phase:
+        on_phase("BASELINE_SAVED")
 
-    # B: temporary write session (echo ACK)
+    # B: temporary write session (echo ACK). Write-ahead intent persisted BEFORE SET B.
+    if on_phase:
+        on_phase("TEMP_WRITE_INTENT")
     s1 = make_session()
     echo1 = s1.set_light(B)
     s1.close()
     ack = verify_echo(B, echo1)
     stages.append({"stage": "write_B", "written": B.hex(), "echo": (echo1 or b"").hex(), "ack": ack})
+    if on_phase:
+        on_phase("TEMP_WRITE_APPLIED")
     if not ack:
         res["error"] = "echo ACK for temporary write missing/mismatch"
         return res
@@ -81,21 +88,51 @@ def run_rollback_flow(make_session, A: bytes, B: bytes, echo_fn=None, delay_s: f
                    "match": rb == B})
     if rb != B:
         res["error"] = f"fresh GET != temporary state: {bytes(rb or b'').hex()} != {B.hex()}"
-        # immediate recovery from immutable baseline A
+        # immediate recovery from immutable baseline A (write-ahead intent before SET A)
+        if on_phase:
+            on_phase("RESTORE_INTENT")
         rec = _rollback(A, make_session)
         stages.append(rec)
         res["recovered"] = rec["ok"]
+        if on_phase:
+            on_phase("RESTORED" if rec["ok"] else "TEMP_WRITE_APPLIED")
         return res
 
     # observable pause
     time.sleep(delay_s)
 
-    # rollback: SET original A (immutable baseline)
+    # rollback: SET original A (immutable baseline); write-ahead intent before SET A
+    if on_phase:
+        on_phase("RESTORE_INTENT")
     rec = _rollback(A, make_session)
     stages.append(rec)
     res["recovered"] = rec["ok"]
     res["ok"] = rec["ok"] and rb == B
+    if on_phase:
+        on_phase("RESTORED" if rec["ok"] else "RESTORE_INTENT")
     return res
+
+
+UNCERTAIN_STATES = ("TEMP_WRITE_INTENT", "TEMP_WRITE_APPLIED", "RESTORE_INTENT")
+
+
+def recovery_action(cp) -> str:
+    """Write-ahead recovery policy: only states where a write MAY have reached hardware
+    require restoring the immutable baseline A. BASELINE_SAVED/RESTORED need none."""
+    if cp is None or getattr(cp, "operation", "") != "lighting.rollback_validation":
+        return "NONE"
+    if cp.phase in UNCERTAIN_STATES:
+        return "RESTORE_A"
+    return "NONE"
+
+
+def recover_pending_checkpoint(cp, make_session) -> dict:
+    action = recovery_action(cp)
+    if action == "NONE":
+        return {"ok": True, "writes": 0, "action": "NONE"}
+    A = bytes.fromhex(cp.baseline)
+    rec = _rollback(A, make_session)
+    return {"ok": rec["ok"], "writes": 1 if rec["ok"] else 0, "action": "RESTORE_A", "result": rec}
 
 
 def _rollback(A: bytes, make_session) -> dict:
@@ -232,55 +269,71 @@ def run_sweep(log_path: Path) -> None:
 def _recovery_required(out_dir: Path) -> RunCheckpoint | None:
     store = RunStateStore(out_dir)
     cp = store.load()
-    if cp and cp.operation == "lighting.rollback_validation" and cp.phase == "TEMP_WRITE_APPLIED" and not cp.closed:
+    if cp and cp.operation == "lighting.rollback_validation" and cp.phase in UNCERTAIN_STATES and not cp.closed:
         return cp
     return None
 
 
+def _checkpoint_matches_device(cp: RunCheckpoint, inst) -> bool:
+    dev = cp.device or {}
+    return (dev.get("vid", "").lower() == inst.vid.lower()
+            and dev.get("pid", "").lower() == inst.pid.lower()
+            and dev.get("firmware", "") == inst.firmware_version
+            and (dev.get("family", "") in ("", inst.family if hasattr(inst, "family") else "aula_kb_v3_wired")
+                 or dev.get("family", "") == "aula_kb_v3_wired"))
+
+
 def run_rollback_brightness(out_dir: Path, require_real: bool) -> int:
-    """Guarded K14 lighting rollback test (brightness-only full 7-byte RMW)."""
+    """Guarded K14 lighting rollback test (brightness-only full 7-byte RMW), write-ahead crash-safe."""
     if not require_real:
         print("ZERO WRITES: --rollback-test brightness requires the explicit --real write flag.")
         return 2
     store = RunStateStore(out_dir)
 
-    # recovery-first: if a previous run left TEMP_WRITE_APPLIED for this identity/FW, restore A
-    pending = _recovery_required(out_dir)
-    if pending:
-        print(f"RECOVERY REQUIRED: previous run left TEMP_WRITE_APPLIED (baseline {pending.baseline}). Restoring A...")
-        A = bytes.fromhex(pending.baseline)
-        rec = _rollback(A, _real_session_factory())
-        if rec["ok"]:
-            pending.phase = "RESTORED"
-            pending.closed = True
-            store.save(pending)
-            print("RECOVERY COMPLETE: original lighting state restored. Rerun the test.")
-            return 0
-        print("RECOVERY FAILED — manual restore required.", file=sys.stderr)
-        return 2
-
-    # fresh session + gates
-    s = _real_session_factory()()
-    raw = s.raw
-    p = s.product
+    # fresh session + gates (needed for recovery gate too)
     from community.vetro_probe.identity import ExactIdentityGate
     from community.vetro_probe.bundle import production_bundle_for_hero84
     from community.vetro_probe.identity import discover_real_instance_via_raw
+
+    s0 = _real_session_factory()()
+    raw = s0.raw
+    p = s0.product
     gate = ExactIdentityGate(production_bundle_for_hero84())
     inst = discover_real_instance_via_raw(raw)
     verdict = gate.evaluate(inst)
     if not verdict.passed:
-        s.close()
+        s0.close()
         print(f"ZERO WRITES: identity gate failed: {verdict.reason}", file=sys.stderr)
         return 2
     if inst.firmware_version != HERO84_FIRMWARE_BRANCH:
-        s.close()
+        s0.close()
         print(f"ZERO WRITES: firmware {inst.firmware_version} != {HERO84_FIRMWARE_BRANCH}", file=sys.stderr)
         return 2
 
-    A = s.get_light()
+    # recovery-first (write-ahead): any UNCERTAIN state restores immutable A; bypasses "I UNDERSTAND"
+    # but never bypasses --real or identity/FW gates.
+    pending = _recovery_required(out_dir)
+    if pending:
+        if not _checkpoint_matches_device(pending, inst):
+            s0.close()
+            print(f"ZERO WRITES: pending checkpoint device/FW does not match connected device.", file=sys.stderr)
+            return 2
+        print(f"RECOVERY REQUIRED: state {pending.phase} (baseline {pending.baseline}). Restoring A...")
+        rec = recover_pending_checkpoint(pending, _real_session_factory())
+        if rec["ok"]:
+            pending.phase = "RESTORED"
+            pending.closed = True
+            store.save(pending)
+            s0.close()
+            print("RECOVERY COMPLETE: original lighting state restored. Rerun the test.")
+            return 0
+        s0.close()
+        print("RECOVERY FAILED — manual restore required.", file=sys.stderr)
+        return 2
+
+    A = s0.get_light()
     if not is_valid_baseline(A):
-        s.close()
+        s0.close()
         print(f"ZERO WRITES: invalid baseline {bytes(A or b'').hex()} (len/range)", file=sys.stderr)
         return 2
     B, changed = plan_brightness_temporary(A)
@@ -294,7 +347,7 @@ def run_rollback_brightness(out_dir: Path, require_real: bool) -> int:
     print("\nType EXACTLY: I UNDERSTAND")
     confirm = input("> ").strip()
     if confirm != "I UNDERSTAND":
-        s.close()
+        s0.close()
         print("ZERO WRITES: confirmation not provided.", file=sys.stderr)
         return 2
 
@@ -306,10 +359,15 @@ def run_rollback_brightness(out_dir: Path, require_real: bool) -> int:
     cp.attempted = B.hex()
     cp.phase = "BASELINE_SAVED"
     store.save(cp)
+    s0.close()
 
-    result = run_rollback_flow(_real_session_factory(), A, B, delay_s=2.5)
-    cp.phase = "TEMP_WRITE_APPLIED"
-    store.save(cp)
+    def on_phase(state: str) -> None:
+        cp.phase = state
+        if state in ("RESTORED",):
+            cp.closed = True
+        store.save(cp)  # durable: temp -> flush -> fsync -> replace
+
+    result = run_rollback_flow(_real_session_factory(), A, B, delay_s=2.5, on_phase=on_phase)
     for st in result["stages"]:
         print(f"  [{st.get('stage')}] {st}")
 
@@ -320,7 +378,7 @@ def run_rollback_brightness(out_dir: Path, require_real: bool) -> int:
         print("\nOriginal brightness should now be restored.")
         print("K14 ROLLBACK (brightness) = PASS (physical)")
         return 0
-    cp.phase = "TEMP_WRITE_APPLIED" if not result.get("recovered") else "RESTORED"
+    cp.phase = "RESTORE_INTENT" if result.get("recovered") else "TEMP_WRITE_APPLIED"
     cp.closed = bool(result.get("recovered"))
     store.save(cp)
     print(f"\nK14 ROLLBACK = {'RECOVERED' if result.get('recovered') else 'FAILED — manual restore required'}")

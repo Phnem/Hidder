@@ -11,6 +11,7 @@ Minimal production variant of persisted crash recovery:
 from __future__ import annotations
 
 import json
+import os
 import time
 import uuid
 from dataclasses import asdict, dataclass, field
@@ -51,9 +52,31 @@ class RunCheckpoint:
         cp.transitions = list(data.get("transitions", []))
         return cp
 
-    def save(self, path: Path) -> None:
+    def save_durable(self, path: Path) -> None:
+        """Durable atomic checkpoint write: temp -> flush -> fsync -> os.replace.
+
+        Guarantees that a checkpoint phase (e.g. TEMP_WRITE_INTENT / RESTORE_INTENT)
+        is on disk BEFORE the corresponding physical HID write is issued, so a crash
+        between the two can be recovered (write-ahead semantics)."""
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(self.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8")
+        tmp = path.with_name(path.name + ".tmp")
+        with open(tmp, "w", encoding="utf-8") as fh:
+            fh.write(json.dumps(self.to_dict(), ensure_ascii=False, indent=2))
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(tmp, path)
+        # best-effort directory durability (supported on POSIX; ignored where not)
+        try:
+            fd = os.open(path.parent, os.O_RDONLY)
+            try:
+                os.fsync(fd)
+            finally:
+                os.close(fd)
+        except OSError:
+            pass
+
+    def save(self, path: Path) -> None:
+        self.save_durable(path)
 
 
 class RunStateStore:
