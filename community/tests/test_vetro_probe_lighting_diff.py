@@ -8,6 +8,7 @@ import pytest
 from community.vetro_probe.lighting_diff import (
     filter_idle, idle_signatures, correlate, byte_diff,
     full_state_write_detected, infer_field, infer_enum,
+    verify_checksum, classify_offsets,
 )
 
 HEX = "06000001"
@@ -91,7 +92,8 @@ def test_lighting_mapping_schema_and_old_mapping_rejected():
     p = Path(__file__).resolve().parents[1] / "vetro_probe" / "knowledge" / "lighting_mapping.json"
     d = json.loads(p.read_text(encoding="utf-8"))
     assert d["old_mapping"]["status"] == "REJECTED"
-    for field in ("light.enable", "light.brightness", "light.global_color", "light.effect",
+    assert d["fields"]["light.brightness"]["status"] == "PARTIAL"
+    for field in ("light.enable", "light.global_color", "light.effect",
                   "light.speed", "light.direction", "light.per_key_rgb", "light.edge_light"):
         rec = d["fields"][field]
         assert rec["status"] == "UNKNOWN"
@@ -107,3 +109,51 @@ def test_capture_harness_imports():
     import community.vetro_probe.lighting_diff as ld
     assert hasattr(wc, "WebHidCapture")
     assert hasattr(ld, "correlate")
+
+
+# Real CAPTURE_SMOKE frames from the physical HERO84 (brightness actions)
+FRAME_BRIGHT_A1 = "04010001000703005305ff0a020000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000083"
+FRAME_BRIGHT_A2 = "04010001000703005305ff0002000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008d"
+
+
+def test_checksum_proven_on_real_frames():
+    assert verify_checksum(FRAME_BRIGHT_A1) is True   # byte62=0x83
+    assert verify_checksum(FRAME_BRIGHT_A2) is True   # byte62=0x8D
+    # tamper -> must fail
+    tampered = FRAME_BRIGHT_A1[:-2] + "84"
+    assert verify_checksum(tampered) is False
+
+
+def test_checksum_offset_never_semantic():
+    diff = byte_diff(FRAME_BRIGHT_A1, FRAME_BRIGHT_A2)
+    changed = [d["offset"] for d in diff]
+    assert changed == [11, 62]
+    cls = classify_offsets(changed, {62})
+    assert cls["semantic"] == [11]
+    assert cls["checksum"] == [62]
+
+
+def test_brightness_candidate_offset_11_only():
+    # brightness change touches byte 11 (0x0A->0x00); byte 62 is checksum -> semantic offset = 11 only
+    diff = byte_diff(FRAME_BRIGHT_A1, FRAME_BRIGHT_A2)
+    cls = classify_offsets([d["offset"] for d in diff], {62})
+    assert cls["semantic"] == [11]
+    assert len(cls["checksum"]) == 1
+
+
+def test_lighting_mapping_v3_brightness_partial_and_checksum_proven():
+    import json
+    from pathlib import Path
+    p = Path(__file__).resolve().parents[1] / "vetro_probe" / "knowledge" / "lighting_mapping.json"
+    d = json.loads(p.read_text(encoding="utf-8"))
+    assert d["capture"]["method"] == "sendReport"
+    assert d["capture"]["report_id"] == 9
+    assert d["capture"]["payload_length"] == 63
+    assert d["checksum"]["offset"] == 62
+    assert d["checksum"]["status"].startswith("PROVEN")
+    assert d["checksum"]["evidence_count"] == 2
+    assert d["fields"]["light.brightness"]["status"] == "PARTIAL"
+    assert d["fields"]["light.brightness"]["candidate_offset"] == 11
+    assert d["groups"]["0x06"]["status"].startswith("STATIC_CAPABILITY_LABEL_ONLY")
+    assert d["old_mapping"]["status"] == "REJECTED"
+    assert d["auto_eligible"] is False

@@ -1,5 +1,5 @@
 {
-  "schema": "vetro.lighting-mapping.v2",
+  "schema": "vetro.lighting-mapping.v3",
   "device": {"name": "HERO 84 HE", "vid": "0x372E", "pid": "0x103E", "family": "aula_kb_v3_wired", "firmware": "0216"},
   "old_mapping": {
     "operation": "light.rgb_core",
@@ -8,38 +8,53 @@
     "reason": "contradicted_by_real_vendor_app_capture",
     "evidence": [
       "register 0x01 read 0b00ff00000000 before and after user re-enabled lighting",
-      "register 0x06 read 02070000000201 before and after re-enable",
-      "full feature-register enumeration (0x01..0x1E): only 0x01/0x06/0x17/0x18/0x19 non-zero",
+      "full feature-register enumeration: only 0x01/0x06/0x17/0x18/0x19 non-zero",
       "group 0x86 sub0 fetch_custom_light GET returns echo",
-      "vendor oracle trace labels group 0x84 sub 0x01 'possibly firmware/build sub-info'"
+      "real lighting write is report 9 / 63-byte sendReport (not register 0x01)"
     ]
   },
   "capture": {
     "mode": "passive_webhid_outgoing_write_capture",
-    "transport": "webhid",
-    "tool": "community/vetro_probe/webhid_capture.py (reuses legacy passive WebHidObserver)",
-    "analysis": "community/vetro_probe/lighting_diff.py",
-    "status": "READY",
-    "requires_user_sweep": true
+    "transport": "WebHID",
+    "method": "sendReport",
+    "report_id": 9,
+    "payload_length": 63,
+    "invariant_header_prefix": "04 01 00 01 00 07 03 00 53 05",
+    "tool": "community/vetro_probe/webhid_capture.py",
+    "status": "PROVEN (CAPTURE_SMOKE PASS, real HERO84)"
   },
   "groups": {
-    "0x06": {"label": "sync_custom_light (WRITE)", "serializer_status": "NOT_SEEN", "source": "capability_matrix_static"},
-    "0x86": {"label": "fetch_custom_light (GET)", "serializer_status": "NOT_SEEN", "source": "capability_matrix_static"},
+    "0x06": {"label": "sync_custom_light (WRITE)", "status": "STATIC_CAPABILITY_LABEL_ONLY / NOT_OBSERVED_IN_REAL_LIGHTING_WRITE", "source": "capability_matrix_static"},
+    "0x86": {"label": "fetch_custom_light (GET)", "status": "NOT_SEEN / sub0 returns echo", "source": "capability_matrix_static"},
     "0x84/0x01": {"label": "feature register 0x01", "status": "UNKNOWN (possibly firmware/build sub-info)", "source": "vendor_trace"}
   },
-  "fields": {
-    "light.enable": {"status": "UNKNOWN", "command": null, "subcommand": null, "offset": null, "length": null, "encoding": null, "evidence_count": 0, "source": null, "readback_available": false, "rollback_candidate": false, "hardware_verified": false},
-    "light.brightness": {"status": "UNKNOWN", "command": null, "subcommand": null, "offset": null, "length": null, "encoding": null, "evidence_count": 0, "source": null, "readback_available": false, "rollback_candidate": false, "hardware_verified": false},
-    "light.global_color": {"status": "UNKNOWN", "command": null, "subcommand": null, "offset": null, "length": null, "encoding": null, "evidence_count": 0, "source": null, "readback_available": false, "rollback_candidate": false, "hardware_verified": false},
-    "light.effect": {"status": "UNKNOWN", "command": null, "subcommand": null, "offset": null, "length": null, "encoding": null, "evidence_count": 0, "source": null, "readback_available": false, "rollback_candidate": false, "hardware_verified": false},
-    "light.speed": {"status": "UNKNOWN", "command": null, "subcommand": null, "offset": null, "length": null, "encoding": null, "evidence_count": 0, "source": null, "readback_available": false, "rollback_candidate": false, "hardware_verified": false},
-    "light.direction": {"status": "UNKNOWN", "command": null, "subcommand": null, "offset": null, "length": null, "encoding": null, "evidence_count": 0, "source": null, "readback_available": false, "rollback_candidate": false, "hardware_verified": false},
-    "light.per_key_rgb": {"status": "UNKNOWN", "command": null, "subcommand": null, "offset": null, "length": null, "encoding": null, "evidence_count": 0, "source": null, "readback_available": false, "rollback_candidate": false, "hardware_verified": false},
-    "light.edge_light": {"status": "UNKNOWN", "command": null, "subcommand": null, "offset": null, "length": null, "encoding": null, "evidence_count": 0, "source": null, "readback_available": false, "rollback_candidate": false, "hardware_verified": false}
+  "checksum": {
+    "offset": 62,
+    "algorithm": "complement_to_ff_sum_including_report_id",
+    "formula": "0xFF - ((report_id + sum(payload[0:62])) & 0xFF)",
+    "status": "PROVEN_FOR_CAPTURED_LIGHTING_FRAME_FAMILY",
+    "evidence_count": 2,
+    "evidence": [
+      "brightness action 1: byte62=0x83 matches formula",
+      "brightness action 2: byte62=0x8D matches formula"
+    ],
+    "source": "REAL_VENDOR_CAPTURE"
   },
+  "fields": {
+    "light.enable": {"status": "UNKNOWN", "candidate_offset": null, "evidence_count": 0, "source": null, "readback_available": false, "rollback_candidate": false, "hardware_verified": false},
+    "light.brightness": {"status": "PARTIAL", "candidate_offset": 11, "encoding": "not yet proven (range/scale pending full sweep)", "evidence_count": 2, "source": "REAL_VENDOR_CAPTURE", "readback_available": false, "rollback_candidate": false, "hardware_verified": false,
+      "note": "offset 11 changed 0x0A->0x00 across brightness smoke; NOT promoted to KNOWN until full sweep proves UI->raw mapping; offset 62 excluded (checksum)"},
+    "light.global_color": {"status": "UNKNOWN", "candidate_offset": null, "evidence_count": 0, "source": null, "readback_available": false, "rollback_candidate": false, "hardware_verified": false},
+    "light.effect": {"status": "UNKNOWN", "candidate_offset": null, "evidence_count": 0, "source": null, "readback_available": false, "rollback_candidate": false, "hardware_verified": false},
+    "light.speed": {"status": "UNKNOWN", "candidate_offset": null, "evidence_count": 0, "source": null, "readback_available": false, "rollback_candidate": false, "hardware_verified": false},
+    "light.direction": {"status": "UNKNOWN", "candidate_offset": null, "evidence_count": 0, "source": null, "readback_available": false, "rollback_candidate": false, "hardware_verified": false},
+    "light.per_key_rgb": {"status": "UNKNOWN", "candidate_offset": null, "evidence_count": 0, "source": null, "readback_available": false, "rollback_candidate": false, "hardware_verified": false},
+    "light.edge_light": {"status": "UNKNOWN", "candidate_offset": null, "evidence_count": 0, "source": null, "readback_available": false, "rollback_candidate": false, "hardware_verified": false}
+  },
+  "packet_model": "UNKNOWN (fixed 63B; full-state vs command-specific requires full sweep)",
+  "full_state_write": "UNKNOWN",
   "authoritative_baseline_available": false,
   "rollback_proven": false,
   "auto_eligible": false,
-  "full_state_write": "UNKNOWN",
   "rollback_candidate": "NO"
 }

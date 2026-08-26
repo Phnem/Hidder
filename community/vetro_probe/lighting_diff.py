@@ -120,3 +120,22 @@ def infer_field(frames: list[dict[str, Any]], offset: int, length: int = 1,
 def infer_enum(frames: list[dict[str, Any]], offset: int, length: int = 1,
                min_samples: int = 2) -> FieldInference:
     return infer_field(frames, offset, length, min_samples)
+
+
+def verify_checksum(payload_hex: str, report_id: int = 9, checksum_offset: int = 62) -> bool:
+    """Verify 63-byte family checksum: checksum = 0xFF - ((report_id + sum(payload[0:62])) & 0xFF).
+
+    Proven against two real vendor lighting frames (offset 62: 0x83/0x8D)."""
+    b = bytes.fromhex(payload_hex)
+    if len(b) != checksum_offset + 1:
+        return False
+    calc = (0xFF - ((report_id + sum(b[:checksum_offset])) & 0xFF)) & 0xFF
+    return calc == b[checksum_offset]
+
+
+def classify_offsets(changed_offsets: list[int], checksum_offsets: set[int]) -> dict[str, list[int]]:
+    """Split changed offsets into semantic vs checksum. Checksum offsets are NEVER semantic
+    candidates (so a brightness change at byte 11 + checksum move at byte 62 yields semantic=[11])."""
+    semantic = [o for o in changed_offsets if o not in checksum_offsets]
+    chk = [o for o in changed_offsets if o in checksum_offsets]
+    return {"semantic": semantic, "checksum": chk}

@@ -14,7 +14,8 @@ def test_lighting_old_mapping_rejected():
     assert d["authoritative_baseline_available"] is False
     assert d["rollback_proven"] is False
     assert d["auto_eligible"] is False
-    for field in ("light.enable", "light.brightness", "light.global_color", "light.effect",
+    assert d["fields"]["light.brightness"]["status"] == "PARTIAL"
+    for field in ("light.enable", "light.global_color", "light.effect",
                   "light.speed", "light.direction", "light.per_key_rgb", "light.edge_light"):
         assert d["fields"][field]["status"] == "UNKNOWN"
 

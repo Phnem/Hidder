@@ -568,6 +568,73 @@ def run_smoke_brightness(trace_path: Path, url: str, idle_seconds: int) -> int:
     return 0 if smoke_pass else 3
 
 
+def run_sweep_full(trace_path: Path, url: str, idle_seconds: int) -> int:
+    """Full controlled lighting sweep with EXACT UI value markers.
+
+    Official AULA app is the only writer. All frames persisted before analysis.
+    """
+    cap = WebHidCapture(trace_path, target_url=url)
+    if not cap.launch():
+        print("FAIL: browser not found", file=sys.stderr)
+        return 1
+    cap.start()
+    print("BROWSER ISOLATION:")
+    for k, v in cap.isolation_panel().items():
+        print(f"  {k} = {v}")
+    print("Connect the HERO84 and open the Lighting tab in the isolated browser.")
+    input("Press Enter AFTER the app recognizes HERO84: ")
+    time.sleep(1.0)
+    h = cap.health_status()
+    cap.print_panel(h)
+    if h["capture_health"] != "PASS":
+        print("\nCAPTURE_HEALTH = FAIL — sweep aborted.")
+        cap.close()
+        return 2
+
+    print(f"\n[sweep] idle baseline {idle_seconds}s — DO NOT touch settings...")
+    idle = cap.collect_frames(float(idle_seconds), annotation="idle")
+
+    baseline = input("\nWhat is the CURRENT brightness % shown in the app (0-100)? ").strip() or "?"
+    steps = [
+        ("brightness", "Brightness", baseline, "0"),
+        ("brightness", "Brightness", "0", "25"),
+        ("brightness", "Brightness", "25", "50"),
+        ("brightness", "Brightness", "50", "75"),
+        ("brightness", "Brightness", "75", "100"),
+        ("brightness", "Brightness", "100", baseline),
+        ("enable", "Lighting", "ON", "OFF"),
+        ("enable", "Lighting", "OFF", "ON"),
+        ("color", "Static single color", "current", "#FF0000 RED"),
+        ("color", "Static single color", "RED", "#00FF00 GREEN"),
+        ("color", "Static single color", "GREEN", "#0000FF BLUE"),
+        ("color", "Static single color", "BLUE", "#FFFFFF WHITE"),
+        ("color", "Static single color", "WHITE", "#FF0000 RED"),
+        ("effect", "Effect", "current", "STATIC"),
+        ("effect", "Effect", "STATIC", "BREATHING"),
+        ("effect", "Effect", "BREATHING", "ANIMATED_1"),
+        ("effect", "Effect", "ANIMATED_1", "ANIMATED_2"),
+        ("effect", "Effect", "ANIMATED_2", "STATIC"),
+        ("speed", "Speed (if UI exposes it)", "min", "mid"),
+        ("speed", "Speed (if UI exposes it)", "mid", "max"),
+        ("speed", "Speed (if UI exposes it)", "max", "mid"),
+        ("direction", "Direction (if UI exposes it)", "left", "right"),
+        ("direction", "Direction (if UI exposes it)", "right", "left"),
+    ]
+    for kind, ui, frm, to in steps:
+        note = "" if kind != "speed" or ui.split(" ")[0] != "Speed" else ""
+        print(f"\n>>> [{kind}] {ui}: {frm} -> {to}")
+        extra = input(f"Apply this in the app, then press Enter (or 'skip' if UI has no such control): ")
+        if extra.strip().lower() == "skip":
+            cap.write_marker(f"{kind}_SKIPPED", frm, to)
+            continue
+        cap.write_marker(f"{kind}:{frm}->{to}", frm, to)
+        n = cap.collect_frames(3.0, annotation=f"{kind}:{to}")
+        print(f"[capture] {n} frames")
+    cap.close()
+    print(f"\nFull sweep done. trace = {trace_path}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="vetro.webhid_capture", description="Passive WebHID capture v2 (health-gated)")
     parser.add_argument("--trace", type=Path, default=Path("lighting_trace.jsonl"))
@@ -576,6 +643,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--idle", type=int, default=40)
     parser.add_argument("--self-check", action="store_true", help="Launch browser, verify main-world injection + navigator.hid, exit (no interaction)")
     parser.add_argument("--smoke", type=str, default=None, help="Minimal capture smoke: 'brightness' (2 brightness actions only)")
+    parser.add_argument("--sweep", action="store_true", help="Full controlled lighting sweep (exact UI value markers)")
     args = parser.parse_args(argv)
 
     if args.self_check:
@@ -586,6 +654,9 @@ def main(argv: list[str] | None = None) -> int:
             print(f"unknown smoke target: {args.smoke}", file=sys.stderr)
             return 2
         return run_smoke_brightness(args.trace, args.url, args.idle)
+
+    if args.sweep:
+        return run_sweep_full(args.trace, args.url, args.idle)
 
     cap = WebHidCapture(args.trace, target_url=args.url)
     if not cap.launch():
