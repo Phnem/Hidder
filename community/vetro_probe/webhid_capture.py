@@ -43,18 +43,24 @@ CAPTURE_HEALTH_SCRIPT = r"""
     for (let i = 0; i < u8.length; i++) s += u8[i].toString(16).padStart(2, "0");
     return s;
   }
+  let __vetroSeq = 0;
   function emit(api, direction, reportId, data, device) {
+    __vetroSeq += 1;
     const payload = JSON.stringify({
       api, direction, report_id: reportId, length: data ? data.byteLength || data.length : 0,
       bytes_hex: toHex(data),
       vendor_id: device ? device.vendorId : 0, product_id: device ? device.productId : 0,
       product_name: device ? (device.productName || "") : "",
-      origin: window.location.origin, frame: FRAME_ID,
+      origin: window.location.origin, frame: FRAME_ID, seq: __vetroSeq,
       timestamp: Date.now() / 1000.0
     });
-    const msg = {__vetroHidCapture: true, payload};
-    try { window.top.postMessage(msg, "*"); } catch (e) {}
-    try { if (typeof window.__peripheral_webhid_event__ === "function") window.__peripheral_webhid_event__(payload); } catch (e) {}
+    // ONE explicit route per frame (no double capture):
+    // top frame -> direct CDP binding only; child frame -> postMessage relay to top only.
+    if (window === window.top) {
+      try { window.__peripheral_webhid_event__(payload); } catch (e) {}
+    } else {
+      try { window.top.postMessage({__vetroHidCapture: true, payload}, "*"); } catch (e) {}
+    }
   }
   function attach(device) {
     if (!device || device.__vetroObserved) return;
@@ -124,6 +130,8 @@ class PageTarget:
         self.bind_name = "__peripheral_webhid_event__"
         self._cmd_id = 100
         self.health: dict[str, Any] = {}
+        self._last_seq = 0
+        self.target_type = target.get("type", "page")
         self._init()
 
     def _send(self, method: str, params: dict[str, Any] | None = None) -> None:
@@ -168,7 +176,7 @@ class PageTarget:
         return None
 
     def read_events(self) -> list[dict[str, Any]]:
-        out = []
+        out: list[dict[str, Any]] = []
         while True:
             try:
                 msg = self.ws.recv_json(timeout=0.05)
@@ -177,22 +185,49 @@ class PageTarget:
             if not msg:
                 break
             if msg.get("method") == "Runtime.bindingCalled":
-                self._binding(msg.get("params"))
+                ev = self._binding(msg.get("params"))
+                if ev is not None:
+                    out.append(ev)
         return out
 
-    def _binding(self, params: dict[str, Any] | None) -> None:
+    def _binding(self, params: dict[str, Any] | None) -> dict[str, Any] | None:
+        """Parse ONE Runtime.bindingCalled into ONE canonical event.
+
+        Returns the canonical event (also stored in self.health['events']), or
+        None for a duplicate seq or malformed payload. Exactly one physical
+        WebHID call -> exactly one canonical Python event.
+        """
         if not params:
-            return
+            return None
         if params.get("name") != self.bind_name:
-            return
+            return None
         try:
-            ev = json.loads(params.get("payload", "{}"))
-            ev["_target_id"] = self.id
-            ev["_target_url"] = self.url
-            ev["_origin"] = params.get("executionContextOrigin") or ev.get("origin", "")
-            self.health.setdefault("events", []).append(ev)
+            raw = json.loads(params.get("payload", "{}"))
         except Exception:
-            pass
+            return None
+        seq = int(raw.get("seq", 0) or 0)
+        if seq and seq <= self._last_seq:
+            return None  # duplicate (relay + direct) — drop
+        self._last_seq = max(self._last_seq, seq)
+        # canonical schema; accepts legacy aliases (api->method, bytes_hex->hex)
+        ev: dict[str, Any] = {
+            "timestamp": raw.get("timestamp", time.time()),
+            "method": raw.get("method") or raw.get("api", ""),
+            "direction": "OUT" if raw.get("direction") in ("out", "feature_out") else "IN",
+            "report_id": raw.get("report_id"),
+            "length": raw.get("length", 0),
+            "hex": raw.get("hex") or raw.get("bytes_hex", ""),
+            "vendor_id": raw.get("vendor_id", 0),
+            "product_id": raw.get("product_id", 0),
+            "product_name": raw.get("product_name", ""),
+            "origin": raw.get("origin") or params.get("executionContextOrigin") or "",
+            "frame": raw.get("frame", ""),
+            "target_id": self.id,
+            "target_url": self.url,
+            "target_type": self.target_type,
+        }
+        self.health.setdefault("events", []).append(ev)
+        return ev
 
 
 class WebHidCapture:
@@ -287,7 +322,14 @@ class WebHidCapture:
     def _fetch_targets(self) -> list[dict[str, Any]]:
         try:
             req = urllib.request.urlopen(f"http://127.0.0.1:{self.port}/json/list", timeout=5)
-            return [t for t in json.loads(req.read().decode()) if t.get("type") == "page"]
+            targets = json.loads(req.read().decode())
+            # attach to every render target that can own a WebHID execution context:
+            # top pages AND OOPIF/cross-origin iframes. Skip service-worker/background-only
+            # targets unless they expose a debugger URL and a page-ish origin.
+            relevant = [t for t in targets
+                        if t.get("type") in ("page", "iframe", "other")
+                        and t.get("webSocketDebuggerUrl")]
+            return relevant
         except Exception:
             return []
 
@@ -355,11 +397,11 @@ class WebHidCapture:
             granted = t.evaluate("navigator.hid ? navigator.hid.getDevices().then(d => d.length) : Promise.resolve(-1)", await_promise=True)
             events = t.health.get("events", [])
             per_target.append({
-                "url": t.url, "target_id": t.id,
+                "url": t.url, "target_id": t.id, "target_type": getattr(t, "target_type", "page"),
                 "navigator_hid": bool(hid),
                 "granted_devices": granted,
                 "observed_calls": len(events),
-                "out_frames": sum(1 for e in events if e.get("direction", e.get("api", "")) in ("out", "feature_out")),
+                "out_frames": sum(1 for e in events if e.get("direction") == "OUT"),
                 "events": list(events),
             })
         return compute_health(per_target)
@@ -405,7 +447,7 @@ def compute_health(per_target: list[dict[str, Any]]) -> dict[str, Any]:
         e.get("product_name") or (e.get("vendor_id") == 14126 and e.get("product_id") == 4158)
         for p in per_target for e in p.get("events", [])
     )
-    opened = any(e.get("api") == "open" for p in per_target for e in p.get("events", []))
+    opened = any(e.get("method") == "open" for p in per_target for e in p.get("events", []))
     return {
         "capture_health": "PASS" if (any_hid and (total_events > 0 or any_granted)) else "FAIL",
         "page_attached": bool(per_target),
@@ -418,6 +460,7 @@ def compute_health(per_target: list[dict[str, Any]]) -> dict[str, Any]:
         "observed_out_frames": sum(p.get("out_frames", 0) for p in per_target),
         "targets": [{k: v for k, v in p.items() if k != "events"} for p in per_target],
     }
+
 
 
 def run_health_and_sweep(trace_path: Path, url: str, idle_seconds: int) -> int:

@@ -37,8 +37,8 @@ def test_health_fail_when_no_target():
 
 
 def test_hero84_detection_and_open():
-    ev = [{"api": "open", "direction": "out", "report_id": -1},
-          {"api": "sendFeatureReport", "direction": "feature_out", "vendor_id": 14126, "product_id": 4158, "bytes_hex": "84010001"}]
+    ev = [{"method": "open", "direction": "OUT", "report_id": -1},
+          {"method": "sendFeatureReport", "direction": "OUT", "vendor_id": 14126, "product_id": 4158, "hex": "84010001"}]
     h = compute_health([_pt(events=ev, out=2)])
     assert h["capture_health"] == "PASS"
     assert h["hero84_detected"] is True
