@@ -49,9 +49,60 @@ def is_valid_baseline(A: bytes) -> bool:
     return len(A) == 7 and BRIGHTNESS_MIN <= A[BRIGHTNESS_OFFSET] <= BRIGHTNESS_MAX
 
 
+def _canonical_set_frame(reg7: bytes) -> bytes:
+    """The canonical 63-byte serialized frame for a register-0x01 SET —
+    the single source of truth for echo verification (header + state + checksum)."""
+    import aula_kb_v3.protocol as prot  # type: ignore
+    return bytes(prot.build_feature_set_frame(LIGHT_MODE_REG, reg7))
+
+
+def normalize_echo(echo: bytes | None) -> bytes | None:
+    """Strip the optional HID report-id prefix (64B -> 63B payload form)."""
+    if echo is None:
+        return None
+    b = bytes(echo)
+    if len(b) == 64 and b[0] == 9:
+        b = b[1:]
+    return b
+
+
+def decode_echo(written: bytes, echo: bytes | None) -> dict:
+    """Canonical ACK verification for a register-0x01 SET.
+
+    The device echoes the exact canonical serialized frame
+    ([0x04, reg, 0x00, 0x01, 0x00, len, state..., checksum]); NEVER compare the
+    7-byte register state directly against the 63-byte echo. Validates the whole
+    frame: report family/header, state payload AND checksum. A frame is only an
+    ACK when it equals the canonical expected frame byte-for-byte.
+    """
+    out = {"echo_observed": echo is not None, "frame_valid": False, "length_valid": False,
+           "report_header_valid": False, "state_match": False, "checksum_valid": False,
+           "ack": False, "decoded_state": None, "expected_frame": None, "echo_frame": None}
+    b = normalize_echo(echo)
+    if b is None:
+        return out
+    out["echo_frame"] = b.hex()
+    expected = _canonical_set_frame(written)
+    out["expected_frame"] = expected.hex()
+    if len(b) != 63:
+        return out
+    out["length_valid"] = True
+    import aula_kb_v3.protocol as prot  # type: ignore
+    out["checksum_valid"] = prot.checksum(b[:62]) == b[62]
+    out["report_header_valid"] = (b[0] == expected[0] and b[1] == expected[1]
+                                  and b[2:6] == expected[2:6])
+    out["state_match"] = b[6:6 + 7] == bytes(written)
+    out["decoded_state"] = b[6:6 + 7].hex()
+    out["frame_valid"] = out["length_valid"] and out["checksum_valid"] and out["report_header_valid"]
+    out["ack"] = b == expected  # full canonical frame equality (header+state+checksum)
+    return out
+
+
 def verify_echo(written: bytes, echo: bytes | None) -> bool:
-    """Echo is the ACK — must be byte-identical to the written frame."""
-    return echo is not None and bytes(echo) == bytes(written)
+    """Echo is the ACK. PASS only when the received frame equals the canonical
+    serialized frame for `written` (header + state payload + valid checksum).
+    A bare 7-byte register state is never a valid echo of itself."""
+    return decode_echo(written, echo)["ack"]
 
 
 def run_rollback_flow(make_session, A: bytes, B: bytes, echo_fn=None, delay_s: float = 2.5,
@@ -72,8 +123,18 @@ def run_rollback_flow(make_session, A: bytes, B: bytes, echo_fn=None, delay_s: f
     s1 = make_session()
     echo1 = s1.set_light(B)
     s1.close()
-    ack = verify_echo(B, echo1)
-    stages.append({"stage": "write_B", "written": B.hex(), "echo": (echo1 or b"").hex(), "ack": ack})
+    st = decode_echo(B, echo1)
+    ack = st["ack"]
+    stages.append({
+        "stage": "write_B", "written": B.hex(),
+        "echo": (normalize_echo(echo1) or b"").hex(),
+        "set_B_issued": True, "set_B_completed": echo1 is not None,
+        "echo_B_observed": st["echo_observed"],
+        "echo_B_frame_valid": st["frame_valid"],
+        "echo_B_checksum_valid": st["checksum_valid"],
+        "echo_B_state_match": st["state_match"],
+        "ack": ack, "expected": st["expected_frame"], "decoded_state": st["decoded_state"],
+    })
     if on_phase:
         on_phase("TEMP_WRITE_APPLIED")
     if not ack:
@@ -172,7 +233,10 @@ def _rollback(A: bytes, make_session) -> dict:
     """
     out = {"stage": "rollback_A", "written": A.hex(), "expected": A.hex(),
            "restore_write_issued": False, "restore_write_completed": False,
+           "set_A_issued": False, "set_A_completed": False,
            "echo_observed": False, "echo_ack": False,
+           "echo_frame_valid": False, "echo_checksum_valid": False, "echo_state_match": False,
+           "decoded_state": None, "expected_frame": None,
            "fresh_get_observed": False, "fresh_get": None, "fresh_get_equals_A": False,
            "ok": False, "error_code": "", "error": ""}
     try:
@@ -185,6 +249,8 @@ def _rollback(A: bytes, make_session) -> dict:
         echo = s.set_light(A)
         out["restore_write_issued"] = True
         out["restore_write_completed"] = True
+        out["set_A_issued"] = True
+        out["set_A_completed"] = echo is not None
     except Exception as exc:
         out["error_code"] = "SET_A_FAILED"
         out["error"] = f"set_light: {exc!r}"
@@ -193,9 +259,15 @@ def _rollback(A: bytes, make_session) -> dict:
         except Exception:
             pass
         return out
-    out["echo_observed"] = echo is not None
-    out["echo_ack"] = verify_echo(A, echo)
-    out["echo"] = (echo or b"").hex()
+    st = decode_echo(A, echo)
+    out["echo_observed"] = st["echo_observed"]
+    out["echo_ack"] = st["ack"]
+    out["echo_frame_valid"] = st["frame_valid"]
+    out["echo_checksum_valid"] = st["checksum_valid"]
+    out["echo_state_match"] = st["state_match"]
+    out["decoded_state"] = st["decoded_state"]
+    out["expected_frame"] = st["expected_frame"]
+    out["echo"] = st["echo_frame"] or ""
     try:
         s.close()
     except Exception:
@@ -463,12 +535,19 @@ def run_rollback_brightness(out_dir: Path, require_real: bool) -> int:
     for st in result["stages"]:
         name = st.get("stage")
         if name == "write_B":
-            print(f"  SET_B = {'PASS' if st.get('ack') else 'FAIL'}   ECHO_B = {'PASS' if st.get('ack') else 'FAIL'}"
-                  f"   written={st.get('written')}   echo={st.get('echo')}")
+            print(f"  SET_B_ISSUED = {'YES' if st.get('set_B_issued') else 'NO'}"
+                  f"   SET_B_COMPLETED = {'YES' if st.get('set_B_completed') else 'NO'}"
+                  f"   ECHO_B_OBSERVED = {'YES' if st.get('echo_B_observed') else 'NO'}"
+                  f"   ECHO_B_FRAME_VALID = {'YES' if st.get('echo_B_frame_valid') else 'NO'}"
+                  f"   ECHO_B_STATE_MATCH = {'YES' if st.get('echo_B_state_match') else 'NO'}"
+                  f"   written={st.get('written')}   decoded_state={st.get('decoded_state')}   echo={st.get('echo')}")
         elif name == "readback_B":
             print(f"  GET_B = {st.get('got')}   GET_B_MATCH = {'PASS' if st.get('match') else 'FAIL'}")
         elif name == "rollback_A":
-            print(f"  SET_A = {'PASS' if st.get('ack') else 'FAIL'}   ECHO_A = {'PASS' if st.get('ack') else 'FAIL'}"
+            print(f"  SET_A_ISSUED = {'YES' if st.get('set_A_issued') else 'NO'}"
+                  f"   ECHO_A = {'PASS' if st.get('echo_ack') else 'FAIL'}"
+                  f"   ECHO_A_FRAME_VALID = {'YES' if st.get('echo_frame_valid') else 'NO'}"
+                  f"   ECHO_A_STATE_MATCH = {'YES' if st.get('echo_state_match') else 'NO'}"
                   f"   FINAL_GET_A = {st.get('final_get')}   FINAL_A_MATCH = {'PASS' if st.get('match') else 'FAIL'}"
                   f"   restore_write_issued = {st.get('restore_write_issued')}"
                   f"   error_code = {st.get('error_code', '')}   detail = {st.get('error', '')}")

@@ -7,6 +7,7 @@ import pytest
 
 from community.vetro_probe.lighting_probe import (
     plan_brightness_temporary, is_valid_baseline, verify_echo,
+    decode_echo, normalize_echo, _canonical_set_frame,
     run_rollback_flow, _recovery_required, recovery_action,
     recover_pending_checkpoint, UNCERTAIN_STATES, _checkpoint_matches_device,
     _rollback,
@@ -14,6 +15,14 @@ from community.vetro_probe.lighting_probe import (
 from community.vetro_probe.runstate import RunCheckpoint, RunStateStore
 
 A = bytes([1, 0, 255, 0, 0, 10, 2])  # mode1, res0, R255, G0, B0, br10, sp2
+
+# Real captured device echo for SET B = [1,0,255,0,0,5,2] on fw 0216 (K14 run #2).
+# Canonical 63-byte frame: header 04 01 00 01 00 07, state at 6..12, checksum e2.
+REAL_ECHO_B = "0401000100070100ff0000050200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e2"
+
+
+def _frame(reg7: bytes) -> bytes:
+    return _canonical_set_frame(reg7)
 
 
 class FakeSession:
@@ -35,15 +44,18 @@ class FakeSession:
             raise RuntimeError("set failed")
         self.env.write_log.append(bytes(reg7))
         self.env.state = bytearray(reg7)
-        echo = self.env.echo if self.env.echo is not None else bytes(reg7)
-        return echo
+        if self.env.echo is None:
+            return None  # recv timeout: write may have applied, no echo frame
+        if self.env.echo == "CANONICAL":
+            return _frame(reg7)  # device echoes the canonical serialized frame
+        return bytes(self.env.echo)  # test override (full frame)
 
     def close(self):
         pass
 
 
 class FakeEnv:
-    def __init__(self, state, echo=None, readback_override=None, raise_on_get=False, raise_on_set=False, raise_on_open=False):
+    def __init__(self, state, echo="CANONICAL", readback_override=None, raise_on_get=False, raise_on_set=False, raise_on_open=False):
         self.state = bytearray(state)
         self.echo = echo
         self.readback_override = readback_override
@@ -80,10 +92,13 @@ def test_is_valid_baseline():
     assert is_valid_baseline(b"\x01\x00\xff\x00\x00\x21\x02") is False   # br 33 out of range
 
 
-def test_verify_echo():
-    assert verify_echo(b"abc", b"abc") is True
-    assert verify_echo(b"abc", b"abd") is False
-    assert verify_echo(b"abc", None) is False
+def test_verify_echo_canonical():
+    B, _ = plan_brightness_temporary(A)
+    assert verify_echo(B, _frame(B)) is True   # canonical serialized echo -> PASS
+    assert verify_echo(B, None) is False        # no echo
+    assert verify_echo(B, B) is False           # 7-byte state NEVER equals 63-byte echo
+    wrong = bytearray(_frame(B)); wrong[0] = 0x05  # wrong group/header
+    assert verify_echo(B, bytes(wrong)) is False
 
 
 def test_run_rollback_flow_happy():
@@ -111,14 +126,124 @@ def test_readback_mismatch_recovers_from_immutable_A():
 
 
 def test_echo_missing_fails_closed():
-    env = FakeEnv(A, echo=None)
+    env = FakeEnv(A, echo=None)  # recv timeout: SET B issued but no echo frame
     B, _ = plan_brightness_temporary(A)
-    # force echo mismatch
-    env.echo = bytes(b"\x00" * 7)
     res = run_rollback_flow(env.make, A, B, delay_s=0)
     assert res["ok"] is False
+    assert res["error_code"] == "ECHO_B_MISMATCH"
     assert "echo ACK" in res.get("error", "")
     assert env.write_log == [B]  # no rollback attempted before ACK
+    wb = [s for s in res["stages"] if s["stage"] == "write_B"][0]
+    assert wb["set_B_issued"] is True and wb["set_B_completed"] is False
+    assert wb["echo_B_observed"] is False and wb["echo_B_state_match"] is False
+
+
+def test_set_write_completion_independent_of_echo_validation():
+    # wrong 63-byte echo frame: the write completed (transport returned a frame)
+    # and an echo was observed, but frame/state validation fails -> SET_B must be
+    # reported ISSUED/COMPLETED while ACK stays FAIL.
+    wrong = bytearray(_frame(B := plan_brightness_temporary(A)[0])); wrong[6] = 0x00  # corrupt state[0]
+    env = FakeEnv(A, echo=bytes(wrong))
+    res = run_rollback_flow(env.make, A, B, delay_s=0)
+    wb = [s for s in res["stages"] if s["stage"] == "write_B"][0]
+    assert wb["set_B_issued"] is True and wb["set_B_completed"] is True
+    assert wb["echo_B_observed"] is True
+    assert wb["echo_B_state_match"] is False
+    assert wb["ack"] is False
+    assert res["ok"] is False
+    assert env.write_log == [B]
+
+
+def test_real_captured_echo_b_verifies():
+    # The exact physical echo captured from K14 run #2 on fw 0216.
+    B, _ = plan_brightness_temporary(A)
+    fr = decode_echo(B, bytes.fromhex(REAL_ECHO_B))
+    assert fr["ack"] is True
+    assert fr["state_match"] is True
+    assert fr["checksum_valid"] is True
+    assert fr["frame_valid"] is True
+    assert fr["report_header_valid"] is True
+    assert fr["decoded_state"] == B.hex()
+    assert fr["expected_frame"] == REAL_ECHO_B
+    assert bytes.fromhex(REAL_ECHO_B) == _frame(B)
+    assert verify_echo(B, bytes.fromhex(REAL_ECHO_B)) is True
+
+
+def test_verify_echo_fails_wrong_header():
+    B, _ = plan_brightness_temporary(A)
+    bad = bytearray(_frame(B)); bad[3] = 0x00  # reserved3 header byte wrong
+    assert verify_echo(B, bytes(bad)) is False
+
+
+def test_verify_echo_fails_wrong_report_id_prefix():
+    B, _ = plan_brightness_temporary(A)
+    bad = bytes([8]) + _frame(B)  # 64-byte form, report id 8 (must be 9)
+    assert verify_echo(B, bad) is False
+    good = bytes([9]) + _frame(B)  # 64-byte form with correct report id -> normalize
+    assert verify_echo(B, good) is True
+
+
+def test_verify_echo_fails_wrong_state_bytes():
+    B, _ = plan_brightness_temporary(A)
+    bad = bytearray(_frame(B)); bad[8] = 0xAA  # state byte corrupt
+    assert verify_echo(B, bytes(bad)) is False
+
+
+def test_verify_echo_fails_wrong_checksum():
+    B, _ = plan_brightness_temporary(A)
+    bad = bytearray(_frame(B)); bad[62] ^= 0xFF
+    assert verify_echo(B, bytes(bad)) is False
+
+
+def test_verify_echo_correct_state_but_malformed_frame():
+    # Declared length 6 while carrying 7 state bytes + recomputed valid checksum:
+    # correct state alone must NOT be accepted; header/length inconsistency fails.
+    import aula_kb_v3.protocol as prot  # type: ignore
+    B, _ = plan_brightness_temporary(A)
+    bad = bytearray(_frame(B)); bad[5] = 0x06
+    bad[62] = prot.checksum(bytes(bad[:62]))
+    assert verify_echo(B, bytes(bad)) is False
+    # truncated frame (62 bytes) is not a valid echo
+    assert verify_echo(B, _frame(B)[:62]) is False
+
+
+def test_verify_echo_representation_mismatch_cannot_recur():
+    # 7-byte register state vs 63-byte echo: the historical FALSE mismatch.
+    B, _ = plan_brightness_temporary(A)
+    assert verify_echo(B, B) is False           # 7B against 63B never matches
+    assert verify_echo(B, bytes(B)) is False
+    # canonical frame for a DIFFERENT value than the 7-byte B must not pass either
+    other = bytearray(B); other[5] = 9
+    assert verify_echo(B, _frame(bytes(other))) is False
+    assert verify_echo(B, _frame(B)) is True
+
+
+def test_rollback_uses_same_canonical_echo_verifier():
+    # Recovery SET A echoes the same 63-byte family -> same verifier must pass.
+    env = FakeEnv(A)
+    rec = _rollback(A, env.make)
+    assert rec["ok"] is True
+    assert rec["echo_ack"] is True
+    assert rec["echo_frame_valid"] is True
+    assert rec["echo_checksum_valid"] is True
+    assert rec["echo_state_match"] is True
+    assert rec["decoded_state"] == A.hex()
+    assert rec["fresh_get_equals_A"] is True
+
+
+def test_rollback_echo_mismatch_reports_frame_diagnostics():
+    import aula_kb_v3.protocol as prot  # type: ignore
+    bad = bytearray(_frame(A)); bad[8] = 0xAA  # wrong state byte, recompute checksum
+    bad[62] = prot.checksum(bytes(bad[:62]))
+    env = FakeEnv(A, echo=bytes(bad))
+    rec = _rollback(A, env.make)
+    assert rec["ok"] is False
+    assert rec["error_code"] == "ECHO_A_MISMATCH"
+    assert rec["echo_ack"] is False
+    assert rec["echo_frame_valid"] is True
+    assert rec["echo_state_match"] is False
+    assert rec["restore_write_issued"] is True
+    assert rec["fresh_get_equals_A"] is True  # hardware actually restored A
 
 
 def test_recovery_required_detects_pending_checkpoint(tmp_path):
