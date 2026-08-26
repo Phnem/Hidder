@@ -77,16 +77,30 @@ def run_rollback_flow(make_session, A: bytes, B: bytes, echo_fn=None, delay_s: f
     if on_phase:
         on_phase("TEMP_WRITE_APPLIED")
     if not ack:
+        res["error_code"] = "ECHO_B_MISMATCH"
         res["error"] = "echo ACK for temporary write missing/mismatch"
         return res
 
     # fresh GET B (readback, NOT echo)
-    s2 = make_session()
-    rb = s2.get_light()
-    s2.close()
+    try:
+        s2 = make_session()
+        rb = s2.get_light()
+        s2.close()
+    except Exception as exc:
+        res["error_code"] = "GET_B_FAILED"
+        res["error"] = f"fresh GET B failed: {exc!r}"
+        if on_phase:
+            on_phase("RESTORE_INTENT")
+        rec = _rollback(A, make_session)
+        stages.append(rec)
+        res["recovered"] = rec["ok"]
+        if on_phase:
+            on_phase("RESTORED" if rec["ok"] else "TEMP_WRITE_APPLIED")
+        return res
     stages.append({"stage": "readback_B", "got": (rb or b"").hex(), "expected": B.hex(),
                    "match": rb == B})
     if rb != B:
+        res["error_code"] = "READBACK_B_MISMATCH"
         res["error"] = f"fresh GET != temporary state: {bytes(rb or b'').hex()} != {B.hex()}"
         # immediate recovery from immutable baseline A (write-ahead intent before SET A)
         if on_phase:
@@ -94,6 +108,7 @@ def run_rollback_flow(make_session, A: bytes, B: bytes, echo_fn=None, delay_s: f
         rec = _rollback(A, make_session)
         stages.append(rec)
         res["recovered"] = rec["ok"]
+        res["recovery_code"] = rec.get("error_code", "")
         if on_phase:
             on_phase("RESTORED" if rec["ok"] else "TEMP_WRITE_APPLIED")
         return res
@@ -130,22 +145,88 @@ def recover_pending_checkpoint(cp, make_session) -> dict:
     action = recovery_action(cp)
     if action == "NONE":
         return {"ok": True, "writes": 0, "action": "NONE"}
-    A = bytes.fromhex(cp.baseline)
+    try:
+        A = bytes.fromhex(cp.baseline)
+    except Exception as exc:
+        return {"ok": False, "writes": 0, "action": "RESTORE_A",
+                "error_code": "CHECKPOINT_INVALID", "error": f"baseline parse: {exc!r}"}
     rec = _rollback(A, make_session)
-    return {"ok": rec["ok"], "writes": 1 if rec["ok"] else 0, "action": "RESTORE_A", "result": rec}
+    out = {"ok": rec["ok"], "writes": 1 if rec["ok"] else 0, "action": "RESTORE_A", "result": rec}
+    if not rec["ok"]:
+        out["error_code"] = rec.get("error_code", "RECOVERY_FAILED")
+        out["error"] = rec.get("error", "")
+        # separate 'write may have reached hardware' from 'verified'
+        out["restore_write_may_have_succeeded"] = rec.get("restore_write_issued", False)
+        out["restore_verified"] = rec.get("fresh_get_equals_A", False)
+    return out
 
 
 def _rollback(A: bytes, make_session) -> dict:
-    s = make_session()
-    echo = s.set_light(A)
-    s.close()
-    ack = verify_echo(A, echo)
-    s2 = make_session()
-    fa = s2.get_light()
-    s2.close()
-    return {"stage": "rollback_A", "written": A.hex(), "echo": (echo or b"").hex(),
-            "ack": ack, "final_get": (fa or b"").hex(), "expected": A.hex(),
-            "match": fa == A, "ok": ack and fa == A}
+    """Restore immutable baseline A with per-step diagnostics.
+
+    Separates 'restore write may have succeeded' from 'restore verified':
+    restore_write_issued / restore_write_completed / echo_observed / echo_ack /
+    fresh_get_observed / fresh_get_equals_A. Never reconstructs A from B.
+    Sets error_code among: OPEN_FAILED, SET_A_FAILED, ECHO_A_MISMATCH,
+    GET_A_FAILED, FINAL_STATE_MISMATCH (or "" on success).
+    """
+    out = {"stage": "rollback_A", "written": A.hex(), "expected": A.hex(),
+           "restore_write_issued": False, "restore_write_completed": False,
+           "echo_observed": False, "echo_ack": False,
+           "fresh_get_observed": False, "fresh_get": None, "fresh_get_equals_A": False,
+           "ok": False, "error_code": "", "error": ""}
+    try:
+        s = make_session()
+    except Exception as exc:
+        out["error_code"] = "OPEN_FAILED"
+        out["error"] = f"open: {exc!r}"
+        return out
+    try:
+        echo = s.set_light(A)
+        out["restore_write_issued"] = True
+        out["restore_write_completed"] = True
+    except Exception as exc:
+        out["error_code"] = "SET_A_FAILED"
+        out["error"] = f"set_light: {exc!r}"
+        try:
+            s.close()
+        except Exception:
+            pass
+        return out
+    out["echo_observed"] = echo is not None
+    out["echo_ack"] = verify_echo(A, echo)
+    out["echo"] = (echo or b"").hex()
+    try:
+        s.close()
+    except Exception:
+        pass
+    try:
+        s2 = make_session()
+    except Exception as exc:
+        out["error_code"] = "OPEN_FAILED"
+        out["error"] = f"reopen for GET: {exc!r}"
+        return out
+    try:
+        fa = s2.get_light()
+    except Exception as exc:
+        out["error_code"] = "GET_A_FAILED"
+        out["error"] = f"get_light: {exc!r}"
+        try:
+            s2.close()
+        except Exception:
+            pass
+        return out
+    out["fresh_get_observed"] = fa is not None
+    out["fresh_get"] = (fa or b"").hex()
+    out["fresh_get_equals_A"] = fa == A
+    try:
+        s2.close()
+    except Exception:
+        pass
+    out["ok"] = out["echo_ack"] and out["fresh_get_equals_A"]
+    if not out["ok"]:
+        out["error_code"] = "ECHO_A_MISMATCH" if not out["echo_ack"] else "FINAL_STATE_MISMATCH"
+    return out
 
 
 def _real_session_factory() -> callable:
@@ -323,12 +404,15 @@ def run_rollback_brightness(out_dir: Path, require_real: bool) -> int:
         if rec["ok"]:
             pending.phase = "RESTORED"
             pending.closed = True
+            pending.error = ""
             store.save(pending)
             s0.close()
             print("RECOVERY COMPLETE: original lighting state restored. Rerun the test.")
             return 0
+        pending.error = f"code={rec.get('error_code')} detail={rec.get('error')} restore_write_issued={rec.get('restore_write_may_have_succeeded')}"
+        store.save(pending)
         s0.close()
-        print("RECOVERY FAILED — manual restore required.", file=sys.stderr)
+        print(f"RECOVERY FAILED — manual restore required.\n  reason: {rec.get('error_code')}\n  detail: {rec.get('error')}\n  restore_write_may_have_succeeded: {rec.get('restore_write_may_have_succeeded')}\n  restore_verified: {rec.get('restore_verified')}", file=sys.stderr)
         return 2
 
     A = s0.get_light()
@@ -367,21 +451,31 @@ def run_rollback_brightness(out_dir: Path, require_real: bool) -> int:
             cp.closed = True
         store.save(cp)  # durable: temp -> flush -> fsync -> replace
 
-    result = run_rollback_flow(_real_session_factory(), A, B, delay_s=2.5, on_phase=on_phase)
+    try:
+        result = run_rollback_flow(_real_session_factory(), A, B, delay_s=2.5, on_phase=on_phase)
+    except Exception as exc:
+        # Do NOT swallow: record the exact phase + exception so recovery is actionable.
+        cp.error = f"EXCEPTION during phase={cp.phase}: {exc!r}"
+        store.save(cp)
+        print(f"EXCEPTION during {cp.phase}: {exc!r}", file=sys.stderr)
+        return 2
     for st in result["stages"]:
         print(f"  [{st.get('stage')}] {st}")
 
     if result["ok"]:
         cp.phase = "RESTORED"
         cp.closed = True
+        cp.error = ""
         store.save(cp)
         print("\nOriginal brightness should now be restored.")
         print("K14 ROLLBACK (brightness) = PASS (physical)")
         return 0
     cp.phase = "RESTORE_INTENT" if result.get("recovered") else "TEMP_WRITE_APPLIED"
     cp.closed = bool(result.get("recovered"))
+    cp.error = f"code={result.get('error_code', 'RECOVERY_FAILED')} detail={result.get('error', '')}"
     store.save(cp)
-    print(f"\nK14 ROLLBACK = {'RECOVERED' if result.get('recovered') else 'FAILED — manual restore required'}")
+    print(f"\nK14 ROLLBACK = {'RECOVERED' if result.get('recovered') else 'FAILED — manual restore required'}"
+          f"\n  reason: {result.get('error_code')}\n  detail: {result.get('error')}")
     return 0 if result.get("recovered") else 2
 
 

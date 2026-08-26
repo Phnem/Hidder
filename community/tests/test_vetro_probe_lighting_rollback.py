@@ -9,6 +9,7 @@ from community.vetro_probe.lighting_probe import (
     plan_brightness_temporary, is_valid_baseline, verify_echo,
     run_rollback_flow, _recovery_required, recovery_action,
     recover_pending_checkpoint, UNCERTAIN_STATES, _checkpoint_matches_device,
+    _rollback,
 )
 from community.vetro_probe.runstate import RunCheckpoint, RunStateStore
 
@@ -20,6 +21,9 @@ class FakeSession:
         self.env = env
 
     def get_light(self):
+        if self.env.raise_on_get:
+            self.env.raise_on_get = False  # one-shot (only the immediate readback after write_B)
+            raise RuntimeError("get failed")
         if self.env.readback_override is not None:
             ov = self.env.readback_override
             self.env.readback_override = None  # one-shot (only the immediate readback after write_B)
@@ -27,6 +31,8 @@ class FakeSession:
         return bytes(self.env.state)
 
     def set_light(self, reg7):
+        if self.env.raise_on_set:
+            raise RuntimeError("set failed")
         self.env.write_log.append(bytes(reg7))
         self.env.state = bytearray(reg7)
         echo = self.env.echo if self.env.echo is not None else bytes(reg7)
@@ -37,13 +43,18 @@ class FakeSession:
 
 
 class FakeEnv:
-    def __init__(self, state, echo=None, readback_override=None):
+    def __init__(self, state, echo=None, readback_override=None, raise_on_get=False, raise_on_set=False, raise_on_open=False):
         self.state = bytearray(state)
         self.echo = echo
         self.readback_override = readback_override
+        self.raise_on_get = raise_on_get
+        self.raise_on_set = raise_on_set
+        self.raise_on_open = raise_on_open
         self.write_log = []
 
     def make(self):
+        if self.raise_on_open:
+            raise RuntimeError("open failed")
         return FakeSession(self)
 
 
@@ -181,6 +192,66 @@ def test_run_rollback_flow_write_ahead_phase_order():
     res = run_rollback_flow(env.make, A, B, delay_s=0, on_phase=phases.append)
     assert phases == ["BASELINE_SAVED", "TEMP_WRITE_INTENT", "TEMP_WRITE_APPLIED", "RESTORE_INTENT", "RESTORED"]
     assert res["ok"] is True
+
+
+def test_rollback_echo_mismatch_reports_specific_code():
+    env = FakeEnv(A, echo=b"\x00" * 7)  # device echoes wrong frame
+    rec = _rollback(A, env.make)
+    assert rec["ok"] is False
+    assert rec["error_code"] == "ECHO_A_MISMATCH"
+    assert rec["restore_write_issued"] is True
+    assert rec["restore_write_completed"] is True
+    assert rec["echo_observed"] is True
+
+
+def test_rollback_final_state_mismatch_reports_code():
+    wrong = bytearray(A); wrong[5] = 15
+    env = FakeEnv(A, readback_override=bytes(wrong))  # SET A ok+echo ok, but fresh GET != A
+    rec = _rollback(A, env.make)
+    assert rec["ok"] is False
+    assert rec["error_code"] == "FINAL_STATE_MISMATCH"
+    assert rec["restore_write_issued"] is True
+    assert rec["echo_ack"] is True
+    assert rec["fresh_get_equals_A"] is False
+
+
+def test_rollback_set_raises_reports_code():
+    env = FakeEnv(A, raise_on_set=True)
+    rec = _rollback(A, env.make)
+    assert rec["ok"] is False
+    assert rec["error_code"] == "SET_A_FAILED"
+    assert rec["restore_write_issued"] is False
+
+
+def test_rollback_open_raises_reports_code():
+    env = FakeEnv(A, raise_on_open=True)
+    rec = _rollback(A, env.make)
+    assert rec["ok"] is False
+    assert rec["error_code"] == "OPEN_FAILED"
+
+
+def test_recover_pending_checkpoint_reports_write_vs_verified():
+    wrong = bytearray(A); wrong[5] = 15
+    env = FakeEnv(A, readback_override=bytes(wrong))
+    cp = _cp("TEMP_WRITE_APPLIED")
+    rec = recover_pending_checkpoint(cp, env.make)
+    assert rec["ok"] is False
+    assert rec["error_code"] == "FINAL_STATE_MISMATCH"
+    # write may have reached hardware, but not verified
+    assert rec["restore_write_may_have_succeeded"] is True
+    assert rec["restore_verified"] is False
+    # immutable A written (never B-derived)
+    assert env.write_log == [A]
+
+
+def test_run_rollback_flow_get_b_raises_recovers_and_reports():
+    env = FakeEnv(A, raise_on_get=True)  # fresh GET B raises -> recovery A
+    B, _ = plan_brightness_temporary(A)
+    res = run_rollback_flow(env.make, A, B, delay_s=0)
+    assert res["ok"] is False
+    assert res["error_code"] == "GET_B_FAILED"
+    assert res["recovered"] is True
+    assert env.write_log[-1] == A  # recovery restored immutable A
 
 
 def test_persistence_failure_before_set_b_blocks_write():
