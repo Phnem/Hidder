@@ -243,6 +243,10 @@ class AutoProbeRun:
         if self.block_knowledge_holes and op_id == "he.rt":
             self._block_reasons[op_id] = "BLOCKED_BY_KNOWLEDGE_HOLE (rapid_trigger_units_crosscheck is authoritative OPEN)"
             return CLS_BLOCKED
+        if self.block_knowledge_holes and op_id == "light.rgb_core":
+            self._block_reasons[op_id] = ("BLOCKED_BY_UNRESOLVED_LIGHTING_REGISTER "
+                                          "(register 0x01 does not capture visible lighting state; vendor RGB is group 0x06/0x86 sync_custom_light, mapping unresolved)")
+            return CLS_BLOCKED
         if self.block_missing_strong_e5 and op_id == "keyboard.remap":
             self._block_reasons[op_id] = "BLOCKED_BY_MISSING_STRONG_E5 (only uncorrelated_os available; strong E5 requires WM_INPUT hDevice correlation)"
             return CLS_BLOCKED

@@ -112,6 +112,30 @@ def test_scenario_a_known_device_complete(tmp_path):
     assert run.summary()
 
 
+def test_real_policy_blocks_light_rgb_core_and_he_rt(tmp_path):
+    # Real-run policy must block light.rgb_core (unresolved lighting register mapping)
+    # and he.rt (knowledge hole) without weakening any other reversible op.
+    bundle = production_bundle_for_hero84()
+    state = _baseline_state(bundle)
+    trans = FakeTransport(initial_state=state, reconnect_ops={"keyboard.polling"})
+    inst = mock_hero84_instance()
+
+    def enumerate_fn():
+        return inst
+
+    run = AutoProbeRun(bundle=bundle, transport=trans, instance=inst,
+                       enumerate_fn=enumerate_fn, make_transport=lambda: trans.fresh_session(),
+                       run_dir=Path(tmp_path) / "run", reconnect_timeout_ms=500,
+                       block_knowledge_holes=True, block_missing_strong_e5=True)
+    run.run()
+    blocked = {e["operation"]: e["why_safe"] for e in run.plan if e["classification"] == "BLOCKED"}
+    assert "he.rt" in blocked and "BLOCKED_BY_KNOWLEDGE_HOLE" in blocked["he.rt"]
+    assert "light.rgb_core" in blocked and "BLOCKED_BY_UNRESOLVED_LIGHTING_REGISTER" in blocked["light.rgb_core"]
+    assert "keyboard.remap" in blocked and "BLOCKED_BY_MISSING_STRONG_E5" in blocked["keyboard.remap"]
+    # other reversible ops still planned + executed
+    assert any(e["operation"] == "device.win_lock" and e["classification"] == "AUTO_REVERSIBLE" for e in run.plan)
+
+
 def test_scenario_b_unknown_firmware_writes_blocked_package_created(tmp_path):
     inst = mock_hero84_instance(firmware="unknown")
     run, trans = _make_run(tmp_path, instance=inst)
