@@ -55,10 +55,102 @@ def test_keychron_known_via_conformance():
 
 
 def test_keychron_ambiguous_must_not_assume_via():
+    # Brand == Keychron must NOT imply VIA. Strategy is known (conformance), but
+    # the family (via/qmk/vial) is unproven -> writes gated until family resolution.
     r = resolve(brand="Keychron", family="", model="Q1")
+    assert r.strategy == "CONFORMANCE_VALIDATION"
+    assert r.family_required is True
+    assert r.family == ""
+    assert r.ambiguous is False
+    # no automatic write without a proven family
+    assert r.family_required is True
+
+
+def test_brand_never_implies_family():
+    # AULA unknown family must NOT auto-assume aula_kb_v3_wired for writes
+    a = resolve(brand="AULA", family="")
+    assert a.family == "" and a.family_required is True and a.ambiguous is False
+    # MCHOSE unresolved must NOT auto-assume BY/CZ
+    m = resolve(brand="MCHOSE", family="")
+    assert m.family == "" and m.family_required is True
+    # ATK/VXE/VGN unknown identity must NOT auto-assume one serializer
+    for b in ("ATK", "VXE", "VGN"):
+        r = resolve(brand=b, family="")
+        assert r.family_required is True and r.ambiguous is False
+    # VID-only is insufficient for a write decision
+    vid_only = resolve(brand="", vid="0x1234", pid="0x5678")
+    assert vid_only.strategy == "UNKNOWN_SAFE_DISCOVERY"
+    assert vid_only.family == ""
+
+
+def test_aliases_do_not_create_new_family():
+    # Each alias group must resolve to the SAME strategy group (no accidental new family)
+    assert resolve(brand="Logitech", family="").group == resolve(brand="Logitech G", family="").group == "conformance_open_spec"
+    assert resolve(brand="Gigabyte", family="").group == resolve(brand="AORUS", family="").group == "forensic_high"
+    assert resolve(brand="ATK", family="").group == resolve(brand="VXE", family="").group == resolve(brand="VGN", family="").group == "forensic_high"
+    assert resolve(brand="Meletrix", family="").group == resolve(brand="Wuque", family="").group == "conformance_qmk"
+    assert resolve(brand="ASUS ROG", family="").group == resolve(brand="ASUS", family="").group == "partial_mature"
+    # FL·ESPORTS (interpunct) and IO alias resolve via token-normalized matching
+    assert resolve(brand="FL·ESPORTS", family="").group == "forensic_partial"
+    assert resolve(brand="Red Square", family="").group == resolve(brand="IO", family="").group == "forensic_partial"
+
+
+def test_turtle_beach_ambiguous_zero_writes():
+    # Turtle Beach is listed under both forensic-high and controller-tier3 -> AMBIGUOUS, zero writes
+    r = resolve(brand="Turtle Beach", family="")
     assert r.ambiguous is True
     assert r.strategy == "UNKNOWN_SAFE_DISCOVERY"
-    assert "family gate" in r.reason.lower() or "via" in r.reason.lower()
+
+
+def test_gap_actionability():
+    from community.vetro_probe.knowledge_rank import gap_actionability
+    # Transport/serializer known + K19 NONE -> hardware_answerable_now
+    known = {k: "FULL" for k in ("K4", "K5", "K6", "K7", "K8", "K9")}
+    cat, prereq = gap_actionability(known, "K19")
+    assert cat == "hardware_answerable_now" and prereq == ""
+    # Serializer unknown -> K14 not yet answerable
+    weak = {"K4": "FULL", "K5": "FULL", "K6": "NONE", "K7": "NONE", "K8": "NONE", "K9": "NONE"}
+    cat, prereq = gap_actionability(weak, "K14")
+    assert cat == "hardware_answerable_after_prerequisite" and "K4-K9" in prereq
+    # K20 needs another device, not a re-test of the same unit
+    cat, prereq = gap_actionability(known, "K20")
+    assert cat == "needs_other_device"
+    # K18 needs an independent observable
+    cat, _ = gap_actionability(known, "K18")
+    assert cat == "needs_observable"
+    # K16/K17 are software-only classification
+    cat, _ = gap_actionability(known, "K16")
+    assert cat == "software_only"
+
+
+def test_value_score_ordering():
+    from community.vetro_probe.knowledge_rank import research_value_score
+    # AULA known (K19 FULL, K20 PART) -> LOW/MID
+    aula = {"K0": "FULL", "K4": "FULL", "K5": "FULL", "K6": "FULL", "K7": "FULL", "K8": "FULL",
+            "K9": "FULL", "K10": "FULL", "K11": "FULL", "K13": "FULL", "K14": "FULL", "K19": "FULL", "K20": "PART"}
+    assert research_value_score(aula) <= 40
+    # forensic-high: transport known, hardware truth missing -> HIGH
+    fh = {"K0": "FULL", "K1": "FULL", "K4": "FULL", "K5": "FULL", "K6": "FULL", "K7": "FULL", "K8": "FULL", "K9": "FULL",
+          "K10": "PART", "K11": "PART", "K12": "PART", "K13": "PART", "K14": "CAND", "K15": "PART",
+          "K16": "PART", "K17": "PART", "K18": "CAND", "K19": "NONE", "K20": "PART"}
+    assert research_value_score(fh) >= 40
+    # catalog-only with nothing known must NOT get huge score just for NONE volume
+    cat = {"K0": "PART", "K1": "PART", "K3": "CAND", "K2": "NONE", "K4": "NONE", "K5": "NONE",
+           "K6": "NONE", "K7": "NONE", "K8": "NONE", "K9": "NONE", "K10": "NONE", "K11": "NONE",
+           "K12": "NONE", "K13": "NONE", "K14": "NONE", "K15": "NONE", "K16": "NONE", "K17": "NONE",
+           "K18": "NONE", "K19": "NONE", "K20": "NONE"}
+    assert research_value_score(cat) <= 40
+
+
+def test_router_coverage_full():
+    from community.vetro_probe.router_coverage import generate_coverage, AUDIT_ROWS
+    r = generate_coverage()
+    assert r["audit_rows"] == len(AUDIT_ROWS) == 110
+    assert r["unresolved"] == 0
+    assert r["ambiguous"] == 1 and r["ambiguous_brands"] == ["Turtle Beach"]
+    assert r["routable"] == 109
+    total = sum(r["strategy_counts"].values())
+    assert total == len(AUDIT_ROWS) == 110
 
 
 def test_edra_passive_bootstrap():

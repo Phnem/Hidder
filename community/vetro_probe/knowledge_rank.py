@@ -137,6 +137,13 @@ def research_value_score(matrix: dict[str, str], strategy: str | None = None) ->
         score = min(score, 15)
     elif matrix.get("K19") == "FULL" and matrix.get("K20") == "PART":
         score = min(score, 40)
+    # Value = how much this Probe run can REALLY extract, not raw gap count.
+    # If we cannot yet talk to the device (transport/serializer unknown), the run can only
+    # do bootstrap -> do not hand a huge score for sheer NONE volume.
+    if core_known == 0:
+        score = min(score, 40)
+    elif core_known <= 3:
+        score = min(score, 65)
     return max(0, min(100, score))
 
 
@@ -150,3 +157,40 @@ def value_band(score: int) -> str:
     if score <= 80:
         return "major hardware-validation gap"
     return "high-value unknown/forensics target"
+
+
+def gap_actionability(matrix: dict[str, str], ki: str) -> tuple[str, str]:
+    """Is this knowledge gap something a Probe run on THIS device can actually close?
+
+    Returns (category, prerequisite):
+      software_only                          -> static/passive, no hardware needed
+      hardware_answerable_now                -> a run on this device can close it safely now
+      hardware_answerable_after_prerequisite -> needs earlier Ki (e.g. K7/K8 serializer) first
+      needs_observable                       -> needs an independent OS/HID observable
+      needs_other_device                     -> requires a different device/model/FW (K20)
+      blocked                                -> no safe path known
+    """
+    level = matrix.get(ki, "NONE")
+    if level == "FULL":
+        return "software_only", "already FULL"
+    k4_9 = all(matrix.get(k, "NONE") in ("FULL", "PART") for k in ("K4", "K5", "K6", "K7", "K8", "K9"))
+    parser = matrix.get("K8", "NONE") in ("FULL", "PART")
+    serializer = matrix.get("K7", "NONE") in ("FULL", "PART")
+
+    if ki == "K20":
+        return "needs_other_device", "another device/model/FW"
+    if ki in ("K18",):
+        return "needs_observable", "independent OS/HID observable (WM_INPUT)" if not k4_9 else "readback + independent observable"
+    if ki in ("K19", "K13", "K14", "K15"):
+        return ("hardware_answerable_now", "") if k4_9 else ("hardware_answerable_after_prerequisite", "K4-K9 transport/serializer/parser")
+    if ki in ("K10", "K11"):
+        return ("hardware_answerable_now", "") if parser else ("hardware_answerable_after_prerequisite", "K8 response parser")
+    if ki == "K12":
+        return ("hardware_answerable_now", "") if (k4_9 and serializer) else ("hardware_answerable_after_prerequisite", "K7 serializer")
+    if ki == "K2":
+        return ("hardware_answerable_now", "") if k4_9 else ("software_only", "passive GET if a proven route exists")
+    if ki in ("K16", "K17"):
+        return "software_only", "classification / intent provenance from known artifacts"
+    if ki in ("K0", "K1", "K3", "K4", "K5", "K6", "K7", "K8", "K9"):
+        return "software_only", "static/passive enumeration"
+    return "blocked", ""

@@ -41,6 +41,7 @@ class Resolution:
     avoid_redundant: list[str] = field(default_factory=list)
     destructive: list[str] = field(default_factory=list)
     ambiguous: bool = False
+    family_required: bool = False
     reason: str = ""
 
     def to_dict(self) -> dict[str, Any]:
@@ -62,13 +63,31 @@ def _normalize(s: str) -> str:
     return (s or "").strip().lower()
 
 
+def _normalize_tokens(s: str) -> str:
+    """Normalize a brand for matching: lowercase, drop punctuation/spacing variants
+    (FL·ESPORTS == FL ESPORTS), so aliases match without substring false positives."""
+    import unicodedata
+    nf = unicodedata.normalize("NFKD", s)
+    out = "".join(c for c in nf if c.isalnum()).lower()
+    return out
+
+
+def _names_for_group(g: dict[str, Any]) -> list[str]:
+    return [g.get("group", "")] + list(g.get("brands", [])) + list(g.get("aliases", []))
+
+
 def _group_for_brand(brand: str, groups: list[dict[str, Any]]) -> dict[str, Any] | None:
-    b = _normalize(brand)
+    b = _normalize_tokens(brand)
     for g in groups:
-        names = [g.get("group", "")] + list(g.get("brands", [])) + list(g.get("aliases", []))
-        if any(_normalize(n) == b or _normalize(n) in b or b in _normalize(n) for n in names if n):
+        if any(_normalize_tokens(n) == b for n in _names_for_group(g) if n):
             return g
     return None
+
+
+def _groups_for_brand(brand: str, groups: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """All strategy groups a brand maps into. >1 = ambiguous across strategy (e.g. Turtle Beach)."""
+    b = _normalize_tokens(brand)
+    return [g for g in groups if any(_normalize_tokens(n) == b for n in _names_for_group(g) if n)]
 
 
 def resolve(
@@ -91,7 +110,15 @@ def resolve(
         res.strategy = "UNKNOWN_SAFE_DISCOVERY"
         return res
 
-    group = _group_for_brand(brand, groups)
+    matched = _groups_for_brand(brand, groups)
+    if len(matched) > 1:
+        # Brand maps to multiple strategy groups (e.g. Turtle Beach: controller-tier3 AND forensic-high).
+        # Strategy cannot be chosen until device class / exact family is resolved -> zero auto writes.
+        res.ambiguous = True
+        res.reason = f"brand {brand!r} maps to multiple strategy groups {[g['group'] for g in matched]} — resolve device class/family first"
+        res.strategy = "UNKNOWN_SAFE_DISCOVERY"
+        return res
+    group = matched[0] if matched else None
     if group is None:
         # brand unmatched -> unknown safe discovery
         res.reason = f"brand {brand!r} not in registry"
@@ -113,27 +140,22 @@ def resolve(
     res.avoid_redundant = list(group.get("avoid_redundant_targets", []))
     res.destructive = list(group.get("known_destructive_classes", []))
 
-    # family resolution: exact family hint -> group family -> brand fallback
-    if family:
-        res.family = family
-        if families_hint and family in families_hint:
-            pass
-    elif group.get("families") and group["families"] != ["*"]:
-        # high-confidence family match from group when a concrete family is known
-        res.family = group["families"][0] if group["families"] else ""
-    else:
-        res.family = ""
-
-    # AMBIGUOUS: if a family gate is present (e.g. QMK must be proven) and family unresolved
-    if group.get("family_gate") and not family:
-        res.ambiguous = True
-        res.reason = f"family gate: {group['family_gate']} — family unresolved"
-        res.strategy = "UNKNOWN_SAFE_DISCOVERY"
-        return res
+    # family resolution: exact family hint only. Brand must never imply family.
+    res.family = family or ""
     if family and families_hint and family not in families_hint and len(families_hint) > 1:
         res.ambiguous = True
         res.reason = f"family {family!r} matches multiple incompatible profiles ({families_hint})"
         res.strategy = "UNKNOWN_SAFE_DISCOVERY"
+        return res
+    if not res.family and not res.ambiguous:
+        # Family unresolved -> strategy known but writes gated until family proven.
+        res.family_required = True
+
+    # Family gate (e.g. QMK/VIA must be proven per model): strategy stays known,
+    # but writes are gated until the exact family is proven. Brand alone is NOT a family.
+    if group.get("family_gate") and not family:
+        res.family_required = True
+        res.reason = f"family gate: {group['family_gate']} — writes gated until family proven"
         return res
 
     res.reason = f"resolved via {group['group']} (strategy {res.strategy})"
