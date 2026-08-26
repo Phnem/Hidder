@@ -1,0 +1,36 @@
+{
+  "schema": "vetro.lighting-mapping.v1",
+  "device": {"name": "HERO 84 HE", "vid": "0x372E", "pid": "0x103E", "family": "aula_kb_v3_wired", "firmware": "0216"},
+  "old_mapping": {
+    "operation": "light.rgb_core",
+    "previous_target": "feature register 0x01 (light_mode), color=bytes[0:3], mode/brightness/enable=bytes[3:6]",
+    "status": "REJECTED",
+    "reason": "contradicted_by_real_vendor_app_capture",
+    "evidence": [
+      "register 0x01 read 0b00ff00000000 both before (post-failed-run) and after the user re-enabled lighting via the official AULA app",
+      "register 0x06 read 02070000000201 both before and after the re-enable",
+      "full feature-register enumeration (0x01..0x1E) shows only 0x01/0x06/0x17/0x18/0x19 non-zero",
+      "group 0x86 sub 0 fetch_custom_light GET returns an echo of the request (no lighting payload)",
+      "vendor oracle trace labels group 0x84 sub 0x01 as 'not yet decoded — possibly firmware/build sub-info'"
+    ],
+    "conclusion": "register 0x01 bytes[3:6] are NOT a provable mode/brightness/enable field; the visible lighting on/off state is not represented in the readable register file; lighting state is write-only/cached or in a command not yet discovered."
+  },
+  "groups": {
+    "0x06": "sync_custom_light (WRITE) — per capability matrix; serializer NOT yet empirically proven",
+    "0x86": "fetch_custom_light (GET) — per capability matrix; sub-0 GET returns echo, readable fetch not yet discovered"
+  },
+  "fields": {
+    "global_enable": "UNKNOWN",
+    "brightness": "UNKNOWN",
+    "effect": "UNKNOWN",
+    "speed": "UNKNOWN",
+    "direction": "UNKNOWN",
+    "global_rgb": "UNKNOWN",
+    "per_key_rgb": "UNKNOWN",
+    "edge_light": "UNKNOWN"
+  },
+  "authoritative_baseline_available": false,
+  "rollback_proven": false,
+  "auto_eligible": false,
+  "next_required": "capture outgoing HID writes from the official AULA app (interactive differential sweep with a passive write observer) to prove the 0x06 sync_custom_light serializer and field semantics"
+}
