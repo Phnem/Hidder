@@ -14,8 +14,9 @@ def test_lighting_old_mapping_rejected():
     assert d["authoritative_baseline_available"] is False
     assert d["rollback_proven"] is False
     assert d["auto_eligible"] is False
-    for field in ("global_enable", "brightness", "effect", "speed", "direction", "global_rgb", "per_key_rgb", "edge_light"):
-        assert d["fields"][field] == "UNKNOWN"
+    for field in ("light.enable", "light.brightness", "light.global_color", "light.effect",
+                  "light.speed", "light.direction", "light.per_key_rgb", "light.edge_light"):
+        assert d["fields"][field]["status"] == "UNKNOWN"
 
 
 def test_lighting_probe_harness_imports_and_snapshot_shape():
