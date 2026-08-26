@@ -54,8 +54,12 @@ OP_MAP: dict[str, dict[str, Any]] = {
         "cap": "profiles",
     },
     "light.rgb_core": {
-        "kind": "set", "reversible": True, "readback": True,
-        "bounds": {"min": 0, "max": 0xFFFFFF, "safe_values": [0xFF0000]},
+        # Full-register read-modify-write: register 0x01 (light_mode) is 7 bytes.
+        # color = bytes[0:3], mode/brightness/enable = bytes[3:6]. A truncated 3-byte
+        # write zeroes the mode fields and turns the backlight off (observed on real HERO84).
+        "kind": "register_preserve", "reversible": True, "readback": True,
+        "bounds": {"min": 0, "max": 0xFFFFFF, "safe_values": [0xFF0000],
+                   "preserve_others": True, "reg_width": 7, "color_offset": 0, "color_width": 3},
         "cap": "rgb_core",
     },
     "device.win_lock": {

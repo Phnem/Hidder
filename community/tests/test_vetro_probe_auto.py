@@ -28,7 +28,8 @@ def _baseline_state(bundle) -> dict:
     defaults = {
         "he.actuation": 1.0, "he.rt": 1, "he.deadzone": 0.5,
         "keyboard.remap": 0x46, "keyboard.profile": 0,
-        "light.rgb_core": 0x00FF00, "device.win_lock": False, "keyboard.polling": 3,
+        "light.rgb_core": "00ff0000000000",  # full 7-byte light_mode register
+        "device.win_lock": False, "keyboard.polling": 3,
     }
     for p in plan(bundle):
         op_id = p.operation_id

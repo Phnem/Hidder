@@ -110,19 +110,45 @@ class SafetyGate:
             return type(mn)(mid) if isinstance(mn, int) else mid
         return None
 
+    def _choose_preserve_delta(self, baseline_value: Any, bounds: dict[str, Any]) -> Any | None:
+        """Full-register preserve-others safe delta: baseline is a hex register string;
+        flip only the color window, preserve every other byte (mode/brightness/enable)."""
+        try:
+            base = bytes.fromhex(str(baseline_value))
+        except Exception:
+            return None
+        width = int(bounds.get("color_width", 3))
+        off = int(bounds.get("color_offset", 0))
+        sv = bounds.get("safe_values", [0xFFFFFF])[0]
+        color = bytes([(int(sv) >> 16) & 0xFF, (int(sv) >> 8) & 0xFF, int(sv) & 0xFF])[:width]
+        out = bytearray(base)
+        if off + width > len(out):
+            return None
+        out[off:off + width] = color
+        return out.hex()
+
     def authorize_with_baseline(self, operation_id: str, baseline_value: Any) -> SafetyDecision:
         """Choose a safe temporary value distinct from baseline."""
         op = self.bundle.get_operation(operation_id)
         if op is None:
             return SafetyDecision(False, f"unknown operation: {operation_id}")
         # Firmware check for writes (wildcard not allowed)
-        if op.kind in ("set", "toggle", "transaction"):
+        if op.kind in ("set", "toggle", "transaction", "register_preserve"):
             fw_decision = self._check_firmware_for_write()
             if fw_decision is not None:
                 return fw_decision
         bounds = self.bundle.bounds.get(operation_id)
         if bounds is None:
             return SafetyDecision(False, f"no bounds for {operation_id}")
+        if op.kind == "register_preserve":
+            if not bounds.get("preserve_others"):
+                return SafetyDecision(False, "register_preserve requires preserve_others bounds")
+            if baseline_value is None:
+                return SafetyDecision(False, "no baseline for register_preserve operation")
+            temp = self._choose_preserve_delta(baseline_value, bounds)
+            if temp is None or temp == baseline_value:
+                return SafetyDecision(False, "cannot choose safe preserve delta distinct from baseline")
+            return SafetyDecision(True, "preserve_others safe delta", temp)
         # try safe_values that differ from baseline
         for cand in bounds.get("safe_values", []):
             if cand != baseline_value and self._in_bounds(cand, bounds):

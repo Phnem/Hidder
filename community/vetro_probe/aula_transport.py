@@ -211,11 +211,10 @@ class AulaHidTransport(DeviceTransport):
         if op_id == "keyboard.profile":
             return ops.get_profile_idx(self.raw, p)  # type: ignore
         if op_id == "light.rgb_core":
+            # Full 7-byte light_mode register (color bytes[0:3], mode/brightness/enable bytes[3:6]).
+            # Baseline/readback must cover the WHOLE register so rollback restores lighting mode too.
             data = ops.get_feature_register(self.raw, p, 0x01)  # type: ignore
-            # data is 7 bytes? first 3 are RGB
-            if len(data) >= 3:
-                return (data[0] << 16) | (data[1] << 8) | data[2]
-            return int.from_bytes(data, "little") if data else 0
+            return bytes(data).hex() if data else "00000000000000"
         if op_id == "device.win_lock":
             data = ops.get_feature_register(self.raw, p, 0x15)  # type: ignore
             return bool(data[0]) if data else False
@@ -261,18 +260,25 @@ class AulaHidTransport(DeviceTransport):
             ops.set_profile_idx(self.raw, p, index=int(value))  # type: ignore
             return
         if op_id == "light.rgb_core":
-            # value is 0xRRGGBB
-            v = int(value)
-            r, g, b = (v >> 16) & 0xFF, (v >> 8) & 0xFF, v & 0xFF
-            from DB.aula_kb_v3.operations import RgbCoreState  # type: ignore
-
+            # Full-register read-modify-write: register 0x01 (light_mode) is 7 bytes.
+            # value is hex of the FULL register (14 chars) or just the 3-byte color (6 chars).
+            # Preserve bytes[3:6] (mode/brightness/enable) so the backlight never gets turned off.
             try:
-                from aula_kb_v3.operations import RgbCoreState as _Rgb  # type: ignore
-
-                RgbCoreState = _Rgb
+                import aula_kb_v3.protocol as prot  # type: ignore
             except ImportError:
-                pass
-            ops.set_rgb_core(self.raw, p, RgbCoreState(r=r, g=g, b=b))  # type: ignore
+                import DB.aula_kb_v3.protocol as prot  # type: ignore
+            if isinstance(value, str) and len(value) == 14:
+                new7 = bytes.fromhex(value)
+            else:
+                color = bytes.fromhex(str(value)[-6:] if isinstance(value, str) else f"{int(value):06x}")
+                cur = ops.get_feature_register(self.raw, p, 0x01)  # type: ignore
+                cur7 = bytes(cur) if len(cur) >= 7 else b"\x00" * 7
+                new7 = color + cur7[3:7]
+            if len(new7) != 7:
+                raise RuntimeError(f"light.rgb_core register must be 7 bytes, got {len(new7)}")
+            frame = prot.build_feature_set_frame(0x01, new7)  # type: ignore
+            self.raw.send(frame)  # type: ignore
+            self.raw.recv()  # type: ignore
             return
         if op_id == "device.win_lock":
             ops.set_win_lock(self.raw, p, enabled=bool(value))  # type: ignore

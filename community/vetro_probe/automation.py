@@ -248,7 +248,7 @@ class AutoProbeRun:
             return CLS_MANUAL
         if not op.reversible:
             return CLS_BLOCKED
-        if op.kind not in ("set", "toggle", "transaction"):
+        if op.kind not in ("set", "toggle", "transaction", "register_preserve"):
             return CLS_BLOCKED
         if op_id not in self.bundle.bounds:
             return CLS_BLOCKED
