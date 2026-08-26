@@ -8,7 +8,7 @@ import pytest
 from community.vetro_probe.lighting_diff import (
     filter_idle, idle_signatures, correlate, byte_diff,
     full_state_write_detected, infer_field, infer_enum,
-    verify_checksum, classify_offsets,
+    verify_checksum, classify_offsets, correlate_window,
 )
 
 HEX = "06000001"
@@ -92,16 +92,15 @@ def test_lighting_mapping_schema_and_old_mapping_rejected():
     p = Path(__file__).resolve().parents[1] / "vetro_probe" / "knowledge" / "lighting_mapping.json"
     d = json.loads(p.read_text(encoding="utf-8"))
     assert d["old_mapping"]["status"] == "REJECTED"
-    assert d["fields"]["light.brightness"]["status"] == "PARTIAL"
-    for field in ("light.enable", "light.global_color", "light.effect",
-                  "light.speed", "light.direction", "light.per_key_rgb", "light.edge_light"):
-        rec = d["fields"][field]
-        assert rec["status"] == "UNKNOWN"
-        assert rec["evidence_count"] == 0 and rec["hardware_verified"] is False
-    assert d["authoritative_baseline_available"] is False
+    assert d["fields"]["light.brightness"]["status"] == "KNOWN_mapping_range"
+    assert d["fields"]["light.global_color"]["status"] == "KNOWN"
+    assert d["fields"]["light.mode"]["status"] == "KNOWN_selector"
+    for field in ("light.per_key_rgb", "light.edge_light"):
+        assert d["fields"][field]["status"] == "UNKNOWN"
+    assert d["authoritative_baseline_available"] is True
     assert d["rollback_proven"] is False
     assert d["auto_eligible"] is False
-    assert d["full_state_write"] == "UNKNOWN"
+    assert d["full_state_write"] == "YES"
 
 
 def test_capture_harness_imports():
@@ -141,6 +140,69 @@ def test_brightness_candidate_offset_11_only():
     assert len(cls["checksum"]) == 1
 
 
+def test_correlate_window_action_begin_before_frames():
+    # ACTION_BEGIN at t=10, ACTION_END at t=15; frames during action -> in window; before BEGIN -> out
+    events = [
+        {"timestamp": 9.0, "method": "sendReport", "direction": "OUT", "hex": "pre"},   # before BEGIN
+        {"timestamp": 12.0, "method": "sendReport", "direction": "OUT", "hex": "a1"},
+        {"timestamp": 14.0, "method": "sendReport", "direction": "OUT", "hex": "a2"},
+        {"timestamp": 15.5, "method": "sendReport", "direction": "OUT", "hex": "tail"},  # within +tail
+        {"timestamp": 20.0, "method": "sendReport", "direction": "OUT", "hex": "late"},  # after window
+    ]
+    win = correlate_window(events, begin_ts=10.0, end_ts=15.0, tail_s=1.0)
+    hexes = {e["hex"] for e in win}
+    assert hexes == {"a1", "a2", "tail"}
+    assert "pre" not in hexes and "late" not in hexes
+
+
+def test_action_window_markers_ordered_begin_then_end():
+    import community.vetro_probe.webhid_capture as wc
+    # synthetic: ACTION_BEGIN timestamp < ACTION_END timestamp; frames captured during
+    begin = {"type": "ACTION_BEGIN", "action": "brightness:50->75", "timestamp": 10.0}
+    end = {"type": "ACTION_END", "action": "brightness:50->75", "timestamp": 15.0}
+    assert begin["timestamp"] < end["timestamp"]
+    assert begin["type"] == "ACTION_BEGIN" and end["type"] == "ACTION_END"
+
+
+def test_full_state_preservation_across_semantics():
+    # brightness change preserves mode/rgb/speed (only offset 11 + checksum differ)
+    base = "04010001000703005305ff0a02" + "0" * 100
+    br75 = "04010001000703005305ff0f02" + "0" * 100
+    diff = byte_diff(base, br75)
+    cls = classify_offsets([d["offset"] for d in diff], {62})
+    assert cls["semantic"] == [11]
+    # color change preserves mode/brightness/speed (only 8/9/10 differ)
+    color = "0401000100070300ff00000a02" + "0" * 100
+    diff2 = byte_diff(base, color)
+    cls2 = classify_offsets([d["offset"] for d in diff2], {62})
+    assert cls2["semantic"] == [8, 9, 10]
+
+
+def test_lighting_mapping_v4_real_sweep_evidence():
+    import json
+    from pathlib import Path
+    p = Path(__file__).resolve().parents[1] / "vetro_probe" / "knowledge" / "lighting_mapping.json"
+    d = json.loads(p.read_text(encoding="utf-8"))
+    assert d["checksum"]["evidence_count"] == 26
+    assert d["device_echo"]["matched"] == "26/26"
+    assert d["device_echo"]["semantics"].startswith("write acceptance/echo")
+    assert d["global_state_block"]["class"] == "FULL_GLOBAL_LIGHTING_STATE_BLOCK"
+    assert d["global_state_block"]["layout"] == {"mode": 6, "reserved": 7, "R": 8, "G": 9, "B": 10, "brightness": 11, "speed": 12}
+    assert d["fields"]["light.global_color"]["status"] == "KNOWN"
+    assert d["fields"]["light.global_color"]["encoding"] == "RGB888"
+    assert d["fields"]["light.brightness"]["status"] == "KNOWN_mapping_range"
+    assert d["fields"]["light.brightness"]["mapping"] == "raw = UI_percent / 5"
+    assert d["fields"]["light.speed"]["values"]["mid"] == 2 and d["fields"]["light.speed"]["values"]["max"] == 4
+    assert d["fields"]["light.speed"]["values"]["min"] == "UNKNOWN"
+    assert d["fields"]["light.mode"]["values"]["0"] == "OFF"
+    assert d["fields"]["light.direction"]["status"] == "UNSUPPORTED_BY_UI"
+    assert d["k13_baseline"].startswith("CLOSED")
+    assert d["k14_rollback"].startswith("OPEN")
+    assert d["auto_eligible"] is False
+    assert d["old_mapping"]["status"] == "REJECTED"
+    assert d["groups"]["0x06"]["status"].startswith("STATIC_CAPABILITY_LABEL_ONLY")
+
+
 def test_lighting_mapping_v3_brightness_partial_and_checksum_proven():
     import json
     from pathlib import Path
@@ -151,9 +213,9 @@ def test_lighting_mapping_v3_brightness_partial_and_checksum_proven():
     assert d["capture"]["payload_length"] == 63
     assert d["checksum"]["offset"] == 62
     assert d["checksum"]["status"].startswith("PROVEN")
-    assert d["checksum"]["evidence_count"] == 2
-    assert d["fields"]["light.brightness"]["status"] == "PARTIAL"
-    assert d["fields"]["light.brightness"]["candidate_offset"] == 11
+    assert d["checksum"]["evidence_count"] == 26
+    assert d["fields"]["light.brightness"]["status"] == "KNOWN_mapping_range"
+    assert d["fields"]["light.brightness"]["offset"] == 11
     assert d["groups"]["0x06"]["status"].startswith("STATIC_CAPABILITY_LABEL_ONLY")
     assert d["old_mapping"]["status"] == "REJECTED"
     assert d["auto_eligible"] is False

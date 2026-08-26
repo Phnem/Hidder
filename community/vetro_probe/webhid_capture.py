@@ -371,10 +371,20 @@ class WebHidCapture:
         with open(self.trace_path, "a", encoding="utf-8") as fh:
             fh.write(json.dumps(ev, ensure_ascii=False) + "\n")
 
-    def write_marker(self, action: str, frm: str = "", to: str = "") -> None:
-        rec = {"type": "USER_ACTION", "action": action, "from": frm, "to": to, "timestamp": time.time()}
+    def write_marker(self, action: str, frm: str = "", to: str = "", mtype: str = "USER_ACTION") -> None:
+        rec = {"type": mtype, "action": action, "from": frm, "to": to, "timestamp": time.time()}
         with open(self.trace_path, "a", encoding="utf-8") as fh:
             fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
+
+    def action_window(self, label: str, frm: str, to: str, prompt: str, tail_s: float = 1.0) -> list[dict[str, Any]]:
+        """Correct action-window semantics: ACTION_BEGIN BEFORE the user acts, so real HID
+        frame timestamps can never precede the marker; ACTION_END after Enter; collect tail.
+
+        Returns the frames captured during [BEGIN, END + tail], annotated with the label."""
+        self.write_marker(f"{label}:{frm}->{to}", frm, to, mtype="ACTION_BEGIN")
+        input(prompt)
+        self.write_marker(f"{label}:{frm}->{to}", frm, to, mtype="ACTION_END")
+        return self.collect_frames(tail_s, annotation=label)
 
     def collect_frames(self, seconds: float, annotation: str | None = None) -> list[dict[str, Any]]:
         deadline = time.time() + seconds
@@ -532,9 +542,7 @@ def run_smoke_brightness(trace_path: Path, url: str, idle_seconds: int) -> int:
     for label, frm, to, action in (("brightness_1", "current", "different", "brightness change"),
                                    ("brightness_2", "different", "original", "brightness restore")):
         print(f"\n>>> [{label}] set BRIGHTNESS {frm} -> {to} in the app")
-        input("Press Enter AFTER applying: ")
-        cap.write_marker(action, frm, to)
-        frames = cap.collect_frames(5.0, annotation=label)
+        frames = cap.action_window(label, frm, to, "Press Enter AFTER applying: ", tail_s=5.0)
         out = [f for f in frames if f.get("direction") in ("OUT", "feature_out", "out", "feature_out")]
         novel = filter_idle(out, idle_sig)
         results.append({"label": label, "frames": frames, "out": out, "novel": novel})
@@ -627,9 +635,8 @@ def run_sweep_full(trace_path: Path, url: str, idle_seconds: int) -> int:
         if extra.strip().lower() == "skip":
             cap.write_marker(f"{kind}_SKIPPED", frm, to)
             continue
-        cap.write_marker(f"{kind}:{frm}->{to}", frm, to)
-        n = cap.collect_frames(3.0, annotation=f"{kind}:{to}")
-        print(f"[capture] {n} frames")
+        frames = cap.action_window(kind, frm, to, "", tail_s=3.0)
+        print(f"[capture] {len(frames)} frames")
     cap.close()
     print(f"\nFull sweep done. trace = {trace_path}")
     return 0

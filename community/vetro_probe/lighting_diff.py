@@ -122,6 +122,18 @@ def infer_enum(frames: list[dict[str, Any]], offset: int, length: int = 1,
     return infer_field(frames, offset, length, min_samples)
 
 
+def correlate_window(events: list[dict[str, Any]], begin_ts: float, end_ts: float,
+                     tail_s: float = 1.0) -> list[dict[str, Any]]:
+    """Frames attributable to one user action: timestamps in [begin_ts, end_ts + tail_s].
+
+    ACTION_BEGIN must be written BEFORE the user acts; ACTION_END after. This fixes the
+    old ordering where the marker was written after the action (so frame timestamps could
+    precede the marker)."""
+    lo = begin_ts
+    hi = end_ts + tail_s
+    return [e for e in events if lo <= e.get("timestamp", 0) <= hi]
+
+
 def verify_checksum(payload_hex: str, report_id: int = 9, checksum_offset: int = 62) -> bool:
     """Verify 63-byte family checksum: checksum = 0xFF - ((report_id + sum(payload[0:62])) & 0xFF).
 

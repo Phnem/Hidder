@@ -11,13 +11,15 @@ def test_lighting_old_mapping_rejected():
     d = json.loads(p.read_text(encoding="utf-8"))
     assert d["old_mapping"]["status"] == "REJECTED"
     assert "contradicted_by_real_vendor_app_capture" in d["old_mapping"]["reason"]
-    assert d["authoritative_baseline_available"] is False
+    assert d["authoritative_baseline_available"] is True
     assert d["rollback_proven"] is False
     assert d["auto_eligible"] is False
-    assert d["fields"]["light.brightness"]["status"] == "PARTIAL"
-    for field in ("light.enable", "light.global_color", "light.effect",
-                  "light.speed", "light.direction", "light.per_key_rgb", "light.edge_light"):
+    assert d["fields"]["light.brightness"]["status"] == "KNOWN_mapping_range"
+    assert d["fields"]["light.mode"]["status"] == "KNOWN_selector"
+    for field in ("light.per_key_rgb", "light.edge_light"):
         assert d["fields"][field]["status"] == "UNKNOWN"
+    assert d["fields"]["light.enable"]["status"] == "PARTIAL_derived"
+    assert d["fields"]["light.direction"]["status"] == "UNSUPPORTED_BY_UI"
 
 
 def test_lighting_probe_harness_imports_and_snapshot_shape():
