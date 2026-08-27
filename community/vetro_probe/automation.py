@@ -240,6 +240,18 @@ class AutoProbeRun:
         "vid": "0x372E", "pid": "0x103E", "family": "aula_kb_v3_wired", "firmware": "0216",
     }
 
+    def _feature_gate_block(self, op_id: str) -> tuple[str, str] | None:
+        """Feature-specific required-evidence gate. Precedence:
+        feature blocker > generic reversible metadata > family knowledge.
+        Generic production_safe/reversible/bounds metadata can NEVER override an
+        OPEN hard requirement."""
+        from .feature_gates import blocker_for
+        d = self.discovery
+        vid = d.get("vid") or getattr(self.instance, "vid", "")
+        pid = d.get("pid") or getattr(self.instance, "pid", "")
+        fw = d.get("firmware") or getattr(self.instance, "firmware_version", "")
+        return blocker_for(op_id, vid=vid, pid=pid, family=self.bundle.family, fw=fw)
+
     def _brightness_scope_ok(self) -> bool:
         d = self.discovery
         vid = d.get("vid") or getattr(self.instance, "vid", "")
@@ -301,7 +313,14 @@ class AutoProbeRun:
                 return CLS_AUTO_REVERSIBLE
             self._block_reasons[op_id] = self._brightness_scope_block_reason()
             return CLS_BLOCKED
+        # Feature-specific required-evidence gate ALWAYS wins over generic metadata.
+        gate = self._feature_gate_block(op_id)
+        if gate is not None:
+            self._block_reasons[op_id] = gate[1]
+            return CLS_BLOCKED
         if self.block_knowledge_holes and op_id == "he.rt":
+            # Belt-and-suspenders: the evidence gate already blocks RT; kept only
+            # so the explicit policy flag produces the same canonical reason.
             self._block_reasons[op_id] = "BLOCKED_BY_KNOWLEDGE_HOLE (rapid_trigger_units_crosscheck is authoritative OPEN)"
             return CLS_BLOCKED
         if self.block_missing_strong_e5 and op_id == "keyboard.remap":
@@ -353,7 +372,7 @@ class AutoProbeRun:
                 why_safe = block_reason or (
                     "production_safe reversible, readback+rollback, bounds present, firmware gate"
                     if cls == CLS_AUTO_REVERSIBLE else "blocked/unknown")
-            self.plan.append({
+            entry = {
                 "operation": op_id,
                 "classification": cls,
                 "why_selected": p.reason,
@@ -362,7 +381,11 @@ class AutoProbeRun:
                 "rollback_method": "restore_value",
                 "reconnect_required": op.requires_reconnect,
                 "failure_policy": "recovery then FAILED_REQUIRES_MANUAL_RESTORE" if op.reversible else "no-op",
-            })
+            }
+            if cls == CLS_AUTO_REVERSIBLE:
+                from .feature_gates import closure_note
+                entry["evidence_closure"] = closure_note(op_id)
+            self.plan.append(entry)
         # Explicitly surface non-auto lighting features so the plan documents that
         # enabling light.brightness never unlocks global color / effect / per-key.
         for feat, reason in self._non_auto_lighting_features():

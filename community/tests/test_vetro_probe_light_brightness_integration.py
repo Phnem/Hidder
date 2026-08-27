@@ -390,3 +390,97 @@ def test_k20_not_promoted():
     p = Path(__file__).resolve().parents[1] / "vetro_probe" / "knowledge" / "lighting_mapping.json"
     d = json.loads(p.read_text(encoding="utf-8"))
     assert "K20" in d["physically_closed"]["not_generalized"]
+
+
+# ===================================================== planner evidence gates
+# Generic reversible metadata can never override a hard feature-level OPEN
+# requirement. Precedence: feature blocker > generic metadata > family knowledge.
+from community.vetro_probe import feature_gates as fg  # noqa: E402
+
+
+def test_generic_metadata_cannot_override_hard_blocker():
+    # he.rt is reversible + has bounds in the bundle, yet must stay BLOCKED.
+    run = _plan_for(production_bundle_for_hero84(), _inst())
+    e = _entry(run, "he.rt")
+    assert e["classification"] == CLS_BLOCKED
+    assert "BLOCKED_BY_KNOWLEDGE_HOLE" in e["why_safe"]
+
+
+def test_remap_missing_e5_blocked():
+    run = _plan_for(production_bundle_for_hero84(), _inst())
+    e = _entry(run, "keyboard.remap")
+    assert e["classification"] == CLS_BLOCKED
+    assert "BLOCKED_BY_MISSING_STRONG_E5" in e["why_safe"]
+
+
+def test_rt_open_units_crosscheck_blocked():
+    assert fg.missing_evidence("he.rt", "0x372E", "0x103E", "aula_kb_v3_wired", "0216") == [
+        "rapid_trigger_units_crosscheck"]
+    assert fg.blocker_for("he.rt", "0x372E", "0x103E", "aula_kb_v3_wired", "0216")[0] == "BLOCKED_BY_KNOWLEDGE_HOLE"
+
+
+def test_closing_exact_evidence_allows_promotion():
+    # Closing the EXACT required evidence (and only that) allows promotion.
+    closed = dict(fg.CLOSED_EVIDENCE)
+    closed["rapid_trigger_units_crosscheck"] = "simulated closure"
+    assert fg.missing_evidence("he.rt", "0x372E", "0x103E", "aula_kb_v3_wired", "0216", closed=closed) == []
+    assert fg.blocker_for("he.rt", "0x372E", "0x103E", "aula_kb_v3_wired", "0216", closed=closed) is None
+    # unrelated gates unaffected
+    assert fg.missing_evidence("keyboard.remap", "0x372E", "0x103E", "aula_kb_v3_wired", "0216", closed=closed) != []
+
+
+def test_brightness_k_closure_does_not_leak_into_rt_remap():
+    # light.brightness K13/K14/K18/K19 closure must NOT leak into RT/remap gates.
+    assert fg.missing_evidence("light.brightness", "0x372E", "0x103E", "aula_kb_v3_wired", "0216") == []
+    assert fg.missing_evidence("he.rt", "0x372E", "0x103E", "aula_kb_v3_wired", "0216") != []
+    assert fg.missing_evidence("keyboard.remap", "0x372E", "0x103E", "aula_kb_v3_wired", "0216") != []
+
+
+def test_family_full_k_status_cannot_override_feature_open():
+    # AULA brand k_matrix is FULL for K13/K14/K18/K19, but feature-level OPEN
+    # gates for RT/remap still win.
+    run = _plan_for(production_bundle_for_hero84(), _inst())
+    assert _entry(run, "he.rt")["classification"] == CLS_BLOCKED
+    assert _entry(run, "keyboard.remap")["classification"] == CLS_BLOCKED
+
+
+def test_actuation_prior_failure_blocks_pending_revalidation():
+    e = _entry(_plan_for(production_bundle_for_hero84(), _inst()), "he.actuation")
+    assert e["classification"] == CLS_BLOCKED
+    assert "BLOCKED_PENDING_PHYSICAL_REVALIDATION" in e["why_safe"]
+    assert "prior real Probe run FAILED" in e["why_safe"]
+
+
+def test_polling_winlock_deadzone_remain_eligible():
+    run = _plan_for(production_bundle_for_hero84(), _inst())
+    for op in ("keyboard.polling", "device.win_lock", "he.deadzone"):
+        e = _entry(run, op)
+        assert e["classification"] == CLS_AUTO_REVERSIBLE
+        assert "OPEN required evidence" not in e.get("evidence_closure", "")
+
+
+def test_profile_evidence_supports_auto():
+    e = _entry(_plan_for(production_bundle_for_hero84(), _inst()), "keyboard.profile")
+    assert e["classification"] == CLS_AUTO_REVERSIBLE
+    assert "PHYSICAL_VALIDATION_PASS G" in e["evidence_closure"]
+
+
+def test_brightness_remains_auto_reversible():
+    assert _entry(_plan_for(production_bundle_for_hero84(), _inst()), "light.brightness")["classification"] == CLS_AUTO_REVERSIBLE
+
+
+def test_rgb_effect_custom_remain_blocked():
+    run = _plan_for(production_bundle_for_hero84(), _inst())
+    for op in ("light.rgb_core", "light.global_color", "light.effect", "custom.per_key"):
+        assert _entry(run, op)["classification"] == CLS_BLOCKED
+
+
+def test_dry_plan_performs_zero_writes(tmp_path):
+    bundle = production_bundle_for_hero84()
+    trans = FakeTransport(initial_state={})
+    inst = _inst()
+    run = AutoProbeRun(bundle=bundle, transport=trans, instance=inst,
+                       enumerate_fn=lambda: inst, make_transport=lambda: trans.fresh_session(),
+                       run_dir=Path(tmp_path) / "dry", reconnect_timeout_ms=200)
+    run.plan_only()
+    assert trans.device.write_count == 0

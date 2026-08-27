@@ -1,0 +1,148 @@
+"""Feature-level required-evidence gates for autonomous reversible writes.
+
+A generic bundle row (production_safe / reversible / readback+rollback / bounds
+present / firmware gate) is NOT hardware proof. Each operation that requires a
+feature-specific hard safety contract must list the evidence it needs, and that
+evidence must be physically closed before the operation may be planned as
+AUTO_REVERSIBLE.
+
+Precedence (explicit, enforced in automation._classify_op):
+    feature-specific OPEN requirement  >  generic reversible metadata  >
+    family/global knowledge rank
+
+An unresolved hard requirement always wins. Cross-feature leakage is prevented
+by keeping the evidence lists per operation: closing K13/K14/K18/K19 for
+light.brightness never closes a requirement of he.rt / keyboard.remap /
+he.actuation.
+"""
+
+from __future__ import annotations
+
+# ---------------------------------------------------------------------------
+# Per-operation required evidence (feature-specific; do NOT reuse across ops).
+# Key = operation_id, value = list of evidence items that MUST be physically
+# closed before the op may run autonomously.
+# ---------------------------------------------------------------------------
+
+REQUIRED_EVIDENCE: dict[str, list[str]] = {
+    "light.brightness": [
+        "exact FW 0216",
+        "K13 baseline",
+        "K14 rollback",
+        "K18 observable/readback",
+        "K19 physical validation",
+    ],
+    "keyboard.remap": [
+        "strong E5 WM_INPUT observable",
+    ],
+    "he.rt": [
+        "rapid_trigger_units_crosscheck",
+    ],
+    "he.actuation": [
+        "physical Probe PASS after 0.5mm-grid fix",
+    ],
+    "keyboard.polling": [
+        "real baseline/readback/rollback PASS",
+    ],
+    "device.win_lock": [
+        "real smoke/readback/rollback PASS",
+    ],
+    "he.deadzone": [
+        "real baseline/write/readback/rollback PASS",
+    ],
+    "keyboard.profile": [
+        "physical profile switch set/readback/rollback",
+    ],
+}
+
+# ---------------------------------------------------------------------------
+# Which required-evidence items are PHYSICALLY CLOSED, with the authoritative
+# artifact. Nothing may be added here from static mappings, synthetic tests, or
+# generic reversible metadata.
+# ---------------------------------------------------------------------------
+
+CLOSED_EVIDENCE: dict[str, str] = {
+    # light.brightness — closed by K14 run #3 + EXTERNAL_POST_K14_FINAL_GET
+    "exact FW 0216": "verified 372E:103E / aula_kb_v3_wired / FW 0216 on physical HERO84",
+    "K13 baseline": "lighting_mapping.json v5 — K13_global_lighting_baseline PHYSICALLY_CLOSED",
+    "K14 rollback": "lighting_mapping.json v5 — K14_light_brightness_rollback PHYSICALLY_CLOSED (K14 run #3 PASS)",
+    "K18 observable/readback": "lighting_mapping.json v5 — K18_light_brightness_observable_readback PHYSICALLY_CLOSED",
+    "K19 physical validation": "lighting_mapping.json v5 — K19_light_brightness_hardware_validation PHYSICALLY_CLOSED",
+    # polling / win_lock / deadzone / profile — real physical cycles
+    "real baseline/readback/rollback PASS": "real HERO84 polling cycle PASS (baseline/readback/rollback)",
+    "real smoke/readback/rollback PASS": "real HERO84 win_lock cycle PASS (smoke/readback/rollback)",
+    "real baseline/write/readback/rollback PASS": "PHYSICAL_VALIDATION_PASS C — deadzone FAMILY_VALIDATED (set/readback/rollback/readback)",
+    "physical profile switch set/readback/rollback": "PHYSICAL_VALIDATION_PASS G — profile switching FAMILY_VALIDATED",
+}
+
+# Open required-evidence items that remain hard blockers for HERO84/FW0216.
+# These are the canonical blocker names so plans/tests stay greppable.
+OPEN_EVIDENCE: dict[str, str] = {
+    "strong E5 WM_INPUT observable": "BLOCKED_BY_MISSING_STRONG_E5",
+    "rapid_trigger_units_crosscheck": "BLOCKED_BY_KNOWLEDGE_HOLE",
+    "physical Probe PASS after 0.5mm-grid fix": "BLOCKED_PENDING_PHYSICAL_REVALIDATION",
+}
+
+# Optional per-gate human reason (why it is still open).
+GATE_REASONS: dict[str, str] = {
+    "strong E5 WM_INPUT observable": (
+        "strong independent E5 / WM_INPUT hDevice observable not physically closed; "
+        "readback/rollback metadata is NOT sufficient for remap"
+    ),
+    "rapid_trigger_units_crosscheck": (
+        "rapid_trigger_units_crosscheck is authoritative OPEN (hero84_a_preview.json); "
+        "no real Probe RT PASS; generic reversible metadata does not close it"
+    ),
+    "physical Probe PASS after 0.5mm-grid fix": (
+        "prior real Probe run FAILED (baseline 1.63, temp 0.6, readback 0.0, rollback 1.63 PASS); "
+        "temporary-value fix to the 0.5mm grid [0.5,1.0,1.5,2.0] not yet revalidated by a real "
+        "Probe PASS; protocol/safety implementation READY is not physical revalidation"
+    ),
+}
+
+SCOPE = ("0x372E", "0x103E", "aula_kb_v3_wired", "0216")
+
+
+def gate_scope_matches(vid: str, pid: str, family: str, fw: str) -> bool:
+    """Evidence gates are scoped to the physical unit they were audited on."""
+    return (str(vid) == SCOPE[0] and str(pid) == SCOPE[1]
+            and str(family) == SCOPE[2] and str(fw) == SCOPE[3])
+
+
+def missing_evidence(op_id: str, vid: str = "", pid: str = "", family: str = "",
+                     fw: str = "", closed: dict[str, str] | None = None) -> list[str]:
+    """Required-but-not-closed evidence for op on this scope ([] == gate satisfied).
+
+    Precedence: feature blocker > generic metadata > family knowledge. An op with
+    any OPEN requirement must stay BLOCKED regardless of its bundle row.
+    """
+    if not gate_scope_matches(vid, pid, family, fw):
+        return []  # gate is scoped to the audited unit; other scopes classify elsewhere
+    req = REQUIRED_EVIDENCE.get(op_id)
+    if not req:
+        return []
+    closed_set = closed if closed is not None else CLOSED_EVIDENCE
+    return [e for e in req if e not in closed_set]
+
+
+def blocker_for(op_id: str, vid: str = "", pid: str = "", family: str = "",
+                fw: str = "", closed: dict[str, str] | None = None) -> tuple[str, str] | None:
+    """Return (blocker_name, reason) if a hard requirement is open, else None."""
+    missing = missing_evidence(op_id, vid, pid, family, fw, closed=closed)
+    if not missing:
+        return None
+    first = missing[0]
+    name = OPEN_EVIDENCE.get(first, "BLOCKED_BY_OPEN_EVIDENCE")
+    reason = GATE_REASONS.get(first, f"required evidence OPEN: {missing}")
+    return name, f"{name} ({reason}; open required evidence: {missing})"
+
+
+def closure_note(op_id: str) -> str:
+    """Evidence closure note for an AUTO_REVERSIBLE op (for truthful plans)."""
+    req = REQUIRED_EVIDENCE.get(op_id)
+    if not req:
+        return "no feature-specific evidence gate defined (generic reversible metadata only)"
+    missing = [e for e in req if e not in CLOSED_EVIDENCE]
+    if missing:
+        return f"OPEN required evidence: {missing}"
+    return "; ".join(f"{e} -> {CLOSED_EVIDENCE[e]}" for e in req)

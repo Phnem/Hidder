@@ -103,7 +103,10 @@ def test_scenario_a_known_device_complete(tmp_path):
     assert run.verdict == "COMPLETE", run.verdict
     assert run.baseline_restored is True
     assert all(ev.status == "PASS" for ev in run.results), [(e.operation, e.status, e.error) for e in run.results]
-    assert trans.device.write_count == 16  # 8 reversible ops x (write + rollback)
+    # 5 evidence-gated AUTO_REVERSIBLE ops (profile, polling, win_lock, deadzone,
+    # brightness) x (write + rollback); remap/rt/actuation stay BLOCKED by
+    # feature-level evidence gates (E5 open, units crosscheck open, no post-fix PASS).
+    assert trans.device.write_count == 10
     pkg = run.package_dir
     assert pkg is not None and (pkg / "run_manifest.json").is_file()
     assert (pkg / "miner_input" / "observations.json").is_file()
