@@ -81,6 +81,15 @@ Compare the two remaining HE/input blockers:
   PARTIALLY_CLOSED / OPEN_PENDING_ROUNDTRIP and `he.rt` remains BLOCKED. RT
   revalidation is NOT READY until the slider contract is established and the
   reversible round-trip is performed.
+  Live READ-ONLY UI inspection (rt_ui_contract_capture.json) audit: the ONLY
+  rendered slider was the ACTUATION distance control (Naive-UI `n-slider-handle-wrapper`,
+  aria 100..3400 = 1.00..3.40 mm, aria_now 1630 = 1.63 mm — matches our known actuation
+  baseline), correctly left NOT-RT. RT threshold sliders are NOT rendered while
+  rt_enable=0 (the real GET showed all 84 keys disabled), so passive DOM inspection
+  cannot recover the RT slider min/max/step while RT is disabled. The enhanced
+  `--rt-ui-inspect` now also reads Vue props (provenance VUE_PROP/DOM/ARIA/UNKNOWN),
+  detects Naive-UI dual-handle components (semantic_handles), counts controls, and
+  lists loaded script resources — read-only. Grid stays OPEN / NOT_PROVEN.
 - B. `keyboard.remap` — blocker strong E5 / WM_INPUT hDevice observable missing.
   Needs OS-level WM_INPUT correlation infrastructure, independent of the device
   protocol path.

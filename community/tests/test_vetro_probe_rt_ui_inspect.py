@@ -48,7 +48,9 @@ def test_normalize_native_range_fixture():
     ]}]
     c = normalize_rt_ui_contract(raw)
     assert c["control_type"] == "native_range"
-    assert c["up"] == {"min": "0", "max": "4", "step": "0.05", "current": "0.1", "rt_linkage": "PROVEN"}
+    assert c["up"]["min"] == "0" and c["up"]["max"] == "4"
+    assert c["up"]["step"] == "0.05" and c["up"]["current"] == "0.1"
+    assert c["up"]["rt_linkage"] == "PROVEN"
     assert c["down"]["step"] == "0.05"
     assert c["up_down_same_contract"] is True
     assert c["safe_temp_grid"] == "PROVEN"  # min+max+step all present on RT-linked controls
@@ -135,6 +137,60 @@ def test_blocked_and_k20():
     from community.vetro_probe.knowledge_rank import load_registry
     aula = next(g for g in load_registry()["groups"] if g.get("group") == "aula")
     assert aula["lighting_feature_scope"]["k20_not_promoted"] is True
+
+
+# 5b. dual-handle custom slider is recognized (semantic_handles from one component)
+def test_dual_handle_component_recognized():
+    raw = [{"controls": [
+        {"tag": "DIV", "role": "slider", "aria_min": "0", "aria_max": "4", "aria_now": "0.01",
+         "aria_label": "rt range", "parent_text": "rapid trigger", "slider_container_handles": 2},
+    ]}]
+    c = normalize_rt_ui_contract(raw)
+    assert c["dual_handle_component"] is True
+    assert c["semantic_handles"] == 2
+    assert c["control_count"] == 1  # ONE component, TWO semantic handles
+
+
+# 5c. Vue prop extraction with provenance
+def test_vue_props_extracted_with_provenance():
+    raw = [{"controls": [
+        {"tag": "DIV", "role": "slider", "aria_label": "rt up", "parent_text": "rapid trigger",
+         "vue_props": {"min": 0, "max": 4, "step": 0.05, "_vue_min": 0, "_vue_max": 4, "_vue_step": 0.05},
+         "value": None, "aria_min": None, "aria_max": None, "step": None},
+    ]}]
+    c = normalize_rt_ui_contract(raw)
+    assert c["up"] is not None
+    assert c["up"]["min"] == 0 and c["up"]["max"] == 4 and c["up"]["step"] == 0.05
+    assert c["up"]["source"]["step"] == "VUE_PROP"
+    assert c["safe_temp_grid"] == "PROVEN"
+
+
+# 6b. the REAL observed artifact (actuation slider) is NOT promoted as RT
+def test_real_actuation_artifact_not_rt():
+    raw = [{"controls": [
+        {"tag": "DIV", "role": "slider", "cls": "n-slider-handle-wrapper",
+         "aria_min": "100", "aria_max": "3400", "aria_now": "1630",
+         "text": "distance\n1.63mm", "parent_text": "distance\n1.63mm", "rt_linkage": "UNKNOWN"},
+    ]}]
+    c = normalize_rt_ui_contract(raw)
+    assert c["control_count"] == 1
+    assert c["up"] is None and c["down"] is None  # actuation slider is NOT RT evidence
+    assert c["safe_temp_grid"] == "OPEN"
+    assert c["all_controls"][0]["rt_linkage"] == "UNKNOWN"
+    # 1.63mm == aria_now 1630 in 0.01mm units -> actuation baseline crosscheck
+    assert int(c["all_controls"][0]["aria_now"]) == 1630
+
+
+# provenance never left UNKNOWN for a present DOM/ARIA field
+def test_provenance_per_field():
+    raw = [{"controls": [
+        {"tag": "INPUT", "type": "range", "min": "0", "max": "4", "step": "0.05",
+         "value": "0.1", "aria_label": "rt up", "parent_text": "rapid"},
+    ]}]
+    c = normalize_rt_ui_contract(raw)
+    assert c["up"]["source"]["min"] == "DOM"
+    assert c["up"]["source"]["step"] == "DOM"
+    assert c["up"]["source"]["current"] == "DOM/ARIA/VUE_PROP"
 
 
 # artifact written by run_rt_ui_inspect path is structured (mocked lifecycle)

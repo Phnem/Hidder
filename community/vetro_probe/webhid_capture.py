@@ -474,25 +474,60 @@ def compute_health(per_target: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 RT_UI_INSPECT_SCRIPT = r"""(() => {
-  // READ-ONLY RT UI contract extraction: reads DOM metadata only (querySelectorAll,
-  // getAttribute, getComputedStyle, innerText/textContent). No event dispatch,
-  // no value writes, no clicks, no HID access, no state mutation.
-  const out = { control_type: "UNKNOWN", controls: [], candidates: [] };
+  // READ-ONLY RT UI contract extraction v2: DOM metadata + ancestor chain +
+  // Naive-UI dual-handle detection + safe Vue prop reads. Never dispatches
+  // events, never writes values, never clicks, never calls HID, never mutates
+  // state. All reads only.
+  const out = { controls: [], script_urls: [] };
+  const CONFIG_KEYS = ["min","max","step","precision","marks","showStops","range",
+                       "disabled","modelValue","value","rtUp","rtDown","rt_up","rt_down","current"];
+  const vueProps = (el) => {
+    let node = el, depth = 0, collected = {};
+    while (node && depth < 6) {
+      const inst = node.__vueParentComponent || node.__vue__;
+      if (inst) {
+        for (const src of [inst.props, inst.attrs, inst.setupState]) {
+          if (src) for (const k in src) {
+            if (CONFIG_KEYS.includes(k) && !(k in collected)) collected[k] = src[k];
+          }
+        }
+        if (inst.props && "min" in inst.props) collected["_vue_min"] = inst.props["min"];
+        if (inst.props && "max" in inst.props) collected["_vue_max"] = inst.props["max"];
+        if (inst.props && "step" in inst.props) collected["_vue_step"] = inst.props["step"];
+      }
+      node = node.parentElement;
+      depth++;
+    }
+    return collected;
+  };
   const snap = (el) => {
     const g = (n) => el.getAttribute ? el.getAttribute(n) : null;
+    let anc = [], n = el.parentElement, d = 0;
+    while (n && d < 6) { anc.push(n.tagName + "." + String(n.className || "").split(" ")[0]); n = n.parentElement; d++; }
+    let cont = null, handles = 0;
+    try { cont = el.closest ? el.closest('[class*="n-slider"]') : null; } catch (e) {}
+    if (cont) { try { handles = cont.querySelectorAll('[role="slider"]').length; } catch (e) {} }
     return {
       tag: el.tagName, role: g("role"), type: g("type"),
-      cls: (el.className && String(el.className)) || "",
+      cls: String(el.className || ""),
       min: g("min"), max: g("max"), step: g("step"), value: g("value"),
       aria_min: g("aria-valuemin"), aria_max: g("aria-valuemax"),
       aria_now: g("aria-valuenow"), aria_label: g("aria-label"),
       aria_valuetext: g("aria-valuetext"),
       text: (el.innerText || el.textContent || "").trim().slice(0, 80),
       parent_text: (el.parentElement ? (el.parentElement.innerText || "").trim().slice(0, 120) : ""),
+      ancestor_chain: anc,
+      slider_container_handles: handles,
+      vue_props: vueProps(el),
     };
   };
   const sel = 'input[type="range"], [role="slider"], [aria-valuemin], [aria-valuenow]';
   try { document.querySelectorAll(sel).forEach((el) => out.controls.push(snap(el))); } catch (e) {}
+  try {
+    performance.getEntriesByType("resource").forEach((e) => {
+      if (e.name && /\.js($|\?)/.test(e.name)) out.script_urls.push(e.name);
+    });
+  } catch (e) {}
   return JSON.stringify(out);
 })()"""
 
@@ -508,30 +543,51 @@ def normalize_rt_ui_contract(raw_results: list[dict[str, Any]]) -> dict[str, Any
     """
     RT_MARKERS = ("rapid", "trigger", "0.02mm", "0.02 mm", "rt", "触发")
     controls: list[dict[str, Any]] = []
+    script_urls: list[str] = []
     for r in raw_results or []:
         controls.extend(r.get("controls") or [])
+        script_urls.extend(r.get("script_urls") or [])
+
+    def prov(c: dict[str, Any], key: str, vue_key: str) -> str:
+        vp = (c.get("vue_props") or {})
+        if vp.get(vue_key) is not None:
+            return "VUE_PROP"
+        if c.get(key) is not None:
+            return "DOM" if c.get("tag") == "INPUT" else "ARIA"
+        return "UNKNOWN"
+
     labeled: list[dict[str, Any]] = []
     for c in controls:
         blob = " ".join(str(c.get(k) or "") for k in
                         ("aria_label", "aria_valuetext", "text", "parent_text")).lower()
         c["rt_linkage"] = "PROVEN" if any(m in blob for m in RT_MARKERS) else "UNKNOWN"
+        vp = c.get("vue_props") or {}
+        c["_value"] = {"min": c.get("min") or c.get("aria_min") or vp.get("min"),
+                       "max": c.get("max") or c.get("aria_max") or vp.get("max"),
+                       "step": c.get("step") or vp.get("step"),
+                       "current": c.get("value") or c.get("aria_now") or vp.get("modelValue") or vp.get("value")}
+        c["_prov"] = {"min": prov(c, "min", "_vue_min"), "max": prov(c, "max", "_vue_max"),
+                      "step": prov(c, "step", "_vue_step"), "current": "DOM/ARIA/VUE_PROP"}
         labeled.append(c)
 
     def ctl(c: dict[str, Any]) -> dict[str, Any]:
         return {
-            "min": c.get("min") or c.get("aria_min") or None,
-            "max": c.get("max") or c.get("aria_max") or None,
-            "step": c.get("step") or None,
-            "current": c.get("value") or c.get("aria_now") or None,
-            "rt_linkage": c.get("rt_linkage"),
+            "min": c["_value"]["min"], "max": c["_value"]["max"], "step": c["_value"]["step"],
+            "current": c["_value"]["current"], "rt_linkage": c["rt_linkage"],
+            "source": dict(c["_prov"]),
         }
 
     rt_controls = [c for c in labeled if c["rt_linkage"] == "PROVEN"]
+    total_handles = sum(int(c.get("slider_container_handles") or 1) for c in labeled)
     contract: dict[str, Any] = {
         "source": "live_vendor_ui",
+        "control_count": len(labeled),
+        "semantic_handles": total_handles,
+        "dual_handle_component": (total_handles >= 2) or any(c.get("slider_container_handles", 0) >= 2 for c in labeled),
         "control_type": ("native_range" if any(c.get("type") == "range" for c in labeled)
                          else ("custom_slider" if any(c.get("role") == "slider" for c in labeled)
                                else "UNKNOWN")),
+        "script_urls": sorted(set(script_urls)),
         "up": None, "down": None,
         "up_down_same_contract": "UNKNOWN",
         "display_precision": "UNKNOWN",
@@ -546,8 +602,8 @@ def normalize_rt_ui_contract(raw_results: list[dict[str, Any]]) -> dict[str, Any
         contract["up_down_same_contract"] = (su == sd) if (su is not None and sd is not None) else "UNKNOWN"
     elif len(rt_controls) == 1:
         contract["up"] = ctl(rt_controls[0])
-    complete = [c for c in rt_controls if (c.get("min") or c.get("aria_min"))
-                and (c.get("max") or c.get("aria_max")) and c.get("step")]
+    complete = [c for c in rt_controls if c["_value"]["min"] is not None
+                and c["_value"]["max"] is not None and c["_value"]["step"] is not None]
     contract["safe_temp_grid"] = "PROVEN" if complete else "OPEN"
     return contract
 
@@ -606,14 +662,24 @@ def run_rt_ui_inspect(trace_path: Path, url: str, idle_seconds: int) -> int:
         artifact = trace_path.parent / "rt_ui_contract_capture.json"
         artifact.write_text(json.dumps(contract, ensure_ascii=False, indent=2), encoding="utf-8")
         print("\nRT UI INSPECTION SUMMARY (read-only):")
+        print(f"  control/component count = {contract['control_count']}")
+        print(f"  semantic handle count = {contract['semantic_handles']}")
+        print(f"  dual-handle component = {contract['dual_handle_component']}")
         print(f"  control_type = {contract['control_type']}")
+        for i, c in enumerate(contract["all_controls"]):
+            print(f"  control#{i}: tag={c.get('tag')} cls={c.get('cls')} role={c.get('role')} "
+                  f"aria=[{c.get('aria_min')},{c.get('aria_max')}] now={c.get('aria_now')} "
+                  f"text={c.get('text')!r} rt_linkage={c.get('rt_linkage')} "
+                  f"handles_in_component={c.get('slider_container_handles')} "
+                  f"vue_props={c.get('vue_props')}")
         for side in ("up", "down"):
             c = contract.get(side)
             if c:
-                print(f"  {side}: min={c['min']} max={c['max']} step={c['step']} current={c['current']} linkage={c['rt_linkage']}")
+                print(f"  {side}: min={c['min']} ({c['source']['min']}) max={c['max']} ({c['source']['max']}) "
+                      f"step={c['step']} ({c['source']['step']}) current={c['current']}")
         print(f"  up/down same contract = {contract['up_down_same_contract']}")
         print(f"  safe_temp_grid = {contract['safe_temp_grid']}")
-        print(f"  controls observed = {len(contract['all_controls'])}")
+        print(f"  loaded script resources = {len(contract['script_urls'])}")
         print(f"  evidence artifact = {artifact}")
         print("  NOTE: he.rt stays BLOCKED until the real Probe SET->GET round-trip is performed.")
     except Exception as exc:  # noqa: BLE001
