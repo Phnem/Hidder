@@ -90,6 +90,17 @@ Compare the two remaining HE/input blockers:
   `--rt-ui-inspect` now also reads Vue props (provenance VUE_PROP/DOM/ARIA/UNKNOWN),
   detects Naive-UI dual-handle components (semantic_handles), counts controls, and
   lists loaded script resources — read-only. Grid stays OPEN / NOT_PROVEN.
+  Vendor-bundle audit: the repository holds the CONTROLLER layer only
+  (`lt_controller_ops.json`: fetch_rt / sync_rt / parse_rt / kxt — RT slider
+  min/max/step NOT present; no source maps in repo). A read-only loaded-bundle
+  scanner (`rt_vendor_scan.py`) is wired into `--rt-ui-inspect`: it fetches the
+  hero.aulastar.com scripts the browser actually loaded (HTTP GET only, zero HID,
+  never executes handlers) and extracts RT-anchored min/max/step/precision config
+  with provenance VENDOR_BUNDLE + PROVEN linkage; actuation config is never
+  reused; protocol quantum != UI step. If the live bundle still yields no provable
+  grid, passive/source discovery is EXHAUSTED and the next controlled step is a
+  USER-CONTROLLED reversible RT enable on a single key via the official UI
+  followed by read-only slider inspection and restoration (NOT executed so far).
 - B. `keyboard.remap` — blocker strong E5 / WM_INPUT hDevice observable missing.
   Needs OS-level WM_INPUT correlation infrastructure, independent of the device
   protocol path.

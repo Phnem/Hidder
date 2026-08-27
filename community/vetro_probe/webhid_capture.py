@@ -661,6 +661,19 @@ def run_rt_ui_inspect(trace_path: Path, url: str, idle_seconds: int) -> int:
         contract = normalize_rt_ui_contract(raw_results)
         artifact = trace_path.parent / "rt_ui_contract_capture.json"
         artifact.write_text(json.dumps(contract, ensure_ascii=False, indent=2), encoding="utf-8")
+        # READ-ONLY scan of the loaded vendor bundle for RT-linked slider config.
+        from .rt_vendor_scan import scan_rt_slider_contract
+        bundle_contract: dict[str, Any] = {"source": "vendor_bundle_scan", "resources_scanned": 0,
+                                           "errors": [], "candidates": [], "proven": [],
+                                           "safe_rt_mutation_contract": "NOT_PROVEN"}
+        urls = contract.get("script_urls") or []
+        if urls:
+            try:
+                bundle_contract = scan_rt_slider_contract(urls)
+            except Exception as exc:  # noqa: BLE001
+                bundle_contract["errors"].append(f"scan failed: {exc!r}")
+        bundle_artifact = trace_path.parent / "rt_vendor_slider_contract.json"
+        bundle_artifact.write_text(json.dumps(bundle_contract, ensure_ascii=False, indent=2), encoding="utf-8")
         print("\nRT UI INSPECTION SUMMARY (read-only):")
         print(f"  control/component count = {contract['control_count']}")
         print(f"  semantic handle count = {contract['semantic_handles']}")
@@ -681,6 +694,13 @@ def run_rt_ui_inspect(trace_path: Path, url: str, idle_seconds: int) -> int:
         print(f"  safe_temp_grid = {contract['safe_temp_grid']}")
         print(f"  loaded script resources = {len(contract['script_urls'])}")
         print(f"  evidence artifact = {artifact}")
+        print(f"\nRT VENDOR BUNDLE SCAN (read-only HTTP GET of loaded scripts):")
+        print(f"  resources scanned = {bundle_contract.get('resources_scanned')}")
+        print(f"  RT-linked config candidates = {len(bundle_contract.get('candidates', []))}")
+        for cand in bundle_contract.get("proven", []):
+            print(f"  PROVEN {cand['anchor']} @ {cand['url'][:60]}: {cand['config']}")
+        print(f"  safe_rt_mutation_contract = {bundle_contract.get('safe_rt_mutation_contract')}")
+        print(f"  bundle artifact = {bundle_artifact}")
         print("  NOTE: he.rt stays BLOCKED until the real Probe SET->GET round-trip is performed.")
     except Exception as exc:  # noqa: BLE001
         print(f"FAIL: RT UI inspection error: {exc}", file=sys.stderr)
