@@ -140,7 +140,8 @@ def test_each_successful_op_restores_before_next(tmp_path):
     state = _baseline_state(bundle)
     run, trans = _make_run(tmp_path, state=dict(state))
     run.run()
-    assert run.verdict == "COMPLETE", run.verdict
+    assert run.verdict == "COMPLETE_PASS", run.verdict
+    assert run.overall_pass is True
     assert run.baseline_restored is True
     for op in EXPECTED:
         assert trans.device.state[op] == state[op], op
@@ -183,7 +184,8 @@ def test_failure_unverified_recovery_manual_restore_reconnect(tmp_path):
 def test_aggregate_final_verification_against_original_baselines(tmp_path):
     run, trans = _make_run(tmp_path)
     run.run()
-    assert run.verdict == "COMPLETE", run.verdict
+    assert run.verdict == "COMPLETE_PASS", run.verdict
+    assert run.overall["aggregate_final_verification_ran"] is True
     assert run.final_state["restored"] is True
     assert run.final_state["mismatches"] == {}
 

@@ -44,7 +44,9 @@ S_ROLLING_BACK = "ROLLING_BACK"
 S_RECOVERING = "RECOVERING"
 S_VERIFYING = "VERIFYING_FINAL_STATE"
 S_EXPORTING = "EXPORTING"
-S_COMPLETE = "COMPLETE"
+S_COMPLETE = "COMPLETE"  # legacy "run ended" — never a success claim on its own
+S_COMPLETE_PASS = "COMPLETE_PASS"
+S_COMPLETE_UNVERIFIED = "COMPLETE_UNVERIFIED_FINAL_STATE"
 S_BLOCKED = "BLOCKED"
 S_MANUAL = "FAILED_REQUIRES_MANUAL_RESTORE"
 S_FAIL_RESTORED = "FAIL_RESTORED"
@@ -64,6 +66,37 @@ class Transition:
     timestamp: float
     device: dict[str, Any] = field(default_factory=dict)
     session: int | None = None
+
+
+def overall_success(
+    executed_expected_ops: int,
+    passed_expected_ops: int,
+    failed_ops: int,
+    restored_all: bool,
+    aggregate_ran: bool,
+    aggregate_pass: bool,
+    baseline_restored: bool,
+    final_verified: bool,
+    recovery_required: bool,
+) -> bool:
+    """The single authoritative overall physical-success predicate (fail-closed).
+
+    A physical full-auto run may report overall success ONLY when ALL are true:
+    every expected mutable op executed and passed, zero failures, every op
+    restored, the aggregate final verification RAN and PASSED, baseline_restored,
+    final_state_verified, and no recovery required. baseline_restored=false or
+    final_state_verified=false ALWAYS make overall success false."""
+    return (
+        executed_expected_ops == 5
+        and passed_expected_ops == executed_expected_ops
+        and failed_ops == 0
+        and restored_all
+        and aggregate_ran
+        and aggregate_pass
+        and baseline_restored
+        and final_verified
+        and not recovery_required
+    )
 
 
 class AutoProbeRun:
@@ -114,6 +147,9 @@ class AutoProbeRun:
         self._reconnect: ReconnectManager | None = None
         self.resolution: Any = None
         self.knowledge_heading: dict[str, Any] = {}
+        self.recovery_preflight: str = "CLEAR"
+        self.overall: dict[str, Any] = {}
+        self.overall_pass: bool = False
 
     # ------------------------------------------------------------- transitions
     def _transition(self, state: str, reason: str) -> None:
@@ -179,8 +215,46 @@ class AutoProbeRun:
             self._export(terminal=self.verdict)
             return self
         self._verify_final()
-        self._export(terminal=S_COMPLETE)
+        self._finalize_verdict()
+        self._export(terminal=self.verdict)
         return self
+
+    def _finalize_verdict(self) -> str:
+        """Compute the single authoritative overall verdict from per-op evidence
+        + aggregate final verification. NEVER claims success on baseline_restored=
+        false or final_state_verified=false."""
+        exec_expected = [e for e in self.results if e.operation in self.EXPECTED_EXECUTABLE]
+        passed_expected = sum(1 for e in exec_expected if e.status == "PASS")
+        failed_expected = sum(1 for e in exec_expected if e.status in ("FAIL",))
+        restored_all = all(
+            bool(e.rollback_matched) or bool((e.recovery or {}).get("baseline_restored"))
+            for e in exec_expected
+        )
+        fs = self.final_state or {}
+        aggregate_ran = bool(fs.get("aggregate_ran", False))
+        aggregate_pass = bool(fs.get("restored", False))
+        baseline_restored = bool(self.baseline_restored)
+        final_verified = aggregate_ran and aggregate_pass
+        recovery_required = bool(self.cp is not None and self.cp.recovery_required)
+        self.overall = {
+            "executed_expected_ops": len(exec_expected),
+            "passed_expected_ops": passed_expected,
+            "failed_ops": failed_expected,
+            "restored_all": restored_all,
+            "aggregate_final_verification_ran": aggregate_ran,
+            "aggregate_final_verification_pass": aggregate_pass,
+            "baseline_restored": baseline_restored,
+            "final_state_verified": final_verified,
+            "recovery_required": recovery_required,
+            "overall_pass": overall_success(
+                len(exec_expected), passed_expected, failed_expected, restored_all,
+                aggregate_ran, aggregate_pass, baseline_restored, final_verified,
+                recovery_required,
+            ),
+        }
+        self.overall_pass = self.overall["overall_pass"]
+        self.verdict = S_COMPLETE_PASS if self.overall_pass else S_COMPLETE_UNVERIFIED
+        return self.verdict
 
     def _gate_executable_set(self) -> bool:
         """Strict executable-set preflight for the audited physical scope.
@@ -589,45 +663,54 @@ class AutoProbeRun:
         ops = [o for o in self.baselines]
         if not ops:
             self.baseline_restored = True
-            self.final_state = {"restored": True, "note": "no mutable ops executed"}
+            self.final_state = {"restored": True, "note": "no mutable ops executed", "aggregate_ran": False}
             return
-        # Fresh session + cadence between GETs: a burst of reads on one real-HID session can
-        # desync replies (observed on real HERO84) and return stale/temporary values.
-        try:
-            fresh = self.make_transport()
-        except Exception:
-            fresh = self.transport
-        collector = BaselineCollector(fresh)
+        # Fresh session PER operation + settle delay: a burst of GETs on ONE
+        # real-HID session can desync replies (observed on real HERO84 — the
+        # aggregate reader returned impossible values: polling=17, win_lock=true,
+        # brightness 'must be 7 bytes, got 1'). Each op gets its own fresh handle
+        # so a stale reply from a previous read can never be consumed by the next.
         values: dict[str, Any] = {}
         errors: dict[str, str] = {}
+        reg_baseline = next((e.get("register_baseline") for e in self.plan
+                             if e.get("operation") == "light.brightness"), None)
         for op in ops:
-            time.sleep(0.05)
+            try:
+                fresh = self.make_transport()
+            except Exception:
+                fresh = self.transport
+            time.sleep(0.15)
             val, res = fresh.get(op)
             if res.ok:
                 values[op] = val
             else:
                 errors[op] = res.error
+            if op == "light.brightness" and reg_baseline:
+                try:
+                    time.sleep(0.15)
+                    final_reg = fresh.read_light_full_state()
+                except Exception as exc:
+                    errors["light.brightness.register"] = f"error: {exc!r}"
+                else:
+                    if final_reg != reg_baseline:
+                        errors["light.brightness.register"] = f"expected {reg_baseline} actual {final_reg}"
+            try:
+                fresh.invalidate()
+            except Exception:
+                pass
         mismatches: dict[str, Any] = {}
         for op, init in self.baselines.items():
             final = values.get(op)
             if final != init:
                 mismatches[op] = {"expected": init, "actual": final, "error": errors.get(op, "")}
-        # Aggregate byte-for-byte register verification for light.brightness:
-        # final reg0x01 must equal the initial 7-byte A (fresh, paced read).
-        for entry in self.plan:
-            if entry.get("operation") == "light.brightness" and entry.get("register_baseline"):
-                try:
-                    time.sleep(0.05)
-                    final_reg = fresh.read_light_full_state()
-                except Exception as exc:
-                    mismatches.setdefault("light.brightness", {})["register"] = f"error: {exc!r}"
-                    continue
-                if final_reg != entry["register_baseline"]:
-                    mismatches.setdefault("light.brightness", {})["register"] = {
-                        "expected": entry["register_baseline"], "actual": final_reg,
-                    }
+        reg_err = errors.get("light.brightness.register")
+        if reg_err:
+            mismatches.setdefault("light.brightness", {})["register"] = reg_err
         self.baseline_restored = not mismatches
-        self.final_state = {"restored": self.baseline_restored, "mismatches": mismatches, "fresh_session": True}
+        self.final_state = {
+            "restored": self.baseline_restored, "mismatches": mismatches,
+            "fresh_session": True, "per_op_fresh_sessions": True, "aggregate_ran": True,
+        }
         if not self.baseline_restored:
             self.contradictions.append(f"final baseline mismatch: {mismatches}")
 
@@ -704,8 +787,10 @@ class AutoProbeRun:
             f"BLOCKED: {blocked}",
             f"FAILED: {failed}",
             f"BASELINE RESTORED: {'YES' if self.baseline_restored else 'NO'}",
-            f"FINAL STATE VERIFIED: {'YES' if self.baseline_restored else 'NO'}",
+            f"FINAL STATE VERIFIED: {'YES' if (self.overall or {}).get('final_state_verified') else 'NO'}",
+            f"AGGREGATE FINAL VERIFICATION: {'RAN' if (self.final_state or {}).get('aggregate_ran') else 'NOT_RUN'}",
             f"RECOVERY REQUIRED: {'YES' if (self.cp and self.cp.recovery_required) else 'NO'}",
+            f"OVERALL: {'PASS' if (self.overall or {}).get('overall_pass') else 'UNVERIFIED_FINAL_STATE'}",
             f"MINER PACKAGE: {self.package_dir}",
             f"STATUS: {self.verdict}",
         ]

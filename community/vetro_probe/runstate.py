@@ -174,6 +174,7 @@ def recover_interrupted_run(cp: RunCheckpoint, make_transport, gate, enumerate_f
             if cp.final_verified:
                 cp.closed = True
                 cp.phase = "COMPLETE"
+                cp.recovery_required = False  # recovery succeeded; nothing pending
             else:
                 cp.error = f"recovery final GET {final!r} != baseline {cp.baseline!r}"
             return cp
@@ -184,4 +185,5 @@ def recover_interrupted_run(cp: RunCheckpoint, make_transport, gate, enumerate_f
     cp.final_verified = True
     cp.closed = True
     cp.phase = "COMPLETE"
+    cp.recovery_required = False  # recovery succeeded; nothing pending
     return cp

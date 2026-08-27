@@ -100,7 +100,9 @@ def _plan_ops(run):
 def test_scenario_a_known_device_complete(tmp_path):
     run, trans = _make_run(tmp_path)
     run.run()
-    assert run.verdict == "COMPLETE", run.verdict
+    assert run.verdict == "COMPLETE_PASS", run.verdict
+    assert run.overall_pass is True
+    assert run.overall["final_state_verified"] is True
     assert run.baseline_restored is True
     assert all(ev.status == "PASS" for ev in run.results), [(e.operation, e.status, e.error) for e in run.results]
     # 5 evidence-gated AUTO_REVERSIBLE ops (profile, polling, win_lock, deadzone,
@@ -143,7 +145,7 @@ def test_scenario_b_unknown_firmware_writes_blocked_package_created(tmp_path):
     inst = mock_hero84_instance(firmware="unknown")
     run, trans = _make_run(tmp_path, instance=inst)
     run.run()
-    assert run.verdict == "COMPLETE", run.verdict  # read-only discovery + package exported
+    assert run.verdict == "COMPLETE_UNVERIFIED_FINAL_STATE", run.verdict  # read-only discovery; nothing executed/verified
     assert trans.device.write_count == 0
     assert all(ev.status == "BLOCKED" for ev in run.results)
     assert run.package_dir is not None and (run.package_dir / "plan.json").is_file()
@@ -160,7 +162,8 @@ def test_scenario_c_ambiguous_identity_zero_writes_blocked(tmp_path):
 def test_scenario_d_reconnect_transient_retries_complete(tmp_path):
     run, trans = _make_run(tmp_path, flaky=True)
     run.run()
-    assert run.verdict == "COMPLETE", run.verdict
+    assert run.verdict == "COMPLETE_PASS", run.verdict
+    assert run.overall_pass is True
     assert run.baseline_restored is True
     assert trans.device.state["keyboard.polling"] == 3
 
@@ -226,7 +229,8 @@ def test_scenario_g_crash_after_write_resume_recovers(tmp_path):
     run.run()
     # recovery restored baseline before any new run: final physical polling is 3
     assert base.device.state["keyboard.polling"] == 3
-    assert run.verdict == "COMPLETE", run.verdict
+    assert run.verdict == "COMPLETE_PASS", run.verdict
+    assert run.overall_pass is True
     assert run.baseline_restored is True
     # the recovery journal is now closed
     assert run.cp is not None and run.cp.closed is True

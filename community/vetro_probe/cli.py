@@ -435,6 +435,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--auto-dir", type=Path, default=None, help="Run-state/package directory for --auto (default: vetro_auto_<ts>)")
     parser.add_argument("--label", type=str, default="auto", help="Human label for the auto run")
     parser.add_argument("--plan-dry", action="store_true", help="Dry/no-write: build the HERO84 plan (classification only) and print it. No transport reads/writes, no baselining, no execution.")
+    parser.add_argument("--verify-final", action="store_true", help="READ-ONLY aggregate final verification of the current device against the baselines stored in --auto-dir. ZERO writes. Use after a full auto run when its in-run aggregate reader was unreliable.")
     args = parser.parse_args(argv)
 
     if args.list_ops:
@@ -447,6 +448,13 @@ def main(argv: list[str] | None = None) -> int:
     if args.real and args.sim:
         print("error: --real and --sim are mutually exclusive", file=sys.stderr)
         return 2
+
+    if args.verify_final:
+        from .verify_final import run_readonly_verify
+
+        run_dir = args.auto_dir or Path("vetro_auto_physical_k14_full_001")
+        run_readonly_verify(Path(run_dir))
+        return 0
 
     if args.plan_dry:
         from .automation import AutoProbeRun, CLS_AUTO_REVERSIBLE
@@ -520,7 +528,9 @@ def main(argv: list[str] | None = None) -> int:
                            block_knowledge_holes=block_holes, block_missing_strong_e5=block_e5)
         run.run()
         print(run.summary())
-        return 0 if run.verdict in ("COMPLETE",) else 2
+        # exit 0 only on an authoritative overall PASS (5/5 restored + aggregate
+        # verified); anything else is not a success (fail-closed).
+        return 0 if run.verdict == "COMPLETE_PASS" else 2
 
     try:
         if args.batch:
