@@ -183,9 +183,11 @@ def run_rollback_flow(make_session, A: bytes, B: bytes, echo_fn=None, delay_s: f
     rec = _rollback(A, make_session)
     stages.append(rec)
     res["recovered"] = rec["ok"]
-    res["ok"] = rec["ok"] and rb == B
+    # Hard-pass invariant: final GET must be a real observed value equal to A.
+    # Echo/visual/transport-completion alone can never substitute.
+    res["ok"] = _final_verified(rec) and rb == B
     if on_phase:
-        on_phase("RESTORED" if rec["ok"] else "RESTORE_INTENT")
+        on_phase("RESTORED" if res["ok"] else "RESTORE_INTENT")
     return res
 
 
@@ -222,14 +224,23 @@ def recover_pending_checkpoint(cp, make_session) -> dict:
     return out
 
 
+def _final_verified(rec: dict) -> bool:
+    """K14 final-restore hard invariant: a real, well-formed final GET must have
+    been observed AND be byte-for-byte equal to immutable A. Echo, visual state
+    and SET completion are NOT substitutes."""
+    return bool(rec.get("fresh_get_observed")) and bool(rec.get("fresh_get_equals_A"))
+
+
 def _rollback(A: bytes, make_session) -> dict:
     """Restore immutable baseline A with per-step diagnostics.
 
     Separates 'restore write may have succeeded' from 'restore verified':
     restore_write_issued / restore_write_completed / echo_observed / echo_ack /
-    fresh_get_observed / fresh_get_equals_A. Never reconstructs A from B.
-    Sets error_code among: OPEN_FAILED, SET_A_FAILED, ECHO_A_MISMATCH,
-    GET_A_FAILED, FINAL_STATE_MISMATCH (or "" on success).
+    fresh_get_observed / fresh_get / fresh_get_equals_A (aliased as final_get /
+    final_get_equals_A for the report). Never reconstructs A from B.
+    Fail-closed on final GET: None or wrong length -> GET_A_FAILED; value differs
+    from A -> FINAL_STATE_MISMATCH. Sets error_code among: OPEN_FAILED,
+    SET_A_FAILED, ECHO_A_MISMATCH, GET_A_FAILED, FINAL_STATE_MISMATCH (or "").
     """
     out = {"stage": "rollback_A", "written": A.hex(), "expected": A.hex(),
            "restore_write_issued": False, "restore_write_completed": False,
@@ -238,6 +249,7 @@ def _rollback(A: bytes, make_session) -> dict:
            "echo_frame_valid": False, "echo_checksum_valid": False, "echo_state_match": False,
            "decoded_state": None, "expected_frame": None,
            "fresh_get_observed": False, "fresh_get": None, "fresh_get_equals_A": False,
+           "final_get": None, "final_get_equals_A": False,
            "ok": False, "error_code": "", "error": ""}
     try:
         s = make_session()
@@ -288,14 +300,24 @@ def _rollback(A: bytes, make_session) -> dict:
         except Exception:
             pass
         return out
-    out["fresh_get_observed"] = fa is not None
-    out["fresh_get"] = (fa or b"").hex()
-    out["fresh_get_equals_A"] = fa == A
+    out["fresh_get_observed"] = fa is not None and len(fa) == 7
+    out["fresh_get"] = fa.hex() if fa is not None and len(fa) == 7 else None
+    out["final_get"] = out["fresh_get"]
     try:
         s2.close()
     except Exception:
         pass
-    out["ok"] = out["echo_ack"] and out["fresh_get_equals_A"]
+    if not out["fresh_get_observed"]:
+        out["error_code"] = "GET_A_FAILED"
+        out["error"] = (f"final GET missing/malformed: "
+                        f"{None if fa is None else f'{len(fa)} bytes (expected 7)'}")
+        out["fresh_get_equals_A"] = False
+        out["final_get_equals_A"] = False
+        out["ok"] = False
+        return out
+    out["fresh_get_equals_A"] = fa == A
+    out["final_get_equals_A"] = fa == A
+    out["ok"] = out["echo_ack"] and _final_verified(out)
     if not out["ok"]:
         out["error_code"] = "ECHO_A_MISMATCH" if not out["echo_ack"] else "FINAL_STATE_MISMATCH"
     return out
@@ -549,13 +571,14 @@ def run_rollback_brightness(out_dir: Path, require_real: bool) -> int:
                 print("Keyboard brightness should now be temporarily different.")
         elif name == "rollback_A":
             print("RESTORE_INTENT = DURABLE")
+            final_ok = st.get("final_get_equals_A") and st.get("final_get") is not None
             print(f"  SET_A_ISSUED = {'YES' if st.get('set_A_issued') else 'NO'}"
                   f"   SET_A_COMPLETED = {'YES' if st.get('set_A_completed') else 'NO'}"
                   f"   ECHO_A_OBSERVED = {'YES' if st.get('echo_observed') else 'NO'}"
                   f"   ECHO_A = {'PASS' if st.get('echo_ack') else 'FAIL'}"
                   f"   ECHO_A_FRAME_VALID = {'YES' if st.get('echo_frame_valid') else 'NO'}"
                   f"   ECHO_A_STATE_MATCH = {'YES' if st.get('echo_state_match') else 'NO'}"
-                  f"   FINAL_GET_A = {st.get('final_get')}   FINAL_A_MATCH = {'PASS' if st.get('fresh_get_equals_A') else 'FAIL'}"
+                  f"   FINAL_GET_A = {st.get('final_get')}   FINAL_A_MATCH = {'PASS' if final_ok else 'FAIL'}"
                   f"   expected_frame={st.get('expected_frame')}"
                   f"   restore_write_issued = {st.get('restore_write_issued')}"
                   f"   error_code = {st.get('error_code', '')}   detail = {st.get('error', '')}")

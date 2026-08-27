@@ -10,7 +10,7 @@ from community.vetro_probe.lighting_probe import (
     decode_echo, normalize_echo, _canonical_set_frame,
     run_rollback_flow, _recovery_required, recovery_action,
     recover_pending_checkpoint, UNCERTAIN_STATES, _checkpoint_matches_device,
-    _rollback,
+    _rollback, _final_verified,
 )
 from community.vetro_probe.runstate import RunCheckpoint, RunStateStore
 
@@ -30,6 +30,16 @@ class FakeSession:
         self.env = env
 
     def get_light(self):
+        idx = self.env.get_index
+        self.env.get_index += 1
+        if self.env.get_none_at is not None and idx == self.env.get_none_at:
+            self.env.get_none_at = None
+            return None  # recv timeout on final GET
+        if self.env.get_raise_at is not None and idx == self.env.get_raise_at:
+            self.env.get_raise_at = None
+            raise RuntimeError("get failed")
+        if self.env.get_returns is not None and idx in self.env.get_returns:
+            return self.env.get_returns.pop(idx)
         if self.env.raise_on_get:
             self.env.raise_on_get = False  # one-shot (only the immediate readback after write_B)
             raise RuntimeError("get failed")
@@ -55,13 +65,19 @@ class FakeSession:
 
 
 class FakeEnv:
-    def __init__(self, state, echo="CANONICAL", readback_override=None, raise_on_get=False, raise_on_set=False, raise_on_open=False):
+    def __init__(self, state, echo="CANONICAL", readback_override=None, raise_on_get=False,
+                 raise_on_set=False, raise_on_open=False, get_none_at=None, get_raise_at=None,
+                 get_returns=None):
         self.state = bytearray(state)
         self.echo = echo
         self.readback_override = readback_override
         self.raise_on_get = raise_on_get
         self.raise_on_set = raise_on_set
         self.raise_on_open = raise_on_open
+        self.get_none_at = get_none_at
+        self.get_raise_at = get_raise_at
+        self.get_returns = get_returns
+        self.get_index = 0
         self.write_log = []
 
     def make(self):
@@ -244,6 +260,89 @@ def test_rollback_echo_mismatch_reports_frame_diagnostics():
     assert rec["echo_state_match"] is False
     assert rec["restore_write_issued"] is True
     assert rec["fresh_get_equals_A"] is True  # hardware actually restored A
+
+
+def test_final_get_exact_a_pass():
+    env = FakeEnv(A)
+    B, _ = plan_brightness_temporary(A)
+    res = run_rollback_flow(env.make, A, B, delay_s=0)
+    assert res["ok"] is True
+    rb = [s for s in res["stages"] if s["stage"] == "rollback_A"][0]
+    assert rb["final_get"] == A.hex()
+    assert rb["final_get_equals_A"] is True
+    assert rb["error_code"] == ""
+
+
+def test_final_get_none_fails_closed():
+    env = FakeEnv(A, get_none_at=1)  # GET B (idx0) ok; final GET (idx1) returns None
+    B, _ = plan_brightness_temporary(A)
+    res = run_rollback_flow(env.make, A, B, delay_s=0)
+    assert res["ok"] is False
+    assert res["recovered"] is False
+    rb = [s for s in res["stages"] if s["stage"] == "rollback_A"][0]
+    assert rb["error_code"] == "GET_A_FAILED"
+    assert rb["final_get"] is None
+    assert rb["final_get_equals_A"] is False
+    assert env.write_log == [B, A]  # SET A still issued + echoed, but never verified
+
+
+def test_final_get_raises_fails_closed():
+    env = FakeEnv(A, get_raise_at=1)
+    B, _ = plan_brightness_temporary(A)
+    res = run_rollback_flow(env.make, A, B, delay_s=0)
+    assert res["ok"] is False
+    assert res["recovered"] is False
+    rb = [s for s in res["stages"] if s["stage"] == "rollback_A"][0]
+    assert rb["error_code"] == "GET_A_FAILED"
+    assert rb["final_get"] is None
+
+
+def test_final_get_returns_b_is_final_state_mismatch():
+    B, _ = plan_brightness_temporary(A)
+    env = FakeEnv(A, get_returns={1: B})  # final GET reads B, not A
+    res = run_rollback_flow(env.make, A, B, delay_s=0)
+    assert res["ok"] is False
+    assert res["recovered"] is False
+    rb = [s for s in res["stages"] if s["stage"] == "rollback_A"][0]
+    assert rb["error_code"] == "FINAL_STATE_MISMATCH"
+    assert rb["final_get"] == B.hex()
+    assert rb["final_get_equals_A"] is False
+
+
+def test_echo_valid_but_final_get_none_still_fails():
+    # Echo A is a valid canonical frame (default), but final GET returns None:
+    # echo alone must never pass.
+    env = FakeEnv(A, get_none_at=1)
+    B, _ = plan_brightness_temporary(A)
+    res = run_rollback_flow(env.make, A, B, delay_s=0)
+    rb = [s for s in res["stages"] if s["stage"] == "rollback_A"][0]
+    assert rb["echo_ack"] is True and rb["echo_frame_valid"] is True
+    assert res["ok"] is False
+    assert rb["error_code"] == "GET_A_FAILED"
+
+
+def test_set_a_completed_echo_valid_final_get_exact_a_pass():
+    env = FakeEnv(A)
+    B, _ = plan_brightness_temporary(A)
+    res = run_rollback_flow(env.make, A, B, delay_s=0)
+    assert res["ok"] is True
+    rb = [s for s in res["stages"] if s["stage"] == "rollback_A"][0]
+    assert rb["set_A_issued"] is True and rb["set_A_completed"] is True
+    assert rb["echo_ack"] is True
+    assert rb["final_get"] == A.hex() and rb["final_get_equals_A"] is True
+
+
+def test_impossible_none_plus_pass_not_constructible():
+    # The invariant function can never report PASS without an observed GET == A.
+    assert _final_verified({"fresh_get_observed": False, "fresh_get_equals_A": False}) is False
+    assert _final_verified({"fresh_get_observed": True, "fresh_get_equals_A": False}) is False
+    assert _final_verified({"fresh_get_observed": False, "fresh_get_equals_A": True}) is False
+    assert _final_verified({"fresh_get_observed": True, "fresh_get_equals_A": True}) is True
+    # And _rollback fails closed when it cannot observe the GET.
+    env = FakeEnv(A, get_none_at=0)  # _rollback's only GET is index 0
+    rec = _rollback(A, env.make)
+    assert rec["ok"] is False and rec["error_code"] == "GET_A_FAILED"
+    assert rec["final_get"] is None
 
 
 def test_recovery_required_detects_pending_checkpoint(tmp_path):
