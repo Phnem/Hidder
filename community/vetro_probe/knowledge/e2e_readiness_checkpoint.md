@@ -60,25 +60,21 @@ No cross-feature inference.
 Compare the two remaining HE/input blockers:
 
 - A. `he.rt` — blocker `rapid_trigger_units_crosscheck` OPEN.
-  Resolved statically: raw scale = 0.01 mm (same PRECISION_DISTANCE convention as
-  actuation); record (8B) `key_id_hi, key_id_lo, rt_enable, rt_up_hi, rt_up_lo,
-  rt_down_hi, rt_down_lo, rt_global`; serializer golden vector is byte-exact vs
-  the real live capture `00 1e 01 00 0a 00 0a 01` (enable ON, up=down=0.10 mm);
-  rt_enable is a SEPARATE field from the thresholds.
-  NOT resolved: the `0x99` GET READBACK path has no parser in this repo
-  (`parse_rt_get_reply` / `operations.get_rapid_trigger` absent), and the typed
-  transport `he.rt` GET now QUARANTINES the old self-confirming cache (fail-closed:
-  any he.rt GET raises, so cached state can never satisfy baseline/readback/final
-  verification). A full scan of the real WebHID capture corpus
-  (DB/reports/oracle/aula_web/HERO_84_HE/**) found ZERO real `0x99` GET requests
-  and ZERO real `0x99` replies — the vendor app never exercised the HE/RT page in
-  any real capture. The 0x99 GET REQUEST format IS confirmed byte-exact
-  (`99000001000c <6 key ids>` == build_rt_get_frame). The reply layout is not in
-  vendor source (fetch function not located) and is NOT guessed. RT revalidation
-  is therefore NOT READY until a passive capture of the vendor's own RT-page
-  hydration yields a real 0x99 OUT→IN pair to implement parse_rt_get_reply
-  (see test_vetro_probe_rt_readback_gap.py; passive-only
-  `webhid_capture --rt-get-capture`).
+  RESOLVED — authoritative real 0x99 READBACK (passive Capture Lab, rt_get_capture.jsonl):
+  14 real OUT→IN pairs, all checksums valid, reply layout `[0x99,0,0,1,0,len(8n), record*,
+  pad, checksum]`; 8-byte record `key_id_hi,key_id_lo,rt_enable,rt_up_hi,rt_up_lo,
+  rt_down_hi,rt_down_lo,rt_global` (matches the real SET capture shape byte-for-byte).
+  `parse_rt_get_reply` and `operations.get_rapid_trigger` are IMPLEMENTED; the typed
+  `he.rt` GET performs a real 0x99 readback (the quarantined cache is never used).
+  Current captured hardware state: 83 keys enable=0, up=down=0.01mm (raw1), global=1;
+  key 0x1f enable=0, up=down=0.10mm (raw10), global=1 — the parser handles heterogeneous
+  real state.
+  Still OPEN: (1) safe temporary grid — the only real SET evidence is the enable toggle
+  at 0.10/0.10mm; the RT slider UI label "0.02mm" is display-only, not authoritative
+  vendor bounds; (2) a real Probe SET→GET round-trip has not been performed, so
+  `rapid_trigger_units_crosscheck` stays PARTIALLY_CLOSED / OPEN_PENDING_ROUNDTRIP and
+  `he.rt` remains BLOCKED. RT revalidation is NOT READY until a safe grid is established
+  and the reversible round-trip is performed.
 - B. `keyboard.remap` — blocker strong E5 / WM_INPUT hDevice observable missing.
   Needs OS-level WM_INPUT correlation infrastructure, independent of the device
   protocol path.

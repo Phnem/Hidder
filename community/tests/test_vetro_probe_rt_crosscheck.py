@@ -97,17 +97,18 @@ def test_immutable_A_not_normalized():
     assert A_up == 0.10  # not rounded to 0.0/0.5
 
 
-# blocker: authoritative RT GET readback path does not exist -> NOT READY
-def test_rt_readback_path_missing_blocks_revalidation():
+# blocker: authoritative RT GET readback now exists (real 0x99 evidence), but the
+# full Probe SET->GET round-trip is NOT done -> crosscheck OPEN, he.rt stays BLOCKED
+def test_rt_readback_path_now_real_but_roundtrip_not_done():
     import aula_kb_v3.protocol as p  # type: ignore
     import aula_kb_v3.operations as o  # type: ignore
-    assert hasattr(p, "parse_rt_get_reply") is False
-    assert hasattr(o, "get_rapid_trigger") is False
-    # typed transport he.rt GET is the self-confirming cache, NOT an independent readback
+    assert hasattr(p, "parse_rt_get_reply") is True
+    assert hasattr(o, "get_rapid_trigger") is True
+    # typed transport he.rt GET now performs a REAL 0x99 readback (not the cache)
     from community.vetro_probe.aula_transport import AulaHidTransport
     import inspect
     src = inspect.getsource(AulaHidTransport._typed_get)
-    assert "he.rt" in src and "_rt_cache" in src
+    assert "he.rt" in src and "get_rapid_trigger" in src
 
 
 # 9-14 (SET B + GET B == B / recovery / final-GET) are NOT IMPLEMENTABLE until an

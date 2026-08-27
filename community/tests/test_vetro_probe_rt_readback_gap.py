@@ -8,6 +8,9 @@ stays BLOCKED; remap stays blocked; K20 stays unpromoted."""
 
 import glob
 import json
+from pathlib import Path
+
+import pytest
 
 from community.vetro_probe import feature_gates as fg
 from community.vetro_probe.bundle import production_bundle_for_hero84
@@ -44,13 +47,13 @@ def _real_transport():
     return AulaHidTransport(raw=_StubRaw(), product=prod), prod
 
 
-# 1. cached RT state cannot satisfy physical readback (quarantined, fail-closed)
-def test_cached_rt_cannot_satisfy_readback():
-    transport, _ = _real_transport()
+# 1. real RT GET fails closed on a non-0x99 / malformed reply (never cached fallback)
+def test_real_rt_get_fails_closed_on_bad_reply():
+    transport, _ = _real_transport()  # _StubRaw returns 63 zero bytes -> wrong group
     val, res = transport.get("he.rt")
     assert res.ok is False
-    assert "readback NOT implemented" in res.error
     assert val is None
+    assert "RT" in res.error or "group" in res.error
 
 
 def test_rt_baseline_unavailable_via_cache_zero_writes():
@@ -80,35 +83,34 @@ def test_rt_get_request_golden_vector():
     assert f[0] == 0x99 and f[5] == 0x0c
 
 
-# 3. absence of an authoritative 0x99 reply parser is fail-closed (no guessing)
-def test_no_parser_no_guessing():
+# 3. authoritative 0x99 reply parser + operation now exist (from REAL evidence);
+#    a non-0x99 reply is still fail-closed (no guessing, no fallback to cache)
+def test_parser_and_op_exist_and_fail_closed_on_wrong_group():
     import aula_kb_v3.protocol as p  # type: ignore
     import aula_kb_v3.operations as o  # type: ignore
-    assert hasattr(p, "parse_rt_get_reply") is False
-    assert hasattr(o, "get_rapid_trigger") is False
+    assert hasattr(p, "parse_rt_get_reply") is True
+    assert hasattr(o, "get_rapid_trigger") is True
+    with pytest.raises(ValueError, match="wrong group"):
+        p.parse_rt_get_reply(b"\x00" * 63)
 
 
-# 4. no real 0x99 reply exists anywhere in the repository capture corpus
-def test_no_real_0x99_reply_in_capture_corpus():
-    real_replies = []
-    for path in glob.glob("DB/reports/oracle/aula_web/HERO_84_HE/**/*.jsonl", recursive=True):
-        try:
-            with open(path, encoding="utf-8", errors="replace") as fh:
-                for line in fh:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        e = json.loads(line)
-                    except Exception:
-                        continue
-                    if e.get("transport") != "webhid_real":
-                        continue
-                    if e.get("method") == "inputreport" and e.get("bytes_hex", "").startswith("99"):
-                        real_replies.append((path, e.get("seq"), e.get("bytes_hex", "")[:40]))
-        except OSError:
+# 4. real 0x99 replies now EXIST in the repository (rt_get_capture.jsonl, 14/14 valid)
+def test_real_0x99_replies_now_exist_and_validate():
+    import aula_kb_v3.protocol as p  # type: ignore
+    pfile = Path("rt_get_capture.jsonl")
+    if not pfile.is_file():
+        pytest.skip("rt_get_capture.jsonl not present")
+    n = 0
+    for line in pfile.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
             continue
-    assert real_replies == [], f"unexpected real 0x99 replies found: {real_replies[:3]}"
+        e = json.loads(line)
+        if e.get("hex", "").startswith("99") and e.get("direction") == "IN":
+            b = bytes.fromhex(e["hex"])
+            assert p.checksum(b[:62]) == b[62]
+            assert len(p.parse_rt_get_reply(b)) == 6
+            n += 1
+    assert n == 14
 
 
 # 5/6. he.rt stays BLOCKED; remap stays blocked; K20 unpromoted

@@ -252,16 +252,16 @@ class AulaHidTransport(DeviceTransport):
             # Return enum directly to match bundle safe_values (2,3); executor compares enum-to-enum
             return enum_val
         if op_id == "he.rt":
-            # QUARANTINED: the 0x99 GET reply parser does not exist
-            # (rapid_trigger_units_crosscheck OPEN), so a cached SET value must NEVER
-            # satisfy a readback/final-state check. Fail closed: any he.rt GET raises,
-            # so baseline/readback/final-GET all fail closed and he.rt can never pass
-            # on cached state. The cache is retained only for SET-side UI convenience.
-            raise RuntimeError(
-                "he.rt readback NOT implemented: authoritative 0x99 GET reply parser absent "
-                "(rapid_trigger_units_crosscheck OPEN); cached SET value is NOT an "
-                "independent readback and cannot satisfy baseline/readback/final verification"
-            )
+            # REAL transport-backed GET readback (0x99 -> parse_rt_get_reply). The
+            # reply layout was physically confirmed by passive capture. Cached SET
+            # state is NEVER used as a readback. The he.rt op is enable-modeled, so
+            # the readback is the enable bit of the test position; the full record
+            # (up/down/global/raw) is available via ops.get_rapid_trigger.
+            pos = _pos_for_test(p)
+            recs = ops.get_rapid_trigger(self.raw, p, [pos])
+            if not recs:
+                raise RuntimeError("he.rt GET returned no record")
+            return bool(recs[0]["rt_enable"])
         if op_id == "he.deadzone":
             return self._rt_cache.get("he.deadzone", 0.5)
         if op_id == "keyboard.remap":
