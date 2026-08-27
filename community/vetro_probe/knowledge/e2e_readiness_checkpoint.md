@@ -101,6 +101,15 @@ Compare the two remaining HE/input blockers:
   grid, passive/source discovery is EXHAUSTED and the next controlled step is a
   USER-CONTROLLED reversible RT enable on a single key via the official UI
   followed by read-only slider inspection and restoration (NOT executed so far).
+  Live-bundle scan candidate audit: chunk-CeBwaip2.js near an `rt_enable` anchor
+  exposes `{step:10, min:0, max:500}`. This is RT-ANCHORED but NOT threshold-
+  linked: rt_enable/rapid/trigger anchoring alone cannot prove a threshold grid
+  (the scanner was renamed too coarsely; it now requires a THRESHOLD anchor
+  rt_up/rt_down/sync_rt/fetch_rt/kxt + explicit dataflow_confirmed before any
+  claim). Provisional-if-raw-0.01mm reading: step 0.10mm / min 0 / max 5.00mm —
+  units UNCONFIRMED; the 5.00-vs-[0,4] bound reconciliation is UNRESOLVED (RT
+  max is NOT clamped, actuation bounds are NOT weakened). SAFE RT MUTATION
+  CONTRACT = NOT_PROVEN; RT REVALIDATION READY = NO.
 - B. `keyboard.remap` — blocker strong E5 / WM_INPUT hDevice observable missing.
   Needs OS-level WM_INPUT correlation infrastructure, independent of the device
   protocol path.

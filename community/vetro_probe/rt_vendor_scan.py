@@ -25,8 +25,9 @@ import re
 import urllib.request
 from typing import Any, Callable
 
-RT_ANCHORS = ("fetch_rt", "sync_rt", "kxt", "_transfer_rt", "rt_enable", "rt_up",
-              "rt_down", "rapid", "trigger")
+THRESHOLD_ANCHORS = ("rt_up", "rt_down", "_transfer_rt", "sync_rt", "kxt", "fetch_rt")
+CONTEXT_ANCHORS = ("rt_enable", "rapid", "trigger")
+ALL_RT_ANCHORS = THRESHOLD_ANCHORS + CONTEXT_ANCHORS
 ACTUATION_ANCHORS = ("fetch_distance", "parse_distance", "sync_distance", "actuation")
 CONFIG_PATTERNS = [
     re.compile(r'step\s*[:=]\s*"?([0-9]*\.?[0-9]+)"?'),
@@ -39,12 +40,23 @@ CONFIG_PATTERNS = [
 WINDOW = 400  # chars around an anchor to look for config
 
 
-def _has_rt_context(text: str, start: int, end: int) -> bool:
+def _window_linkage(text: str, start: int, end: int) -> str:
+    """Classify the config's linkage from the anchor window.
+
+    A threshold anchor (rt_up / rt_down / sync_rt / fetch_rt / kxt / _transfer_rt)
+    in the window makes the config a THRESHOLD_CANDIDATE. rt_enable / rapid /
+    trigger alone make it only RT_CONTEXT_ONLY — which can NEVER prove a
+    threshold grid (the user's acceptance rule). Lexical proximity is evidence,
+    not dataflow proof: the safe contract stays NOT_PROVEN unless the caller
+    explicitly confirms dataflow (dataflow_confirmed=True)."""
     window = text[max(0, start - WINDOW):min(len(text), end + WINDOW)]
-    hits = [a for a in RT_ANCHORS if a in window]
-    act = [a for a in ACTUATION_ANCHORS if a in window]
-    # RT anchor present AND no stronger actuation-only context
-    return bool(hits) and not (act and not any(a in window for a in ("rt_up", "rt_down", "rt_enable", "sync_rt", "fetch_rt")))
+    thr = [a for a in THRESHOLD_ANCHORS if a in window]
+    ctx = [a for a in CONTEXT_ANCHORS if a in window]
+    if thr:
+        return "THRESHOLD_CANDIDATE"
+    if ctx:
+        return "RT_CONTEXT_ONLY"
+    return "UNRELATED"
 
 
 def _extract_config(text: str) -> dict[str, Any]:
@@ -69,8 +81,15 @@ def _extract_config(text: str) -> dict[str, Any]:
     return cfg
 
 
-def scan_rt_slider_contract(script_urls: list[str], fetch_fn: Callable[[str], str] | None = None) -> dict[str, Any]:
-    """Scan loaded bundle scripts read-only for RT-linked slider config."""
+def scan_rt_slider_contract(script_urls: list[str], fetch_fn: Callable[[str], str] | None = None,
+                            dataflow_confirmed: bool = False) -> dict[str, Any]:
+    """Scan loaded bundle scripts read-only for RT slider config evidence.
+
+    dataflow_confirmed=False by default: lexical proximity is evidence, NOT proof.
+    The safe contract is PROVEN only when (a) a THRESHOLD anchor co-occurs with
+    min/max/step AND (b) the caller explicitly confirms dataflow (rt_up/rt_down
+    <-> slider model). rt_enable/rapid/trigger anchoring alone can never prove a
+    threshold grid."""
     fetch_fn = fetch_fn or (lambda url: urllib.request.urlopen(url, timeout=15).read().decode("utf-8", errors="replace"))
     candidates: list[dict[str, Any]] = []
     errors: list[str] = []
@@ -80,33 +99,52 @@ def scan_rt_slider_contract(script_urls: list[str], fetch_fn: Callable[[str], st
         except Exception as exc:  # noqa: BLE001
             errors.append(f"{url}: {exc!r}")
             continue
-        for anchor in RT_ANCHORS:
+        for anchor in ALL_RT_ANCHORS:
             for m in re.finditer(re.escape(anchor), text):
-                if not _has_rt_context(text, m.start(), m.end()):
+                linkage = _window_linkage(text, m.start(), m.end())
+                if linkage == "UNRELATED":
                     continue
                 cfg = _extract_config(text[max(0, m.start() - WINDOW):m.end() + WINDOW])
                 if cfg:
+                    reading = None
+                    if cfg.get("min") is not None and cfg.get("max") is not None and cfg.get("step") is not None:
+                        reading = {
+                            "provisional_if_raw_0_01_mm": {
+                                "min_mm": cfg["min"] * 0.01,
+                                "max_mm": cfg["max"] * 0.01,
+                                "step_mm": cfg["step"] * 0.01,
+                            },
+                            "units_unconfirmed": True,
+                        }
                     candidates.append({
                         "anchor": anchor, "url": url,
-                        "linkage": "PROVEN", "provenance": "VENDOR_BUNDLE", "config": cfg,
+                        "linkage": linkage, "provenance": "VENDOR_BUNDLE", "config": cfg,
+                        "raw_unit_reading": reading,
+                        "dataflow_confirmed": False,
                     })
-    # dedupe identical (url, config)
+    # dedupe identical (url, config, linkage)
     seen = set()
     deduped = []
     for c in candidates:
-        k = (c["url"], json.dumps(c["config"], sort_keys=True))
+        k = (c["url"], c["linkage"], json.dumps(c["config"], sort_keys=True))
         if k in seen:
             continue
         seen.add(k)
         deduped.append(c)
-    proven = [c for c in deduped if c["linkage"] == "PROVEN" and c["config"].get("min") is not None
-              and c["config"].get("max") is not None and c["config"].get("step") is not None]
+    proven = [c for c in deduped if c["linkage"] == "THRESHOLD_CANDIDATE" and dataflow_confirmed
+              and c["config"].get("min") is not None and c["config"].get("max") is not None
+              and c["config"].get("step") is not None]
+    for c in proven:
+        c["dataflow_confirmed"] = True
+    has_threshold = any(c["linkage"] == "THRESHOLD_CANDIDATE" for c in deduped)
     return {
         "source": "vendor_bundle_scan",
         "resources_scanned": len(script_urls),
         "errors": errors,
         "candidates": deduped,
         "proven": proven,
+        "has_threshold_candidate": has_threshold,
+        "dataflow_linkage": "PROVEN" if proven else ("THRESHOLD_CANDIDATE" if has_threshold else "NOT_PROVEN"),
         "safe_rt_mutation_contract": "PROVEN" if proven else "NOT_PROVEN",
     }
 
