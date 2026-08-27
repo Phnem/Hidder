@@ -535,24 +535,33 @@ def run_rollback_brightness(out_dir: Path, require_real: bool) -> int:
     for st in result["stages"]:
         name = st.get("stage")
         if name == "write_B":
+            print("TEMP_WRITE_INTENT = DURABLE")
             print(f"  SET_B_ISSUED = {'YES' if st.get('set_B_issued') else 'NO'}"
                   f"   SET_B_COMPLETED = {'YES' if st.get('set_B_completed') else 'NO'}"
                   f"   ECHO_B_OBSERVED = {'YES' if st.get('echo_B_observed') else 'NO'}"
                   f"   ECHO_B_FRAME_VALID = {'YES' if st.get('echo_B_frame_valid') else 'NO'}"
                   f"   ECHO_B_STATE_MATCH = {'YES' if st.get('echo_B_state_match') else 'NO'}"
-                  f"   written={st.get('written')}   decoded_state={st.get('decoded_state')}   echo={st.get('echo')}")
+                  f"   written={st.get('written')}   decoded_state={st.get('decoded_state')}"
+                  f"   expected_frame={st.get('expected')}   echo={st.get('echo')}")
         elif name == "readback_B":
             print(f"  GET_B = {st.get('got')}   GET_B_MATCH = {'PASS' if st.get('match') else 'FAIL'}")
+            if st.get("match"):
+                print("Keyboard brightness should now be temporarily different.")
         elif name == "rollback_A":
+            print("RESTORE_INTENT = DURABLE")
             print(f"  SET_A_ISSUED = {'YES' if st.get('set_A_issued') else 'NO'}"
+                  f"   SET_A_COMPLETED = {'YES' if st.get('set_A_completed') else 'NO'}"
+                  f"   ECHO_A_OBSERVED = {'YES' if st.get('echo_observed') else 'NO'}"
                   f"   ECHO_A = {'PASS' if st.get('echo_ack') else 'FAIL'}"
                   f"   ECHO_A_FRAME_VALID = {'YES' if st.get('echo_frame_valid') else 'NO'}"
                   f"   ECHO_A_STATE_MATCH = {'YES' if st.get('echo_state_match') else 'NO'}"
-                  f"   FINAL_GET_A = {st.get('final_get')}   FINAL_A_MATCH = {'PASS' if st.get('match') else 'FAIL'}"
+                  f"   FINAL_GET_A = {st.get('final_get')}   FINAL_A_MATCH = {'PASS' if st.get('fresh_get_equals_A') else 'FAIL'}"
+                  f"   expected_frame={st.get('expected_frame')}"
                   f"   restore_write_issued = {st.get('restore_write_issued')}"
                   f"   error_code = {st.get('error_code', '')}   detail = {st.get('error', '')}")
         else:
             print(f"  [{name}] {st}")
+    print(f"K14 ROLLBACK = {'PASS' if result.get('ok') else 'FAIL'}")
 
     if result["ok"]:
         cp.phase = "RESTORED"
