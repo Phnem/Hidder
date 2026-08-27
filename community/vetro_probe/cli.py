@@ -436,6 +436,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--label", type=str, default="auto", help="Human label for the auto run")
     parser.add_argument("--plan-dry", action="store_true", help="Dry/no-write: build the HERO84 plan (classification only) and print it. No transport reads/writes, no baselining, no execution.")
     parser.add_argument("--verify-final", action="store_true", help="READ-ONLY aggregate final verification of the current device against the baselines stored in --auto-dir. ZERO writes. Use after a full auto run when its in-run aggregate reader was unreliable.")
+    parser.add_argument("--actuation-revalidation", action="store_true", help="Dedicated controlled physical revalidation of he.actuation (post 0.5mm-grid fix). NOT full --auto. Write-ahead + recovery-first + exact 372E:103E/aula_kb_v3_wired/FW0216 gate. ZERO writes on any gate mismatch.")
+    parser.add_argument("--out", type=Path, default=None, help="Checkpoint/output directory for --actuation-revalidation (default: actuation_revalidation_checkpoint)")
     args = parser.parse_args(argv)
 
     if args.list_ops:
@@ -448,6 +450,12 @@ def main(argv: list[str] | None = None) -> int:
     if args.real and args.sim:
         print("error: --real and --sim are mutually exclusive", file=sys.stderr)
         return 2
+
+    if args.actuation_revalidation:
+        from .actuation_revalidation import run_cli_revalidation
+
+        out = args.out or Path("actuation_revalidation_checkpoint")
+        return run_cli_revalidation(out)
 
     if args.verify_final:
         from .verify_final import run_readonly_verify
