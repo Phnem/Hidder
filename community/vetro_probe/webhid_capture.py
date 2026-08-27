@@ -473,6 +473,157 @@ def compute_health(per_target: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 
+RT_UI_INSPECT_SCRIPT = r"""(() => {
+  // READ-ONLY RT UI contract extraction: reads DOM metadata only (querySelectorAll,
+  // getAttribute, getComputedStyle, innerText/textContent). No event dispatch,
+  // no value writes, no clicks, no HID access, no state mutation.
+  const out = { control_type: "UNKNOWN", controls: [], candidates: [] };
+  const snap = (el) => {
+    const g = (n) => el.getAttribute ? el.getAttribute(n) : null;
+    return {
+      tag: el.tagName, role: g("role"), type: g("type"),
+      cls: (el.className && String(el.className)) || "",
+      min: g("min"), max: g("max"), step: g("step"), value: g("value"),
+      aria_min: g("aria-valuemin"), aria_max: g("aria-valuemax"),
+      aria_now: g("aria-valuenow"), aria_label: g("aria-label"),
+      aria_valuetext: g("aria-valuetext"),
+      text: (el.innerText || el.textContent || "").trim().slice(0, 80),
+      parent_text: (el.parentElement ? (el.parentElement.innerText || "").trim().slice(0, 120) : ""),
+    };
+  };
+  const sel = 'input[type="range"], [role="slider"], [aria-valuemin], [aria-valuenow]';
+  try { document.querySelectorAll(sel).forEach((el) => out.controls.push(snap(el))); } catch (e) {}
+  return JSON.stringify(out);
+})()"""
+
+
+def normalize_rt_ui_contract(raw_results: list[dict[str, Any]]) -> dict[str, Any]:
+    """Classify live DOM slider readings into a UI contract. PURE / unit-testable.
+
+    A control is RT-linked ONLY when its own label/text/aria carries an RT marker
+    (rapid/trigger/rt/触发/distance). Unrelated actuation sliders are never reused
+    as RT evidence. min/max/step must come from the SAME control. Anything absent
+    stays UNKNOWN. The safe grid is PROVEN only when >=1 RT-linked control exposes
+    explicit min/max/step; otherwise it stays OPEN (protocol quantum != UI step).
+    """
+    RT_MARKERS = ("rapid", "trigger", "0.02mm", "0.02 mm", "rt", "触发")
+    controls: list[dict[str, Any]] = []
+    for r in raw_results or []:
+        controls.extend(r.get("controls") or [])
+    labeled: list[dict[str, Any]] = []
+    for c in controls:
+        blob = " ".join(str(c.get(k) or "") for k in
+                        ("aria_label", "aria_valuetext", "text", "parent_text")).lower()
+        c["rt_linkage"] = "PROVEN" if any(m in blob for m in RT_MARKERS) else "UNKNOWN"
+        labeled.append(c)
+
+    def ctl(c: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "min": c.get("min") or c.get("aria_min") or None,
+            "max": c.get("max") or c.get("aria_max") or None,
+            "step": c.get("step") or None,
+            "current": c.get("value") or c.get("aria_now") or None,
+            "rt_linkage": c.get("rt_linkage"),
+        }
+
+    rt_controls = [c for c in labeled if c["rt_linkage"] == "PROVEN"]
+    contract: dict[str, Any] = {
+        "source": "live_vendor_ui",
+        "control_type": ("native_range" if any(c.get("type") == "range" for c in labeled)
+                         else ("custom_slider" if any(c.get("role") == "slider" for c in labeled)
+                               else "UNKNOWN")),
+        "up": None, "down": None,
+        "up_down_same_contract": "UNKNOWN",
+        "display_precision": "UNKNOWN",
+        "snap_rule": "UNKNOWN",
+        "rt_enable_current": "UNKNOWN",
+        "all_controls": labeled,
+    }
+    if len(rt_controls) >= 2:
+        contract["up"] = ctl(rt_controls[0])
+        contract["down"] = ctl(rt_controls[1])
+        su, sd = contract["up"]["step"], contract["down"]["step"]
+        contract["up_down_same_contract"] = (su == sd) if (su is not None and sd is not None) else "UNKNOWN"
+    elif len(rt_controls) == 1:
+        contract["up"] = ctl(rt_controls[0])
+    complete = [c for c in rt_controls if (c.get("min") or c.get("aria_min"))
+                and (c.get("max") or c.get("aria_max")) and c.get("step")]
+    contract["safe_temp_grid"] = "PROVEN" if complete else "OPEN"
+    return contract
+
+
+def run_rt_ui_inspect(trace_path: Path, url: str, idle_seconds: int) -> int:
+    """READ-ONLY RT UI contract extraction from the live AULA page (ZERO HID writes).
+
+    Reuses the canonical lifecycle (launch -> start -> health gate -> evaluate ->
+    close). Only Runtime.evaluate reads the DOM/component metadata; it NEVER
+    dispatches input/change, writes element.value, clicks, drags, or calls HID.
+    Persists rt_ui_contract_capture.json next to the trace. he.rt stays BLOCKED —
+    this pass only discovers the UI contract."""
+    cap = WebHidCapture(trace_path, target_url=url)
+    closed = False
+
+    def _cleanup() -> None:
+        nonlocal closed
+        if not closed:
+            cap.close()
+            closed = True
+
+    try:
+        if not cap.launch():
+            print("FAIL: browser not found", file=sys.stderr)
+            return 1
+        cap.start()
+        print("BROWSER ISOLATION:")
+        for k, v in cap.isolation_panel().items():
+            print(f"  {k} = {v}")
+        print("RT UI CONTRACT INSPECTION — READ-ONLY (ZERO HID writes):")
+        print("  1. In the opened AULA app, click Connect and pick the HERO 84 HE device.")
+        input("Press Enter AFTER the app recognizes HERO84: ")
+        time.sleep(1.0)
+        h = cap.health_status()
+        cap.print_panel(h)
+        if h["capture_health"] != "PASS":
+            print("\nCAPTURE_HEALTH = FAIL — inspection aborted. "
+                  "Connect the device and grant WebHID permission in the browser.")
+            _cleanup()
+            return 2
+        print("  2. Now navigate to the HE / Rapid Trigger (PERFORMANCE) page.")
+        print("     Do NOT change ANY value. Do NOT drag or click RT controls.")
+        input("Press Enter AFTER the RT page has hydrated: ")
+        time.sleep(1.0)
+        raw_results: list[dict[str, Any]] = []
+        for t in list(cap.targets.values()):
+            raw = t.evaluate(RT_UI_INSPECT_SCRIPT)
+            if raw:
+                try:
+                    parsed = json.loads(raw)
+                    parsed["target_url"] = t.url
+                    raw_results.append(parsed)
+                except Exception:
+                    pass
+        contract = normalize_rt_ui_contract(raw_results)
+        artifact = trace_path.parent / "rt_ui_contract_capture.json"
+        artifact.write_text(json.dumps(contract, ensure_ascii=False, indent=2), encoding="utf-8")
+        print("\nRT UI INSPECTION SUMMARY (read-only):")
+        print(f"  control_type = {contract['control_type']}")
+        for side in ("up", "down"):
+            c = contract.get(side)
+            if c:
+                print(f"  {side}: min={c['min']} max={c['max']} step={c['step']} current={c['current']} linkage={c['rt_linkage']}")
+        print(f"  up/down same contract = {contract['up_down_same_contract']}")
+        print(f"  safe_temp_grid = {contract['safe_temp_grid']}")
+        print(f"  controls observed = {len(contract['all_controls'])}")
+        print(f"  evidence artifact = {artifact}")
+        print("  NOTE: he.rt stays BLOCKED until the real Probe SET->GET round-trip is performed.")
+    except Exception as exc:  # noqa: BLE001
+        print(f"FAIL: RT UI inspection error: {exc}", file=sys.stderr)
+        _cleanup()
+        return 1
+    _cleanup()
+    return 0
+
+
 def run_passive_rt_get_capture(trace_path: Path, url: str, idle_seconds: int) -> int:
     """Passive-only capture for RT GET discovery (ZERO Probe HID writes).
 
@@ -717,7 +868,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--smoke", type=str, default=None, help="Minimal capture smoke: 'brightness' (2 brightness actions only)")
     parser.add_argument("--sweep", action="store_true", help="Full controlled lighting sweep (exact UI value markers)")
     parser.add_argument("--rt-get-capture", action="store_true", help="PASSIVE-only RT GET discovery: open AULA app, connect, navigate to HE/Rapid Trigger page WITHOUT changing values; harness issues ZERO HID writes. Captures the vendor's own 0x99 GET+reply.")
+    parser.add_argument("--rt-ui-inspect", action="store_true", help="READ-ONLY RT UI contract extraction from the live AULA page (ZERO HID writes, no input/change dispatch, no element.value writes). Persists rt_ui_contract_capture.json. he.rt stays BLOCKED.")
     args = parser.parse_args(argv)
+
+    if args.rt_ui_inspect:
+        return run_rt_ui_inspect(args.trace, args.url, args.idle)
 
     if args.rt_get_capture:
         return run_passive_rt_get_capture(args.trace, args.url, args.idle)
