@@ -166,11 +166,16 @@ def test_scenario_d_reconnect_transient_retries_complete(tmp_path):
 
 
 def test_scenario_e_readback_null_after_write_recovers(tmp_path):
+    # Failure policy: an op that fails at readback but whose rollback/final GET
+    # verifies baseline restoration terminates as FAIL_RESTORED (device safe),
+    # and no subsequent mutable op is scheduled.
     run, trans = _make_run(tmp_path, readback_fail={2})
     run.run()
-    assert run.verdict == "COMPLETE", run.verdict
+    assert run.verdict == "FAIL_RESTORED", run.verdict
     assert run.baseline_restored is True
     assert trans.device.state["keyboard.polling"] == 3
+    # profile executed before polling (write+rollback); win_lock/deadzone/brightness NOT scheduled
+    assert trans.device.write_count == 4  # profile(2) + polling write(1) + recovery write(1)
 
 
 def test_scenario_f_recovery_impossible_manual_restore(tmp_path):

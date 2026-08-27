@@ -68,6 +68,13 @@ class AulaHidTransport(DeviceTransport):
         # cache baseline for simple ops to allow rollback without re-reading product?
         # No, always read fresh.
 
+    def read_light_full_state(self) -> str:
+        """Read the FULL 7-byte register-0x01 state (hex). Aggregate final
+        verification for light.brightness compares byte-for-byte against the
+        initial register baseline."""
+        from .lighting_core import read_light_state
+        return read_light_state(self.raw, self.product).hex()
+
     def take_light_echo(self) -> tuple[bytes | None, bytes | None]:
         """Return (and clear) (echo_frame, written_7byte_state) captured by the last
         register-0x01 light SET. Used by the executor for ACK evidence; echo is

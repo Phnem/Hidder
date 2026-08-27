@@ -56,6 +56,24 @@ REQUIRED_EVIDENCE: dict[str, list[str]] = {
 }
 
 # ---------------------------------------------------------------------------
+# Operations ALWAYS blocked by lighting feature policy (per-operation eligibility).
+# Independent of scope: enabling light.brightness never unlocks these. Consulted
+# by the executor-level gate too, so a stale plan cannot execute them.
+# ---------------------------------------------------------------------------
+
+ALWAYS_BLOCKED: dict[str, str] = {
+    "light.rgb_core": "BLOCKED_BY_UNRESOLVED_LIGHTING_REGISTER (global color encoding KNOWN from vendor capture but rollback NOT physically tested)",
+    "light.global_color": "BLOCKED_BY_UNRESOLVED_LIGHTING_FEATURE (global color rollback NOT physically tested)",
+    "light.mode": "BLOCKED_BY_UNRESOLVED_LIGHTING_FEATURE (effect selector NOT auto-validated)",
+    "light.enable": "BLOCKED_BY_UNRESOLVED_LIGHTING_FEATURE (derived from mode selector; NOT auto-validated)",
+    "light.effect": "BLOCKED_BY_UNRESOLVED_LIGHTING_FEATURE (effect enum unresolved)",
+    "light.speed": "BLOCKED_BY_UNRESOLVED_LIGHTING_FEATURE (partial; min not captured; rollback not physically tested)",
+    "light.direction": "BLOCKED_BY_UNRESOLVED_LIGHTING_FEATURE (unsupported by current UI / unresolved protocol applicability)",
+    "custom.per_key": "BLOCKED_BY_UNRESOLVED_LIGHTING_FEATURE (per-key/custom lighting unresolved)",
+    "light.edge_light": "BLOCKED_BY_UNRESOLVED_LIGHTING_FEATURE (unresolved)",
+}
+
+# ---------------------------------------------------------------------------
 # Which required-evidence items are PHYSICALLY CLOSED, with the authoritative
 # artifact. Nothing may be added here from static mappings, synthetic tests, or
 # generic reversible metadata.
@@ -128,6 +146,9 @@ def missing_evidence(op_id: str, vid: str = "", pid: str = "", family: str = "",
 def blocker_for(op_id: str, vid: str = "", pid: str = "", family: str = "",
                 fw: str = "", closed: dict[str, str] | None = None) -> tuple[str, str] | None:
     """Return (blocker_name, reason) if a hard requirement is open, else None."""
+    # Unconditional lighting policy blockers win over everything.
+    if op_id in ALWAYS_BLOCKED:
+        return "BLOCKED_BY_UNRESOLVED_LIGHTING_FEATURE", f"{ALWAYS_BLOCKED[op_id]}"
     missing = missing_evidence(op_id, vid, pid, family, fw, closed=closed)
     if not missing:
         return None

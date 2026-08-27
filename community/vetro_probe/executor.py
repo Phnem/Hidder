@@ -33,6 +33,7 @@ class ExecutorContext:
     observable: ObservableListener | None = None
     firmware_branch: str = ""
     connection_mode: str = ""
+    enforce_feature_gates: bool = False  # executor-level defense in depth (auto flow)
 
 
 def _validation_flags(ev: TestEvidence, op_id: str) -> dict[str, bool]:
@@ -86,6 +87,19 @@ def execute_single(operation_id: str, ctx: ExecutorContext) -> TestEvidence:
         ev.status = "BLOCKED"
         ev.error = f"unknown operation {operation_id}"
         return ev
+    # ---- executor-level feature-evidence gate (defense in depth) ----
+    # Even a stale/corrupt plan entry cannot execute an operation whose hard
+    # feature requirement is OPEN: the gate is consulted here independently of
+    # the planner presentation. ZERO writes for blocked ops.
+    if ctx.enforce_feature_gates:
+        from .feature_gates import blocker_for
+        blk = blocker_for(operation_id,
+                          vid=ctx.bundle.product.vid, pid=ctx.bundle.product.pid,
+                          family=ctx.bundle.family, fw=ctx.firmware_branch)
+        if blk is not None:
+            ev.status = "BLOCKED"
+            ev.error = blk[1]
+            return ev
     if operation_id not in ctx.baseline.values:
         # baseline required for reversible writes
         if op.reversible:

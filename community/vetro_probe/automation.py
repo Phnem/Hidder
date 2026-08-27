@@ -47,6 +47,7 @@ S_EXPORTING = "EXPORTING"
 S_COMPLETE = "COMPLETE"
 S_BLOCKED = "BLOCKED"
 S_MANUAL = "FAILED_REQUIRES_MANUAL_RESTORE"
+S_FAIL_RESTORED = "FAIL_RESTORED"
 
 # Plan classifications
 CLS_AUTO_SAFE = "AUTO_SAFE"
@@ -137,27 +138,76 @@ class AutoProbeRun:
         self.store.save(self.cp)
 
     # ---------------------------------------------------------------- run
+
+    # The audited exact-scope executable set for HERO84/FW0216. Any deviation is
+    # an ABORT-BEFORE-FIRST-WRITE (preflight gate), not just a display change.
+    EXPECTED_EXECUTABLE = {
+        "keyboard.profile",
+        "keyboard.polling",
+        "device.win_lock",
+        "he.deadzone",
+        "light.brightness",
+    }
+
     def run(self) -> "AutoProbeRun":
         self._transition(S_INIT, "auto run started")
+        # ---- recovery-first startup ----
         if RunStateStore.open_write_pending(self.cp):
             self._transition(S_RECOVERING, "open write checkpoint detected — recovery before new run")
             self._recover_pending()
+            self.recovery_preflight = "RECOVERED" if self.verdict not in (S_MANUAL, S_BLOCKED) else "BLOCKED"
+        else:
+            self.recovery_preflight = "CLEAR"
+        print(f"RECOVERY_PREFLIGHT = {self.recovery_preflight}")
+        if self.verdict in (S_MANUAL, S_BLOCKED):
+            self._export(terminal=self.verdict)
+            return self
         self._discover()
         if self.verdict == S_BLOCKED:
             self._export(terminal=S_BLOCKED)
             return self
         self._plan()
+        if not self._gate_executable_set():
+            self._export(terminal=S_BLOCKED)
+            return self
         self._baseline()
         if self.verdict == S_MANUAL:
             self._export(terminal=S_MANUAL)
             return self
         self._execute()
-        if self.verdict == S_MANUAL:
-            self._export(terminal=S_MANUAL)
+        if self.verdict in (S_MANUAL, S_FAIL_RESTORED):
+            self._export(terminal=self.verdict)
             return self
         self._verify_final()
         self._export(terminal=S_COMPLETE)
         return self
+
+    def _gate_executable_set(self) -> bool:
+        """Strict executable-set preflight for the audited physical scope.
+
+        planned executable op ids must equal the expected eligible set; if an
+        unexpected mutable op appears, ABORT BEFORE FIRST WRITE."""
+        # The full-set gate applies only to an unconstrained full run; an explicit
+        # allowed_ops scope (e.g. a single-op recovery drill) is intentional.
+        if self.allowed_ops is not None:
+            return True
+        d = self.discovery
+        scope = (str(d.get("vid") or getattr(self.instance, "vid", "")),
+                 str(d.get("pid") or getattr(self.instance, "pid", "")),
+                 self.bundle.family,
+                 str(d.get("firmware") or getattr(self.instance, "firmware_version", "")))
+        if scope == ("0x372E", "0x103E", "aula_kb_v3_wired", "0216"):
+            executable = {e["operation"] for e in self.plan
+                          if e["classification"] == CLS_AUTO_REVERSIBLE and not e.get("informational")}
+            unexpected = sorted(executable - self.EXPECTED_EXECUTABLE)
+            missing = sorted(self.EXPECTED_EXECUTABLE - executable)
+            if unexpected or missing:
+                self.verdict = S_BLOCKED
+                self._transition(S_BLOCKED,
+                                 f"executable-set gate FAILED: unexpected={unexpected} missing={missing} "
+                                 f"— ABORT BEFORE FIRST WRITE")
+                return False
+        return True
 
     # ------------------------------------------------------------ recovery
     def _recover_pending(self) -> None:
@@ -442,6 +492,14 @@ class AutoProbeRun:
                     entry["classification"] = CLS_BLOCKED
                     entry["why_safe"] = f"light.brightness runtime gate FAILED: baseline {val!r} not in safe range 0..20"
                     continue
+                # Capture the initial FULL 7-byte register state for the aggregate
+                # byte-for-byte final verification (real transport only).
+                full = getattr(self.transport, "read_light_full_state", None)
+                if full is not None:
+                    try:
+                        entry["register_baseline"] = full()
+                    except Exception:
+                        pass
             self.baselines[op_id] = snap.values[op_id]
 
     # -------------------------------------------------------------- execution
@@ -456,6 +514,21 @@ class AutoProbeRun:
             op_id = entry["operation"]
             if entry["classification"] != CLS_AUTO_REVERSIBLE:
                 continue
+            # stale/corrupt plan defense: a gated-BLOCKED op classified AUTO must
+            # ABORT BEFORE FIRST WRITE (executor-level feature-evidence gate).
+            from .feature_gates import blocker_for as _fg_blocker
+            _d = self.discovery
+            _blk = _fg_blocker(op_id,
+                               vid=_d.get("vid") or getattr(self.instance, "vid", ""),
+                               pid=_d.get("pid") or getattr(self.instance, "pid", ""),
+                               family=self.bundle.family,
+                               fw=_d.get("firmware") or getattr(self.instance, "firmware_version", ""))
+            if _blk is not None:
+                self.verdict = S_BLOCKED
+                self._transition(S_BLOCKED, f"{op_id}: stale plan — feature-evidence gate OPEN ({_blk[0]}) — ABORT BEFORE WRITE")
+                self.cp.closed = True
+                self.store.save(self.cp)
+                return
             baseline_val = self.baselines.get(op_id)
             if baseline_val is None:
                 continue
@@ -468,6 +541,7 @@ class AutoProbeRun:
                 recovery=recovery, reconnect=reconnect,
                 observable=None, firmware_branch=self.instance.firmware_version,
                 connection_mode=self.instance.connection_mode,
+                enforce_feature_gates=True,  # executor-level defense in depth
             )
             self._transition(S_EXECUTING, f"executing {op_id} (baseline {baseline_val!r})")
             ev = execute_single(op_id, ctx)
@@ -482,6 +556,24 @@ class AutoProbeRun:
                 self.cp.recovery_required = True
                 self.cp.closed = False
                 self.store.save(self.cp)
+                return
+            if ev.status == "FAIL":
+                # Failure policy: STOP scheduling subsequent mutable ops. The active
+                # op's restore was attempted inside execute_single; verify it.
+                restored = bool(ev.rollback_matched) or bool(rec.get("baseline_restored"))
+                self.baseline_restored = restored
+                if restored:
+                    self.cp.closed = True
+                    self.cp.final_verified = True
+                    self.store.save(self.cp)
+                    self.verdict = S_FAIL_RESTORED
+                    self._transition(S_FAIL_RESTORED, f"{op_id}: operation FAILED, device restored to baseline (rollback verified) — no further ops scheduled")
+                else:
+                    self.cp.recovery_required = True
+                    self.cp.closed = False
+                    self.store.save(self.cp)
+                    self.verdict = S_MANUAL
+                    self._transition(S_MANUAL, f"{op_id}: operation FAILED and restore NOT verified — manual restore required")
                 return
             if ev.status == "PASS":
                 self._transition(S_VALIDATING, f"{op_id} readback/rollback validated")
@@ -515,11 +607,25 @@ class AutoProbeRun:
                 values[op] = val
             else:
                 errors[op] = res.error
-        mismatches = {}
+        mismatches: dict[str, Any] = {}
         for op, init in self.baselines.items():
             final = values.get(op)
             if final != init:
                 mismatches[op] = {"expected": init, "actual": final, "error": errors.get(op, "")}
+        # Aggregate byte-for-byte register verification for light.brightness:
+        # final reg0x01 must equal the initial 7-byte A (fresh, paced read).
+        for entry in self.plan:
+            if entry.get("operation") == "light.brightness" and entry.get("register_baseline"):
+                try:
+                    time.sleep(0.05)
+                    final_reg = fresh.read_light_full_state()
+                except Exception as exc:
+                    mismatches.setdefault("light.brightness", {})["register"] = f"error: {exc!r}"
+                    continue
+                if final_reg != entry["register_baseline"]:
+                    mismatches.setdefault("light.brightness", {})["register"] = {
+                        "expected": entry["register_baseline"], "actual": final_reg,
+                    }
         self.baseline_restored = not mismatches
         self.final_state = {"restored": self.baseline_restored, "mismatches": mismatches, "fresh_session": True}
         if not self.baseline_restored:
