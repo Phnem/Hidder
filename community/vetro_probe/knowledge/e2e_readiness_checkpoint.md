@@ -35,22 +35,40 @@ proven capabilities only.
   `CURRENT_HARDWARE_STATE == STORED_INITIAL_BASELINES`, `MANUAL_RESTORE_REQUIRED = NO`,
   `FULL_E2E_PHYSICAL_PASS = YES`.
 
-## NOT promoted by this run
+## CLOSED after the E2E run (dedicated revalidation, not another full --auto)
 
-`keyboard.remap`, `he.actuation`, `he.rt`, `light.rgb_core`, `light.global_color`,
+- `he.actuation` is now **AUTO_REVERSIBLE** (post-fix physical revalidation PASS).
+  - baseline 1.63 (raw u16 163, native 0.01 mm) → temporary 1.0 (on-grid) →
+    fresh readback 1.0 → immutable restore 1.63 → fresh final GET 1.63 == A →
+    STATUS RESTORED (`actuation_revalidation_checkpoint/closure.json`).
+  - historical pre-fix failure preserved: A=1.63, B=0.6 (off-grid), readback 0.0,
+    rollback 1.63 PASS (evidence of the old temporary-value defect, not rewritten).
+  - `feature_gates.CLOSED_EVIDENCE["physical Probe PASS after 0.5mm-grid fix"]` closed.
+- Physically validated AUTO_REVERSIBLE set is now **six**:
+  `keyboard.profile`, `keyboard.polling`, `device.win_lock`, `he.deadzone`,
+  `he.actuation`, `light.brightness`.
+
+## NOT promoted
+
+`keyboard.remap`, `he.rt`, `light.rgb_core`, `light.global_color`,
 `light.effect`, `light.speed`, `light.direction`, `custom.per_key`,
 `light.edge_light`. `K20` is NOT promoted (single-device/single-FW scope).
+No cross-feature inference.
 
-## Next technical target (prepared, NOT executed)
+## Next technical blocker (analysis only — not executed)
 
-`he.actuation` — see the recommendation in the run closure notes.
+Compare the two remaining HE/input blockers:
 
-- current blocker: `BLOCKED_PENDING_PHYSICAL_REVALIDATION`
-- known previous failure: real run FAILED — baseline 1.63, temp 0.6, readback 0.0,
-  rollback 1.63 PASS (off-grid temp value rejected by hardware)
-- implemented fix: temporary values chosen from the proven 0.5 mm grid
-  `[0.5, 1.0, 1.5, 2.0]` (`bundle_export` actuation bounds)
-- exact evidence needed to promote: a real `he.actuation` AUTO_REVERSIBLE run
-  whose per-op readback == temp, rollback_readback == baseline, and aggregate
-  final verification passes; then close `feature_gates.CLOSED_EVIDENCE[
-  "physical Probe PASS after 0.5mm-grid fix"]`.
+- A. `he.rt` — blocker `rapid_trigger_units_crosscheck` OPEN. The typed protocol
+  path exists (set/readback via `0x19/0x99`); closing it is an analogous dedicated
+  reversible real experiment (on-grid mm values), like the actuation revalidation.
+- B. `keyboard.remap` — blocker strong E5 / WM_INPUT hDevice observable missing.
+  Needs OS-level WM_INPUT correlation infrastructure, independent of the device
+  protocol path.
+
+Recommendation: **`he.rt` is cheaper to close next** (protocol + revalidation
+pattern already in place; remap requires new WM_INPUT observable infrastructure).
+
+GUI can proceed in parallel: YES — the six-op autonomous set and the full E2E are
+closed; RT/remap are independent feature blockers and are not prerequisites for
+GUI work on the validated surface.

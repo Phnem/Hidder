@@ -91,6 +91,15 @@ CLOSED_EVIDENCE: dict[str, str] = {
     "real smoke/readback/rollback PASS": "real HERO84 win_lock cycle PASS (smoke/readback/rollback)",
     "real baseline/write/readback/rollback PASS": "PHYSICAL_VALIDATION_PASS C — deadzone FAMILY_VALIDATED (set/readback/rollback/readback)",
     "physical profile switch set/readback/rollback": "PHYSICAL_VALIDATION_PASS G — profile switching FAMILY_VALIDATED",
+    # he.actuation — closed by the dedicated post-fix physical revalidation.
+    # Historical pre-fix failure preserved: A=1.63, B=0.6 (off-grid), readback 0.0,
+    # rollback 1.63 PASS. Post-fix revalidation: A=1.63(raw 163), B=1.0, readback
+    # 1.0, immutable restore 1.63, fresh final GET 1.63 == A, STATUS RESTORED.
+    "physical Probe PASS after 0.5mm-grid fix": (
+        "real HERO84 he.actuation revalidation PASS (actuation_revalidation_checkpoint, 2026): "
+        "baseline 1.63 (raw u16 163, native 0.01mm), temporary 1.0 (on-grid), fresh readback 1.0, "
+        "immutable restore 1.63, fresh final GET 1.63 == original A, restored=true"
+    ),
 }
 
 # Open required-evidence items that remain hard blockers for HERO84/FW0216.

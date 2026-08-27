@@ -17,7 +17,7 @@ from community.vetro_probe.transport import FakeTransport
 from community.vetro_probe.identity import mock_hero84_instance
 
 PASS_TRUE = dict(
-    executed_expected_ops=5, passed_expected_ops=5, failed_ops=0, restored_all=True,
+    executed_expected_ops=6, passed_expected_ops=6, failed_ops=0, restored_all=True,
     aggregate_ran=True, aggregate_pass=True, baseline_restored=True,
     final_verified=True, recovery_required=False,
 )
@@ -27,7 +27,8 @@ def _base_run(tmp_path):
     bundle = production_bundle_for_hero84()
     state = {
         "keyboard.profile": 1, "keyboard.polling": 3, "device.win_lock": False,
-        "he.deadzone": 0.5, "light.brightness": 10, "light.rgb_core": "00ff0000000000",
+        "he.deadzone": 0.5, "he.actuation": 1.0, "light.brightness": 10,
+        "light.rgb_core": "00ff0000000000",
     }
     trans = FakeTransport(initial_state=state, reconnect_ops={"keyboard.polling"})
     inst = mock_hero84_instance()

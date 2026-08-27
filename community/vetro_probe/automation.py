@@ -87,7 +87,7 @@ def overall_success(
     final_state_verified, and no recovery required. baseline_restored=false or
     final_state_verified=false ALWAYS make overall success false."""
     return (
-        executed_expected_ops == 5
+        executed_expected_ops == 6
         and passed_expected_ops == executed_expected_ops
         and failed_ops == 0
         and restored_all
@@ -182,8 +182,10 @@ class AutoProbeRun:
         "keyboard.polling",
         "device.win_lock",
         "he.deadzone",
+        "he.actuation",
         "light.brightness",
     }
+    EXPECTED_EXECUTABLE_COUNT = len(EXPECTED_EXECUTABLE)  # 6
 
     def run(self) -> "AutoProbeRun":
         self._transition(S_INIT, "auto run started")

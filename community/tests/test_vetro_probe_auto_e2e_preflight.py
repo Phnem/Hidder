@@ -19,8 +19,9 @@ from community.vetro_probe.executor import ExecutorContext, execute_single
 from community.vetro_probe.runstate import RunCheckpoint
 from community.vetro_probe import feature_gates as fg
 
-EXPECTED = {"keyboard.profile", "keyboard.polling", "device.win_lock", "he.deadzone", "light.brightness"}
-BLOCKED_OPS = ["keyboard.remap", "he.actuation", "he.rt", "light.rgb_core",
+EXPECTED = {"keyboard.profile", "keyboard.polling", "device.win_lock", "he.deadzone",
+            "he.actuation", "light.brightness"}
+BLOCKED_OPS = ["keyboard.remap", "he.rt", "light.rgb_core",
                "light.global_color", "light.effect", "light.speed", "light.direction",
                "custom.per_key", "light.edge_light"]
 
@@ -75,8 +76,8 @@ def _wrong_vid_instance():
                             product_string="AULA HERO84 HE", manufacturer="AULA")
 
 
-# 1. exact HERO84/FW0216 real-auto executable set is exactly the five ops
-def test_executable_set_is_exactly_five(tmp_path):
+# 1. exact HERO84/FW0216 real-auto executable set is exactly the six ops
+def test_executable_set_is_exactly_six(tmp_path):
     run, trans = _make_run(tmp_path)
     run._plan()
     executable = {e["operation"] for e in run.plan
@@ -125,13 +126,18 @@ def test_stale_plan_rt_executor_refuses():
     assert trans.device.write_count == 0
 
 
-def test_stale_plan_actuation_executor_refuses():
+def test_actuation_now_executes_after_physical_closure():
+    # he.actuation's blocker is now physically closed, so the executor no longer
+    # refuses it (post-fix revalidation PASS). remap/rt stay gated at execution.
     bundle = production_bundle_for_hero84()
-    trans = FakeTransport(initial_state={"he.actuation": 0.5})
-    ev = execute_single("he.actuation", _exec_ctx(bundle, trans))
-    assert ev.status == "BLOCKED"
-    assert "BLOCKED_PENDING_PHYSICAL_REVALIDATION" in ev.error
-    assert trans.device.write_count == 0
+    trans = FakeTransport(initial_state={"he.actuation": 1.0})
+    snap = BaselineCollector(trans).collect(["he.actuation"])
+    ctx = _exec_ctx(bundle, trans)
+    ctx.baseline = snap  # authoritative baseline from a fresh GET
+    ev = execute_single("he.actuation", ctx)
+    assert ev.status == "PASS", ev.error
+    assert trans.device.write_count == 2  # temp write + immutable rollback
+    assert trans.device.state["he.actuation"] == 1.0
 
 
 # 6. each successful op restores before next begins

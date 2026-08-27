@@ -69,9 +69,14 @@ def _make(dev):
     return factory
 
 
-# 1. actuation remains BLOCKED without physical post-fix closure
-def test_actuation_blocked_without_physical_closure():
-    blk = fg.blocker_for("he.actuation", **SCOPE)
+# 1. historical failure alone does NOT promote; only the real post-fix closure does
+def test_actuation_promoted_only_by_real_post_fix_closure():
+    # with the closure entry present (current state) -> promoted
+    assert fg.blocker_for("he.actuation", **SCOPE) is None
+    # without the closure entry (historical failure only) -> still BLOCKED
+    closed_without = {k: v for k, v in fg.CLOSED_EVIDENCE.items()
+                      if k != "physical Probe PASS after 0.5mm-grid fix"}
+    blk = fg.blocker_for("he.actuation", **SCOPE, closed=closed_without)
     assert blk is not None
     assert blk[0] == "BLOCKED_PENDING_PHYSICAL_REVALIDATION"
     assert "prior real Probe run FAILED" in blk[1]

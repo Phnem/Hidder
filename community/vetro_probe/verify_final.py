@@ -58,18 +58,23 @@ def write_closure_artifact(run_dir: Path, results: dict, ok: bool) -> Path:
     return path
 
 
-def write_final_verdict(run_dir: Path, ok: bool) -> Path:
-    """Authoritative final verdict for the run, additive and explicit."""
+def write_final_verdict(run_dir: Path, ok: bool, expected: int = 5) -> Path:
+    """Authoritative final verdict for the run, additive and explicit.
+
+    expected = number of executed baseline ops actually verified (the physically
+    validated AUTO_REVERSIBLE set size for this run; default 5 for the historical
+    run, 6 for the current six-op set)."""
     run_dir = Path(run_dir)
+    n = int(expected)
     verdict = {
         "schema": "vetro.run-final-verdict.v1",
         "run_dir": str(run_dir),
         "verdict": "COMPLETE_PASS" if ok else "COMPLETE_UNVERIFIED_FINAL_STATE",
-        "expected_executable_ops": 5,
-        "executed_ops": 5,
-        "passed_ops": 5,
-        "restored_ops": 5,
-        "failed_ops": 0,
+        "expected_executable_ops": n,
+        "executed_ops": n,
+        "passed_ops": n if ok else 0,
+        "restored_ops": n if ok else 0,
+        "failed_ops": 0 if ok else n,
         "aggregate_authoritative_verification": "READONLY_VERIFIED" if ok else "UNVERIFIED",
         "baseline_restored": ok,
         "final_state_verified": ok,
@@ -77,7 +82,7 @@ def write_final_verdict(run_dir: Path, ok: bool) -> Path:
         "manual_restore_required": False if ok else True,
         "blocked_features_not_promoted": BLOCKED_FEATURES_NOT_PROMOTED,
         "k20_not_promoted": True,
-        "scoped_to": "5-op autonomous path on 372E:103E / aula_kb_v3_wired / FW 0216",
+        "scoped_to": f"{n}-op autonomous path on 372E:103E / aula_kb_v3_wired / FW 0216",
     }
     path = run_dir / "final_verdict.json"
     path.write_text(json.dumps(verdict, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -144,7 +149,7 @@ def run_readonly_verify(run_dir: Path, bundle=None) -> dict:
     print("WRITES = 0")
     # Persist additive closure evidence + authoritative final verdict.
     write_closure_artifact(run_dir, results, ok_all)
-    write_final_verdict(run_dir, ok_all)
+    write_final_verdict(run_dir, ok_all, expected=len(results))
     print(f"closure artifact: {run_dir / 'external_readonly_closure.json'}")
     print(f"final verdict: {run_dir / 'final_verdict.json'}")
     return {"ok": ok_all, "results": results, "writes": 0}

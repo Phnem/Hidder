@@ -444,11 +444,16 @@ def test_family_full_k_status_cannot_override_feature_open():
     assert _entry(run, "keyboard.remap")["classification"] == CLS_BLOCKED
 
 
-def test_actuation_prior_failure_blocks_pending_revalidation():
-    e = _entry(_plan_for(production_bundle_for_hero84(), _inst()), "he.actuation")
-    assert e["classification"] == CLS_BLOCKED
-    assert "BLOCKED_PENDING_PHYSICAL_REVALIDATION" in e["why_safe"]
-    assert "prior real Probe run FAILED" in e["why_safe"]
+def test_actuation_promoted_after_post_fix_revalidation():
+    # he.actuation's post-fix physical revalidation PASS closed its blocker
+    # (BLOCKED_PENDING_PHYSICAL_REVALIDATION -> AUTO_REVERSIBLE), while
+    # RT/remap remain BLOCKED (no cross-feature inference).
+    run = _plan_for(production_bundle_for_hero84(), _inst())
+    e = _entry(run, "he.actuation")
+    assert e["classification"] == CLS_AUTO_REVERSIBLE
+    assert "PHYSICAL" in e["why_safe"] or "AUTO_REVERSIBLE" == e["classification"]
+    for op in ("he.rt", "keyboard.remap"):
+        assert _entry(run, op)["classification"] == CLS_BLOCKED
 
 
 def test_polling_winlock_deadzone_remain_eligible():
