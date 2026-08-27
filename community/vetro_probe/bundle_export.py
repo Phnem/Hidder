@@ -62,6 +62,18 @@ OP_MAP: dict[str, dict[str, Any]] = {
                    "preserve_others": True, "reg_width": 7, "color_offset": 0, "color_width": 3},
         "cap": "rgb_core",
     },
+    "light.brightness": {
+        # Full-register read-modify-write on register 0x01, brightness-only. The
+        # semantic value is brightness int 0..20 (raw = UI_percent / 5); the
+        # TRANSPORT performs the full 7-byte RMW (preserving mode/reserved/R/G/B/
+        # speed byte-for-byte) + canonical echo validation via lighting_core.
+        # K14 physically validated (PHYSICALLY_CLOSED for exact HERO84/FW0216):
+        # GET A -> SET B (canonical echo) -> GET B == B -> SET immutable A (echo) -> GET A == A.
+        "kind": "set", "reversible": True, "readback": True,
+        "bounds": {"min": 0, "max": 20, "unit": "brightness", "safe_values": [5, 10],
+                   "brightness_offset": 5, "reg_width": 7},
+        "cap": "rgb_core",
+    },
     "device.win_lock": {
         "kind": "set", "reversible": True, "readback": True,
         "bounds": {"min": 0, "max": 1, "safe_values": [1]},

@@ -234,18 +234,75 @@ class AutoProbeRun:
         self._transition(S_IDENTIFIED, "exact identity resolved (read-only writes-gated)")
 
     # --------------------------------------------------------------- planning
+
+    # Exact scope for the physically-closed light.brightness path.
+    LIGHT_BRIGHTNESS_SCOPE = {
+        "vid": "0x372E", "pid": "0x103E", "family": "aula_kb_v3_wired", "firmware": "0216",
+    }
+
+    def _brightness_scope_ok(self) -> bool:
+        d = self.discovery
+        vid = d.get("vid") or getattr(self.instance, "vid", "")
+        pid = d.get("pid") or getattr(self.instance, "pid", "")
+        fw = d.get("firmware") or getattr(self.instance, "firmware_version", "")
+        return (str(vid) == self.LIGHT_BRIGHTNESS_SCOPE["vid"]
+                and str(pid) == self.LIGHT_BRIGHTNESS_SCOPE["pid"]
+                and self.bundle.family == self.LIGHT_BRIGHTNESS_SCOPE["family"]
+                and str(fw) == self.LIGHT_BRIGHTNESS_SCOPE["firmware"])
+
+    def _brightness_scope_block_reason(self) -> str:
+        d = self.discovery
+        vid = d.get("vid") or getattr(self.instance, "vid", "")
+        pid = d.get("pid") or getattr(self.instance, "pid", "")
+        fw = d.get("firmware") or getattr(self.instance, "firmware_version", "")
+        return (f"BLOCKED_BY_LIGHT_BRIGHTNESS_SCOPE (requires exact "
+                f"{self.LIGHT_BRIGHTNESS_SCOPE['vid']}:{self.LIGHT_BRIGHTNESS_SCOPE['pid']} / "
+                f"{self.LIGHT_BRIGHTNESS_SCOPE['family']} / FW {self.LIGHT_BRIGHTNESS_SCOPE['firmware']}; "
+                f"observed vid={vid} pid={pid} family={self.bundle.family} fw={fw})")
+
+    @staticmethod
+    def _non_auto_lighting_features() -> list[tuple[str, str]]:
+        """Informational rows so a dry plan explicitly shows what stays blocked.
+        Per-operation eligibility: enabling light.brightness must NEVER unlock these."""
+        return [
+            ("light.global_color", "NOT_AUTO_VALIDATED — encoding KNOWN from vendor capture; rollback NOT physically tested"),
+            ("light.effect", "BLOCKED — effect enum unresolved"),
+            ("light.speed", "PARTIAL_BLOCKED — partial; min not captured; rollback not physically tested"),
+            ("light.direction", "BLOCKED — unsupported by current UI / unresolved protocol applicability"),
+            ("custom.per_key", "BLOCKED — per-key/custom lighting unresolved"),
+            ("light.edge_light", "BLOCKED — unresolved"),
+        ]
+
     def _classify_op(self, op_id: str) -> str:
         op = self.bundle.operations.get(op_id)
         if op is None:
             return CLS_UNKNOWN
         if op_id in FORBIDDEN_OP_IDS or any(op_id.startswith(p + ".") or op_id == p for p in FORBIDDEN_PREFIXES):
             return CLS_BLOCKED
+        # Light feature-level eligibility (per-operation ONLY; there is deliberately no
+        # single global lighting_auto_eligible flag). The physically-closed brightness
+        # path must never unlock global color / effect / per-key writes.
+        if op_id == "light.rgb_core":
+            self._block_reasons[op_id] = ("BLOCKED_BY_UNRESOLVED_LIGHTING_REGISTER "
+                                          "(global color encoding KNOWN from vendor capture but rollback NOT physically "
+                                          "tested; not AUTO — per-operation eligibility)")
+            return CLS_BLOCKED
+        if op_id in ("light.global_color", "light.mode", "light.enable"):
+            self._block_reasons[op_id] = ("BLOCKED_BY_UNRESOLVED_LIGHTING_FEATURE "
+                                          "(encoding KNOWN, rollback NOT physically tested; not AUTO)")
+            return CLS_BLOCKED
+        if op_id in ("light.effect", "light.speed", "light.direction", "light.per_key",
+                     "custom.per_key", "light.edge_light"):
+            self._block_reasons[op_id] = ("BLOCKED_BY_UNRESOLVED_LIGHTING_FEATURE "
+                                          "(unresolved; see lighting_mapping.json v5)")
+            return CLS_BLOCKED
+        if op_id == "light.brightness":
+            if self._brightness_scope_ok():
+                return CLS_AUTO_REVERSIBLE
+            self._block_reasons[op_id] = self._brightness_scope_block_reason()
+            return CLS_BLOCKED
         if self.block_knowledge_holes and op_id == "he.rt":
             self._block_reasons[op_id] = "BLOCKED_BY_KNOWLEDGE_HOLE (rapid_trigger_units_crosscheck is authoritative OPEN)"
-            return CLS_BLOCKED
-        if self.block_knowledge_holes and op_id == "light.rgb_core":
-            self._block_reasons[op_id] = ("BLOCKED_BY_UNRESOLVED_LIGHTING_REGISTER "
-                                          "(register 0x01 does not capture visible lighting state; vendor RGB is group 0x06/0x86 sync_custom_light, mapping unresolved)")
             return CLS_BLOCKED
         if self.block_missing_strong_e5 and op_id == "keyboard.remap":
             self._block_reasons[op_id] = "BLOCKED_BY_MISSING_STRONG_E5 (only uncorrelated_os available; strong E5 requires WM_INPUT hDevice correlation)"
@@ -286,17 +343,39 @@ class AutoProbeRun:
             cls = self._classify_op(op_id)
             op = self.bundle.operations[op_id]
             block_reason = self._block_reasons.get(op_id, "")
+            if op_id == "light.brightness" and cls == CLS_AUTO_REVERSIBLE:
+                why_safe = ("PHYSICALLY CLOSED (K13/K14/K18/K19, exact 372E:103E/aula_kb_v3_wired/FW0216): "
+                            "brightness-only full-state RMW, canonical device echo verified, fresh GET "
+                            "readback + final-GET hard invariant, immutable-A rollback; runtime gates: "
+                            "register-0x01 GET, baseline len==7, structurally valid mode, brightness 0..20, "
+                            "canonical serializer, recovery journal, fresh-session/reconnect path")
+            else:
+                why_safe = block_reason or (
+                    "production_safe reversible, readback+rollback, bounds present, firmware gate"
+                    if cls == CLS_AUTO_REVERSIBLE else "blocked/unknown")
             self.plan.append({
                 "operation": op_id,
                 "classification": cls,
                 "why_selected": p.reason,
-                "why_safe": block_reason or (
-                    "production_safe reversible, readback+rollback, bounds present, firmware gate"
-                    if cls == CLS_AUTO_REVERSIBLE else "blocked/unknown"),
+                "why_safe": why_safe,
                 "expected_observable": op.needs_observable,
                 "rollback_method": "restore_value",
                 "reconnect_required": op.requires_reconnect,
                 "failure_policy": "recovery then FAILED_REQUIRES_MANUAL_RESTORE" if op.reversible else "no-op",
+            })
+        # Explicitly surface non-auto lighting features so the plan documents that
+        # enabling light.brightness never unlocks global color / effect / per-key.
+        for feat, reason in self._non_auto_lighting_features():
+            self.plan.append({
+                "operation": feat,
+                "classification": CLS_BLOCKED,
+                "why_selected": "informational (no bundle op; per-operation lighting eligibility)",
+                "why_safe": reason,
+                "expected_observable": False,
+                "rollback_method": "none",
+                "reconnect_required": False,
+                "failure_policy": "no-op",
+                "informational": True,
             })
         # enrich with knowledge fields when a resolution is available
         if getattr(self, "resolution", None) is not None:
@@ -308,6 +387,18 @@ class AutoProbeRun:
                         classification=entry["classification"], why_selected=entry.get("why_selected", "")))
             except Exception:
                 pass
+
+    # ------------------------------------------------------------ plan-only
+    def plan_only(self) -> "AutoProbeRun":
+        """Dry/no-write planning: discovery + classification only. No transport
+        reads/writes, no baselining, no execution. Used by --plan-dry to inspect
+        the generated HERO84 plan before any physical run."""
+        self._transition(S_PLANNING, "dry planning (no writes)")
+        self._discover()
+        if self.verdict == S_BLOCKED:
+            return self
+        self._plan()
+        return self
 
     # -------------------------------------------------------------- baselining
     def _baseline(self) -> None:
@@ -322,6 +413,12 @@ class AutoProbeRun:
                 entry["classification"] = CLS_BLOCKED
                 entry["why_safe"] = "baseline unavailable"
                 continue
+            if op_id == "light.brightness":
+                val = snap.values[op_id]
+                if not isinstance(val, int) or not (0 <= val <= 20):
+                    entry["classification"] = CLS_BLOCKED
+                    entry["why_safe"] = f"light.brightness runtime gate FAILED: baseline {val!r} not in safe range 0..20"
+                    continue
             self.baselines[op_id] = snap.values[op_id]
 
     # -------------------------------------------------------------- execution

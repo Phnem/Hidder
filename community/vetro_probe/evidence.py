@@ -39,6 +39,9 @@ class TestEvidence:
     error: str = ""
     sessions: dict[str, Any] = field(default_factory=dict)  # A/B/C/D session ids
     recovery: dict[str, Any] = field(default_factory=dict)  # RecoveryJournal record (reconnect ops)
+    ack_valid: bool = False  # canonical device echo verified (register-0x01 light path)
+    echo_hex: str = ""       # captured canonical echo frame (hex), ACK evidence only
+    validation_flags: dict[str, bool] = field(default_factory=dict)  # write/ack/readback/rollback/final_restore
 
     def compute_strength(self) -> list[str]:
         s: list[str] = []

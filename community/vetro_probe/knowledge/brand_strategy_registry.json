@@ -73,7 +73,37 @@
         "PHYSICAL_VALIDATION_PASS.md",
         "AULA_KB_V3_PRODUCT_CAPABILITY_MATRIX_V2.json",
         "HERO84 physical captures"
-      ]
+      ],
+      "lighting_feature_scope": {
+        "note": "feature-level lighting auto eligibility for HERO84/aula_kb_v3_wired/FW 0216 (see community/vetro_probe/knowledge/lighting_mapping.json v5). Per-operation only; no global lighting_auto_eligible flag.",
+        "as_of": "K14 run #3 PHYSICAL PASS + EXTERNAL_POST_K14_FINAL_GET PASS (commit 9f5347d)",
+        "light.brightness": {
+          "auto": "AUTO_REVERSIBLE",
+          "status": "PHYSICALLY_CLOSED (K13/K14/K18/K19)",
+          "scope": "exact 372E:103E/aula_kb_v3_wired/FW0216, runtime gates required"
+        },
+        "light.global_color": {
+          "auto": "NOT_AUTO_VALIDATED",
+          "reason": "encoding proven from vendor capture; rollback not physically tested"
+        },
+        "light.effect": {
+          "auto": "BLOCKED",
+          "reason": "effect enum unresolved"
+        },
+        "light.speed": {
+          "auto": "PARTIAL_BLOCKED",
+          "reason": "partial; min not captured; rollback not physically tested"
+        },
+        "light.direction": {
+          "auto": "BLOCKED",
+          "reason": "unsupported by current UI / unresolved protocol applicability"
+        },
+        "custom.per_key": {
+          "auto": "BLOCKED",
+          "reason": "per-key/custom lighting unresolved"
+        },
+        "k20_not_promoted": true
+      }
     },
     {
       "group": "mchose",

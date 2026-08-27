@@ -1,5 +1,5 @@
 {
-  "schema": "vetro.lighting-mapping.v4",
+  "schema": "vetro.lighting-mapping.v5",
   "device": {"name": "HERO 84 HE", "vid": "0x372E", "pid": "0x103E", "family": "aula_kb_v3_wired", "firmware": "0216"},
   "old_mapping": {
     "operation": "light.rgb_core",
@@ -42,19 +42,111 @@
     "type": "DEVICE_ECHO",
     "matched": "26/26",
     "latency_ms": {"min": 10.0, "avg": 11.3, "max": 13.0},
-    "semantics": "write acceptance/echo (identical inputreport after each sendReport)",
-    "classification": "ACK/ECHO — NOT authoritative current-state readback; does not substitute K13 baseline GET",
-    "hardware_verified": true
+    "semantics": "write acceptance/echo (identical canonical 63B frame returned after each sendReport)",
+    "classification": "ACK/ECHO — NOT authoritative current-state readback; does not substitute fresh GET readback or final GET verification",
+    "hardware_verified": true,
+    "canonical_verifier": "vetro.lighting-core.decode_echo — full 63B frame equality (header + state + TX checksum); 7-byte-vs-63-byte representation mismatch fixed (commit d326d9d)"
   },
-  "fields": {
-    "light.mode": {"status": "KNOWN_selector", "offset": 6, "values": {"0": "OFF"}, "unresolved": "effect enum 01/02/03 internally ambiguous (BREATHING->01/02 overlap; STATIC/ANIMATED overlap) — no effect-name assigned", "evidence_count": 26, "source": "REAL_VENDOR_CAPTURE", "hardware_verified": true},
-    "light.enable": {"status": "PARTIAL_derived", "model": "mode=0 -> OFF; ON = selecting a non-zero mode; turning OFF requires previous mode known", "offset": 6, "evidence_count": 26, "source": "REAL_VENDOR_CAPTURE", "hardware_verified": true},
-    "light.global_color": {"status": "KNOWN", "offsets": [8, 9, 10], "encoding": "RGB888", "byte_order": "RGB", "mapping": {"#FF0000": "ff0000", "#00FF00": "00ff00", "#0000FF": "0000ff", "#FFFFFF": "ffffff"}, "evidence_count": 5, "source": "REAL_VENDOR_CAPTURE", "hardware_verified": true},
-    "light.brightness": {"status": "KNOWN_mapping_range", "offset": 11, "mapping": "raw = UI_percent / 5", "samples": {"0": "00", "25": "05", "50": "0a", "75": "0f", "100": "14"}, "range": "0x00..0x14", "step": "PARTIAL (25-pt samples only; finer UI step not proven)", "evidence_count": 6, "source": "REAL_VENDOR_CAPTURE", "hardware_verified": true},
-    "light.speed": {"status": "PARTIAL", "offset": 12, "values": {"mid": 2, "max": 4, "min": "UNKNOWN"}, "range": "min not captured", "evidence_count": 5, "source": "REAL_VENDOR_CAPTURE", "hardware_verified": true},
-    "light.direction": {"status": "UNSUPPORTED_BY_UI", "protocol": "unresolved/not applicable pending evidence"},
-    "light.per_key_rgb": {"status": "UNKNOWN", "source": "not evidenced by global-light sweep"},
-    "light.edge_light": {"status": "UNKNOWN", "source": "not evidenced by global-light sweep"}
+  "physically_closed": {
+    "K13_global_lighting_baseline": "PHYSICALLY_CLOSED",
+    "K14_light_brightness_rollback": "PHYSICALLY_CLOSED",
+    "K18_light_brightness_observable_readback": "PHYSICALLY_CLOSED",
+    "K19_light_brightness_hardware_validation": "PHYSICALLY_CLOSED",
+    "scope": "EXACT device 372E:103E / aula_kb_v3_wired / firmware 0216 / light.brightness only",
+    "evidence": [
+      "K14 run #3 physical PASS: GET A -> SET B -> canonical echo B -> fresh GET B==B -> SET immutable A -> canonical echo A -> fresh final GET A==A",
+      "K14 run #3 canonical echo B == 0401000100070100ff00000502...e2 (checksum valid, decoded state == B)",
+      "external standalone read-only GET after run #3 == 0100ff00000a02 (EXTERNAL_POST_K14_FINAL_GET=PASS)"
+    ],
+    "not_generalized": "effect enums / per-key / custom lighting / other firmware / other models / K20"
+  },
+  "features": {
+    "light.brightness": {
+      "status": "KNOWN_PHYSICALLY_VALIDATED",
+      "register_offset": 5,
+      "frame_offset": 11,
+      "mapping": "raw = UI_percent / 5",
+      "samples": {"0": "00", "25": "05", "50": "0a", "75": "0f", "100": "14"},
+      "observed_range": "0x00..0x14 (0..20)",
+      "step": "PARTIAL (25-pt samples physically proven; finer UI step not proven)",
+      "serializer": "full 7-byte register state only (brightness-only RMW preserves mode/reserved/R/G/B/speed byte-for-byte)",
+      "baseline": "fresh GET register 0x01 (7 bytes)",
+      "rollback": "SET exact immutable original 7-byte baseline",
+      "ack": "canonical device echo (63B frame)",
+      "readback": "fresh GET register 0x01 (echo is NOT readback)",
+      "final_restore_verification": "fresh final GET == immutable A byte-for-byte (hard invariant, commit 9f5347d)",
+      "auto_reversible": true,
+      "auto_scope": "exact 372E:103E / aula_kb_v3_wired / FW 0216; runtime gates required (identity, family, FW 0216, register 0x01 GET, baseline len==7, structurally valid mode, brightness in 0..20, canonical serializer, recovery journal, reconnect/fresh-session path)",
+      "evidence_count": 26
+    },
+    "light.global_color": {
+      "status": "KNOWN_encoding_only",
+      "offsets": [8, 9, 10],
+      "encoding": "RGB888",
+      "byte_order": "RGB",
+      "mapping": {"#FF0000": "ff0000", "#00FF00": "00ff00", "#0000FF": "0000ff", "#FFFFFF": "ffffff"},
+      "evidence_count": 5,
+      "source": "REAL_VENDOR_CAPTURE",
+      "hardware_verified": true,
+      "rollback": "NOT physically tested",
+      "auto_reversible": false,
+      "auto_reason": "encoding proven from vendor capture only; full-state color rollback not physically validated"
+    },
+    "light.mode": {
+      "status": "KNOWN_selector",
+      "offset": 6,
+      "values": {"0": "OFF"},
+      "unresolved": "effect enum 01/02/03 internally ambiguous (BREATHING->01/02 overlap; STATIC/ANIMATED overlap) — no effect-name assigned",
+      "evidence_count": 26,
+      "source": "REAL_VENDOR_CAPTURE",
+      "hardware_verified": true,
+      "auto_reversible": false,
+      "auto_reason": "effect enum unresolved"
+    },
+    "light.effect": {
+      "status": "UNRESOLVED_ENUM",
+      "auto_reversible": false,
+      "auto_reason": "effect enum unresolved (01/02/03 ambiguous; no effect-name assigned)"
+    },
+    "light.enable": {
+      "status": "PARTIAL_derived",
+      "model": "mode=0 -> OFF; ON = selecting a non-zero mode; turning OFF requires previous mode known",
+      "offset": 6,
+      "evidence_count": 26,
+      "source": "REAL_VENDOR_CAPTURE",
+      "hardware_verified": true,
+      "auto_reversible": false,
+      "auto_reason": "derived from mode selector; not independently auto-validated"
+    },
+    "light.speed": {
+      "status": "PARTIAL",
+      "offset": 12,
+      "values": {"mid": 2, "max": 4, "min": "UNKNOWN"},
+      "range": "min not captured",
+      "evidence_count": 5,
+      "source": "REAL_VENDOR_CAPTURE",
+      "hardware_verified": true,
+      "auto_reversible": false,
+      "auto_reason": "partial; min not captured; rollback not physically tested"
+    },
+    "light.direction": {
+      "status": "UNSUPPORTED_BY_UI",
+      "protocol": "unresolved/not applicable pending evidence",
+      "auto_reversible": false,
+      "auto_reason": "unsupported by current UI / unresolved protocol applicability"
+    },
+    "custom.per_key": {
+      "status": "UNKNOWN",
+      "source": "not evidenced by global-light sweep; vendor per-key path (groups 0x06/0x86 sync_custom_light) unresolved",
+      "auto_reversible": false,
+      "auto_reason": "per-key/custom lighting unresolved"
+    },
+    "light.edge_light": {
+      "status": "UNKNOWN",
+      "source": "not evidenced by global-light sweep",
+      "auto_reversible": false,
+      "auto_reason": "unresolved"
+    }
   },
   "groups": {
     "0x06": {"label": "sync_custom_light (WRITE)", "status": "STATIC_CAPABILITY_LABEL_ONLY / NOT_OBSERVED_IN_REAL_GLOBAL_LIGHTING_FLOW (may be per-key/custom-light path)", "source": "capability_matrix_static"},
@@ -63,9 +155,20 @@
     "0x84/0x01": {"label": "fetch_light_mode register 0x01 (GET) — returns current 7-byte state", "status": "PROVEN (readable)", "source": "REAL_READBACK"}
   },
   "k13_baseline": "CLOSED (current global lighting state obtainable read-only via GET register 0x01: [mode,0,R,G,B,brightness,speed])",
-  "k14_rollback": "OPEN (rollback not physically tested; Probe writes forbidden until authorized; needs write+echo+final GET verification)",
+  "k14_rollback": "CLOSED for light.brightness (exact HERO84/FW0216); OPEN for global_color/effect/speed/custom — see features.*.auto_reversible",
+  "auto_eligibility": {
+    "note": "per-operation eligibility only. There is intentionally NO single global lighting_auto_eligible flag: enabling light.brightness must never unlock RGB/effect/per-key writes.",
+    "light.brightness": "AUTO_REVERSIBLE",
+    "light.global_color": "NOT_AUTO_VALIDATED",
+    "light.mode": "NOT_AUTO_VALIDATED",
+    "light.effect": "BLOCKED",
+    "light.speed": "PARTIAL_BLOCKED",
+    "light.direction": "BLOCKED",
+    "custom.per_key": "BLOCKED",
+    "light.edge_light": "BLOCKED"
+  },
   "full_state_write": "YES",
   "authoritative_baseline_available": true,
-  "rollback_proven": false,
-  "auto_eligible": false
+  "rollback_proven": true,
+  "rollback_scope": "light.brightness only, exact HERO84/FW0216"
 }

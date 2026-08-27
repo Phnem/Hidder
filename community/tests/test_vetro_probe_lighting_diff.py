@@ -92,14 +92,16 @@ def test_lighting_mapping_schema_and_old_mapping_rejected():
     p = Path(__file__).resolve().parents[1] / "vetro_probe" / "knowledge" / "lighting_mapping.json"
     d = json.loads(p.read_text(encoding="utf-8"))
     assert d["old_mapping"]["status"] == "REJECTED"
-    assert d["fields"]["light.brightness"]["status"] == "KNOWN_mapping_range"
-    assert d["fields"]["light.global_color"]["status"] == "KNOWN"
-    assert d["fields"]["light.mode"]["status"] == "KNOWN_selector"
-    for field in ("light.per_key_rgb", "light.edge_light"):
-        assert d["fields"][field]["status"] == "UNKNOWN"
+    assert d["features"]["light.brightness"]["status"] == "KNOWN_PHYSICALLY_VALIDATED"
+    assert d["features"]["light.brightness"]["auto_reversible"] is True
+    assert d["features"]["light.global_color"]["status"] == "KNOWN_encoding_only"
+    assert d["features"]["light.global_color"]["auto_reversible"] is False
+    assert d["features"]["light.mode"]["status"] == "KNOWN_selector"
+    assert d["features"]["custom.per_key"]["status"] == "UNKNOWN"
+    assert d["features"]["light.edge_light"]["status"] == "UNKNOWN"
     assert d["authoritative_baseline_available"] is True
-    assert d["rollback_proven"] is False
-    assert d["auto_eligible"] is False
+    assert d["rollback_proven"] is True  # closed for light.brightness (exact scope)
+    assert "auto_eligible" not in d  # per-operation eligibility only
     assert d["full_state_write"] == "YES"
 
 
@@ -188,17 +190,18 @@ def test_lighting_mapping_v4_real_sweep_evidence():
     assert d["device_echo"]["semantics"].startswith("write acceptance/echo")
     assert d["global_state_block"]["class"] == "FULL_GLOBAL_LIGHTING_STATE_BLOCK"
     assert d["global_state_block"]["layout"] == {"mode": 6, "reserved": 7, "R": 8, "G": 9, "B": 10, "brightness": 11, "speed": 12}
-    assert d["fields"]["light.global_color"]["status"] == "KNOWN"
-    assert d["fields"]["light.global_color"]["encoding"] == "RGB888"
-    assert d["fields"]["light.brightness"]["status"] == "KNOWN_mapping_range"
-    assert d["fields"]["light.brightness"]["mapping"] == "raw = UI_percent / 5"
-    assert d["fields"]["light.speed"]["values"]["mid"] == 2 and d["fields"]["light.speed"]["values"]["max"] == 4
-    assert d["fields"]["light.speed"]["values"]["min"] == "UNKNOWN"
-    assert d["fields"]["light.mode"]["values"]["0"] == "OFF"
-    assert d["fields"]["light.direction"]["status"] == "UNSUPPORTED_BY_UI"
+    assert d["features"]["light.global_color"]["status"] == "KNOWN_encoding_only"
+    assert d["features"]["light.global_color"]["encoding"] == "RGB888"
+    assert d["features"]["light.brightness"]["status"] == "KNOWN_PHYSICALLY_VALIDATED"
+    assert d["features"]["light.brightness"]["mapping"] == "raw = UI_percent / 5"
+    assert d["features"]["light.speed"]["values"]["mid"] == 2 and d["features"]["light.speed"]["values"]["max"] == 4
+    assert d["features"]["light.speed"]["values"]["min"] == "UNKNOWN"
+    assert d["features"]["light.mode"]["values"]["0"] == "OFF"
+    assert d["features"]["light.direction"]["status"] == "UNSUPPORTED_BY_UI"
     assert d["k13_baseline"].startswith("CLOSED")
-    assert d["k14_rollback"].startswith("OPEN")
-    assert d["auto_eligible"] is False
+    assert d["k14_rollback"].startswith("CLOSED for light.brightness")
+    assert d["auto_eligibility"]["light.brightness"] == "AUTO_REVERSIBLE"
+    assert d["auto_eligibility"]["light.global_color"] == "NOT_AUTO_VALIDATED"
     assert d["old_mapping"]["status"] == "REJECTED"
     assert d["groups"]["0x06"]["status"].startswith("STATIC_CAPABILITY_LABEL_ONLY")
 
@@ -214,8 +217,10 @@ def test_lighting_mapping_v3_brightness_partial_and_checksum_proven():
     assert d["checksum"]["offset"] == 62
     assert d["checksum"]["status"].startswith("PROVEN")
     assert d["checksum"]["evidence_count"] == 26
-    assert d["fields"]["light.brightness"]["status"] == "KNOWN_mapping_range"
-    assert d["fields"]["light.brightness"]["offset"] == 11
+    assert d["features"]["light.brightness"]["status"] == "KNOWN_PHYSICALLY_VALIDATED"
+    assert d["features"]["light.brightness"]["frame_offset"] == 11
+    assert d["features"]["light.brightness"]["auto_reversible"] is True
+    assert d["features"]["light.global_color"]["auto_reversible"] is False
     assert d["groups"]["0x06"]["status"].startswith("STATIC_CAPABILITY_LABEL_ONLY")
     assert d["old_mapping"]["status"] == "REJECTED"
-    assert d["auto_eligible"] is False
+    assert "auto_eligible" not in d  # per-operation eligibility only

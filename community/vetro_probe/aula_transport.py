@@ -63,8 +63,20 @@ class AulaHidTransport(DeviceTransport):
         self._sim_device: Any = None
         # Cache for ops without true GET (he.rt/he.deadzone) — last set value echo
         self._rt_cache: dict[str, Any] = {}
+        self._last_light_echo: bytes | None = None  # canonical echo of last register-0x01 SET
+        self._last_light_written: bytes | None = None  # the 7-byte state that was written
         # cache baseline for simple ops to allow rollback without re-reading product?
         # No, always read fresh.
+
+    def take_light_echo(self) -> tuple[bytes | None, bytes | None]:
+        """Return (and clear) (echo_frame, written_7byte_state) captured by the last
+        register-0x01 light SET. Used by the executor for ACK evidence; echo is
+        NEVER treated as a readback."""
+        echo = self._last_light_echo
+        written = self._last_light_written
+        self._last_light_echo = None
+        self._last_light_written = None
+        return echo, written
 
     def fresh_session(self) -> "AulaHidTransport":
         """Invalidate current and return a brand-new AulaHidTransport (fresh handle)."""
@@ -215,6 +227,15 @@ class AulaHidTransport(DeviceTransport):
             # Baseline/readback must cover the WHOLE register so rollback restores lighting mode too.
             data = ops.get_feature_register(self.raw, p, 0x01)  # type: ignore
             return bytes(data).hex() if data else "00000000000000"
+        if op_id == "light.brightness":
+            # Full 7-byte register GET; return the brightness byte (0..20). Fail closed
+            # on missing/malformed register or out-of-range brightness (runtime gate).
+            from .lighting_core import read_light_state, BRIGHTNESS_MIN, BRIGHTNESS_MAX
+            state = read_light_state(self.raw, p)
+            br = state[5]
+            if not (BRIGHTNESS_MIN <= br <= BRIGHTNESS_MAX):
+                raise RuntimeError(f"light.brightness baseline out of safe range 0..20: {br}")
+            return int(br)
         if op_id == "device.win_lock":
             data = ops.get_feature_register(self.raw, p, 0x15)  # type: ignore
             return bool(data[0]) if data else False
@@ -279,6 +300,30 @@ class AulaHidTransport(DeviceTransport):
             frame = prot.build_feature_set_frame(0x01, new7)  # type: ignore
             self.raw.send(frame)  # type: ignore
             self.raw.recv()  # type: ignore
+            return
+        if op_id == "light.brightness":
+            # Full-register RMW via the shared lighting_core primitive: read current
+            # 7-byte state, change ONLY brightness, send the canonical frame, capture
+            # the canonical echo, and verify it. Echo is validated here (ACK); readback
+            # is a SEPARATE fresh GET performed by the executor. Raises on canonical
+            # echo mismatch so the executor records ECHO_B/ECHO_A mismatch fail-closed.
+            from .lighting_core import (
+                read_light_state, set_light_state_with_echo, decode_echo, BRIGHTNESS_OFFSET,
+            )
+            br = int(value)
+            if not (0 <= br <= 20):
+                raise ValueError(f"light.brightness value out of safe range 0..20: {br}")
+            cur = read_light_state(self.raw, p)
+            new7 = bytearray(cur)
+            new7[BRIGHTNESS_OFFSET] = br
+            echo = set_light_state_with_echo(self.raw, bytes(new7))
+            self._last_light_echo = echo
+            self._last_light_written = bytes(new7)
+            dec = decode_echo(bytes(new7), echo)
+            if not dec["ack"]:
+                raise RuntimeError(f"canonical echo mismatch for light.brightness {bytes(new7).hex()}: "
+                                   f"state_match={dec['state_match']} checksum={dec['checksum_valid']} "
+                                   f"frame_valid={dec['frame_valid']} (echo {dec['echo_frame']})")
             return
         if op_id == "device.win_lock":
             ops.set_win_lock(self.raw, p, enabled=bool(value))  # type: ignore

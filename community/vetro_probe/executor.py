@@ -35,6 +35,39 @@ class ExecutorContext:
     connection_mode: str = ""
 
 
+def _validation_flags(ev: TestEvidence, op_id: str) -> dict[str, bool]:
+    """Per-step physical-validation flags for the operation certificate.
+
+    ack for light.brightness means the canonical device echo was validated
+    (echo != readback); for other ops it falls back to transport completion.
+    final_restore is the rollback/final readback matched the immutable baseline."""
+    return {
+        "write": ev.transport_result == "ok",
+        "ack": bool(ev.ack_valid) if op_id == "light.brightness" else ev.transport_result == "ok",
+        "readback": ev.readback_matched,
+        "rollback": ev.rollback_matched,
+        "final_restore": ev.rollback_matched,
+    }
+
+
+def _capture_ack_evidence(ev: TestEvidence, transport) -> None:
+    """For the register-0x01 light path: pull the canonical echo captured by the
+    transport SET and verify it. Echo is ACK evidence only — never a readback."""
+    take = getattr(transport, "take_light_echo", None)
+    if take is None:
+        return
+    try:
+        echo, written = take()
+    except Exception:
+        return
+    if echo is None or written is None:
+        return
+    from .lighting_core import decode_echo
+    dec = decode_echo(bytes(written), echo)
+    ev.ack_valid = bool(dec["ack"])
+    ev.echo_hex = dec["echo_frame"] or ""
+
+
 def execute_single(operation_id: str, ctx: ExecutorContext) -> TestEvidence:
     bundle = ctx.bundle
     op = bundle.get_operation(operation_id)
@@ -87,6 +120,7 @@ def execute_single(operation_id: str, ctx: ExecutorContext) -> TestEvidence:
         ev.error = set_res.error
         ev.evidence_strength = ev.compute_strength()
         return ev
+    _capture_ack_evidence(ev, ctx.transport)
 
     if op.requires_reconnect:
         # ---- A→B→C→D reconnect/recovery lifecycle ----
@@ -158,6 +192,7 @@ def execute_single(operation_id: str, ctx: ExecutorContext) -> TestEvidence:
         ctx.recovery.record_restored(operation_id, True)
 
     # ---- final verdict ----
+    ev.validation_flags = _validation_flags(ev, operation_id)
     ev.evidence_strength = ev.compute_strength()
     if ev.status == "FAIL" and ev.error:
         pass
@@ -217,6 +252,7 @@ def _execute_reconnect_recovery(ctx, op, ev, temp_value, baseline_val):
     def _finalize():
         ev.sessions = {"A": journal.session_a, "B": journal.session_b, "C": journal.session_c, "D": journal.session_d}
         ev.recovery = ctx.recovery.recovery_record.to_dict()
+        ev.validation_flags = _validation_flags(ev, op.id)
         return ev
 
     # A -> invalidate, then acquire B

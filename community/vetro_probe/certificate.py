@@ -27,6 +27,7 @@ class Certificate:
     verdict: str = "FAIL"  # PASS / FAIL
     knowledge_revision: str = ""
     timings: dict[str, Any] = field(default_factory=dict)
+    physical_validation: dict[str, dict[str, bool]] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -42,6 +43,7 @@ class Certificate:
             "tests": self.tests,
             "contradictions": self.contradictions,
             "coverage": self.coverage,
+            "physical_validation": self.physical_validation,
             "verdict": self.verdict,
             "quorum": {"eligible_for": "none"},  # Probe never promotes
         }
@@ -77,6 +79,21 @@ def build_certificate(
         except Exception:
             knowledge_revision = ""
 
+    # Per-operation physical-validation claims, scoped to the exact device/fw.
+    # PHYSICAL_ACK != PHYSICAL_READBACK; final restore is its own claim.
+    scope = f"{bundle.product.vid}:{bundle.product.pid}/{identity_verdict.firmware}"
+    physical_validation: dict[str, dict[str, bool]] = {}
+    for t in tests:
+        vf = getattr(t, "validation_flags", None) or {}
+        op_scope = f"{t.operation} @ {scope}"
+        physical_validation[op_scope] = {
+            "PHYSICAL_WRITE_VALIDATED": bool(vf.get("write")),
+            "PHYSICAL_ACK_VALIDATED": bool(vf.get("ack")),
+            "PHYSICAL_READBACK_VALIDATED": bool(vf.get("readback")),
+            "PHYSICAL_ROLLBACK_VALIDATED": bool(vf.get("rollback")),
+            "PHYSICAL_FINAL_RESTORE_VALIDATED": bool(vf.get("final_restore")),
+        }
+
     cert = Certificate(
         identity={
             "product": identity_verdict.product,
@@ -97,6 +114,7 @@ def build_certificate(
         tests=[_evidence_to_dict(t) for t in tests],
         contradictions=contradictions,
         coverage=coverage,
+        physical_validation=physical_validation,
         verdict=verdict,
     )
     return cert
@@ -125,4 +143,7 @@ def _evidence_to_dict(ev: TestEvidence) -> dict[str, Any]:
         "error": ev.error,
         "sessions": ev.sessions,
         "recovery": ev.recovery,
+        "ack_valid": ev.ack_valid,
+        "echo_hex": ev.echo_hex,
+        "validation_flags": ev.validation_flags,
     }

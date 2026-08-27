@@ -434,6 +434,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--auto", action="store_true", help="Run one-command end-to-end auto flow (state machine + miner package)")
     parser.add_argument("--auto-dir", type=Path, default=None, help="Run-state/package directory for --auto (default: vetro_auto_<ts>)")
     parser.add_argument("--label", type=str, default="auto", help="Human label for the auto run")
+    parser.add_argument("--plan-dry", action="store_true", help="Dry/no-write: build the HERO84 plan (classification only) and print it. No transport reads/writes, no baselining, no execution.")
     args = parser.parse_args(argv)
 
     if args.list_ops:
@@ -446,6 +447,26 @@ def main(argv: list[str] | None = None) -> int:
     if args.real and args.sim:
         print("error: --real and --sim are mutually exclusive", file=sys.stderr)
         return 2
+
+    if args.plan_dry:
+        from .automation import AutoProbeRun, CLS_AUTO_REVERSIBLE
+        from .bundle import production_bundle_for_hero84
+        from .identity import mock_hero84_instance
+        from .transport import FakeTransport
+
+        bundle = production_bundle_for_hero84() if not (args.bundle and Path(args.bundle).is_file()) else load_bundle(Path(args.bundle))
+        instance = mock_hero84_instance(firmware=bundle.firmware_branch)
+        # plan_only() never touches the transport: use a throwaway fake so AutoProbeRun can be constructed.
+        transport = FakeTransport(initial_state={})
+        run = AutoProbeRun(bundle=bundle, transport=transport, instance=instance,
+                           enumerate_fn=lambda: instance, make_transport=lambda: transport.fresh_session(),
+                           run_dir=Path.cwd() / ".vetro_plan_dry")
+        run.plan_only()
+        print(f"=== VETRO PROBE DRY PLAN (no writes) — {bundle.product.name} / {bundle.product.vid}:{bundle.product.pid} / {bundle.family} / FW {instance.firmware_version} ===")
+        for e in run.plan:
+            mark = "[AUTO_REVERSIBLE]" if e["classification"] == CLS_AUTO_REVERSIBLE else f"[{e['classification']}]"
+            print(f"  {mark} {e['operation']:<24} {e['why_safe'][:110]}")
+        return 0
 
     if args.auto:
         from .automation import AutoProbeRun

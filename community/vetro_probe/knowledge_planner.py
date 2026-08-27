@@ -21,6 +21,7 @@ OP_KI: dict[str, list[str]] = {
     "keyboard.polling": ["K13", "K14", "K15"],
     "device.win_lock": ["K13", "K14"],
     "light.rgb_core": ["K13", "K14", "K18"],
+    "light.brightness": ["K13", "K14", "K18", "K19"],
     "input.he.analog_w": ["K18"],
 }
 
