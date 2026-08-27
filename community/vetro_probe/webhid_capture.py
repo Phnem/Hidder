@@ -474,25 +474,67 @@ def compute_health(per_target: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def run_passive_rt_get_capture(trace_path: Path, url: str, idle_seconds: int) -> int:
-    """Passive-only capture for RT GET discovery (ZERO Probe writes).
+    """Passive-only capture for RT GET discovery (ZERO Probe HID writes).
 
-    The harness only hooks navigator.hid and observes traffic. The user opens the
-    official AULA app, connects, and navigates to the HE / Rapid Trigger page —
-    WITHOUT changing any RT value — so the vendor software itself issues the
-    current-state GET (0x99) whose reply we need to implement parse_rt_get_reply.
+    Uses the SAME canonical lifecycle as every working capture mode:
+    launch() -> start() -> health gate -> collect_frames() -> close().
+    The harness only hooks navigator.hid and observes traffic; the vendor app is
+    the only writer. The user opens the official AULA app, connects, and navigates
+    to the HE / Rapid Trigger page WITHOUT changing any RT value, so the vendor
+    software itself issues the current-state GET (0x99) whose reply we need to
+    implement parse_rt_get_reply. If no real 0x99 request/reply is observed, this
+    reports it honestly — it never fabricates a parser or reply layout.
     """
     cap = WebHidCapture(trace_path, target_url=url)
-    cap.open()
-    print(f"\nCapture trace: {trace_path}")
-    print("PASSIVE RT GET DISCOVERY — instructions (do NOT change any RT value):")
-    print("  1. In the opened AULA app, click Connect and pick the HERO 84 HE device.")
-    print("  2. Navigate to the HE / Rapid Trigger (PERFORMANCE) page.")
-    print("  3. Wait for the UI state to hydrate (RT sliders/toggle fill in).")
-    print(f"  4. Leave it on that page until capture stops (~{idle_seconds}s).")
-    print("Capture is OBSERVE-ONLY: the harness issues ZERO HID writes.\n")
-    time.sleep(idle_seconds)
-    cap.close()
-    print(f"capture closed: {trace_path}")
+    closed = False
+
+    def _cleanup() -> None:
+        nonlocal closed
+        if not closed:
+            cap.close()
+            closed = True
+
+    try:
+        if not cap.launch():
+            print("FAIL: browser not found", file=sys.stderr)
+            return 1
+        cap.start()
+        print("BROWSER ISOLATION:")
+        for k, v in cap.isolation_panel().items():
+            print(f"  {k} = {v}")
+        print("PASSIVE RT GET DISCOVERY — instructions (do NOT change any RT value):")
+        print("  1. In the opened AULA app, click Connect and pick the HERO 84 HE device.")
+        input("Press Enter AFTER the app recognizes HERO84 (WebHID permission granted): ")
+        time.sleep(1.0)
+        h = cap.health_status()
+        cap.print_panel(h)
+        if h["capture_health"] != "PASS":
+            print("\nCAPTURE_HEALTH = FAIL — RT discovery aborted. "
+                  "Connect the device and grant WebHID permission in the browser.")
+            _cleanup()
+            return 2
+        print("  2. Now navigate to the HE / Rapid Trigger (PERFORMANCE) page and wait for")
+        print("     the RT sliders/toggle to hydrate. The vendor app issues its own GETs.")
+        print(f"     Capture runs for ~{idle_seconds}s. Do NOT change any RT value.\n")
+        frames = cap.collect_frames(float(idle_seconds), annotation="rt_get_discovery")
+    except Exception as exc:  # noqa: BLE001
+        print(f"FAIL: capture bootstrap/interaction error: {exc}", file=sys.stderr)
+        _cleanup()
+        return 1
+    _cleanup()
+
+    out99 = [f for f in frames if f.get("hex", "").startswith("99") and f.get("direction") == "OUT"]
+    in99 = [f for f in frames if f.get("hex", "").startswith("99") and f.get("direction") == "IN"]
+    print(f"\nRT GET DISCOVERY: frames captured = {len(frames)}, "
+          f"OUT 0x99 = {len(out99)}, IN 0x99 = {len(in99)}")
+    if in99:
+        r = in99[0]
+        print(f"  candidate real 0x99 reply: report_id={r.get('report_id')} "
+              f"len={r.get('length')} hex={r.get('hex')}")
+    else:
+        print("  NO real 0x99 request/reply observed in this window.")
+        print("  Honest 'not observed' result — no reply parser was fabricated.")
+    print(f"trace path = {trace_path}")
     return 0
 
 
