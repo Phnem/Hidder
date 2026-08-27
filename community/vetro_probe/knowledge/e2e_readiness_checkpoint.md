@@ -69,12 +69,18 @@ Compare the two remaining HE/input blockers:
   Current captured hardware state: 83 keys enable=0, up=down=0.01mm (raw1), global=1;
   key 0x1f enable=0, up=down=0.10mm (raw10), global=1 — the parser handles heterogeneous
   real state.
-  Still OPEN: (1) safe temporary grid — the only real SET evidence is the enable toggle
-  at 0.10/0.10mm; the RT slider UI label "0.02mm" is display-only, not authoritative
-  vendor bounds; (2) a real Probe SET→GET round-trip has not been performed, so
-  `rapid_trigger_units_crosscheck` stays PARTIALLY_CLOSED / OPEN_PENDING_ROUNDTRIP and
-  `he.rt` remains BLOCKED. RT revalidation is NOT READY until a safe grid is established
-  and the reversible round-trip is performed.
+  Still OPEN: (1) safe temporary grid — vendor-source controller layer
+  (`DB/reports/protocol_knowledge/aula/HERO_84_HE/static/lt_controller_ops.json`)
+  CONFIRMS the record model, `parse_rt` (byte-exact == our parser), `fetch_rt`
+  scaling (up/down both × precision_distance, 0.01 mm) and `sync_rt`/`kxt` SET —
+  i.e. UP/DOWN SAME CONTRACT is vendor-source PROVEN; but the Vue SLIDER component
+  config (min/max/step/snapping) is NOT present in the repository (the RT-page DOM
+  label "0.02mm" is display-only, unproven), so SAFE TEMP GRID = OPEN and
+  `select_temporary_threshold` refuses to fabricate a B; (2) a real Probe SET→GET
+  round-trip has not been performed, so `rapid_trigger_units_crosscheck` stays
+  PARTIALLY_CLOSED / OPEN_PENDING_ROUNDTRIP and `he.rt` remains BLOCKED. RT
+  revalidation is NOT READY until the slider contract is established and the
+  reversible round-trip is performed.
 - B. `keyboard.remap` — blocker strong E5 / WM_INPUT hDevice observable missing.
   Needs OS-level WM_INPUT correlation infrastructure, independent of the device
   protocol path.
