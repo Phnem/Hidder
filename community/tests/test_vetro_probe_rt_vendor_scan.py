@@ -155,6 +155,33 @@ def test_update_handler_inspected_not_executed():
     assert res["safe_rt_mutation_contract"] == "NOT_PROVEN"
 
 
+def test_exact_chunk_retained_with_sha256(tmp_path):
+    # evidence retention: the exact fetched chunk is persisted with its hash so a
+    # later intentional dataflow proof analyses the SAME file, never a substitute.
+    res = scan_rt_slider_contract(["https://x/chunk.js"],
+                                  fetch_fn=lambda url: FAKE_BUNDLE,
+                                  save_dir=tmp_path / "rt_bundle_chunks")
+    assert len(res["resources"]) == 1
+    r = res["resources"][0]
+    assert r["url"] == "https://x/chunk.js"
+    assert r["bytes"] == len(FAKE_BUNDLE.encode())
+    saved = Path(r["saved_to"])
+    assert saved.is_file() and saved.read_text(encoding="utf-8") == FAKE_BUNDLE
+    import hashlib
+    assert hashlib.sha256(FAKE_BUNDLE.encode()).hexdigest() == r["sha256"]
+    assert res["candidates"][0]["sha256"] == r["sha256"]  # candidate tied to the exact chunk
+
+
+def test_candidate_alone_without_retained_chunk_stays_not_proven():
+    # even with dataflow_confirmed=True, only an rt_enable/context anchor (no
+    # rt_up/rt_down) can never prove a threshold grid -> EXHAUSTED-safe.
+    bundle = ("function f(){const cfg={step:10,min:0,max:500};"
+              "if(window._x){rt_enable=1;nSlider({min:cfg.min,max:cfg.max,step:cfg.step})}}")
+    res = scan_rt_slider_contract(["u"], fetch_fn=lambda url: bundle, dataflow_confirmed=True)
+    assert res["dataflow_linkage"] == "NOT_PROVEN"
+    assert res["safe_rt_mutation_contract"] == "NOT_PROVEN"
+
+
 def test_blocked_and_k20():
     assert fg.blocker_for("he.rt", **SCOPE)[0] == "BLOCKED_BY_KNOWLEDGE_HOLE"
     assert fg.blocker_for("keyboard.remap", **SCOPE)[0] == "BLOCKED_BY_MISSING_STRONG_E5"

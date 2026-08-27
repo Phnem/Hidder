@@ -20,9 +20,11 @@ Rules:
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import urllib.request
+from pathlib import Path
 from typing import Any, Callable
 
 THRESHOLD_ANCHORS = ("rt_up", "rt_down", "_transfer_rt", "sync_rt", "kxt", "fetch_rt")
@@ -82,23 +84,39 @@ def _extract_config(text: str) -> dict[str, Any]:
 
 
 def scan_rt_slider_contract(script_urls: list[str], fetch_fn: Callable[[str], str] | None = None,
-                            dataflow_confirmed: bool = False) -> dict[str, Any]:
+                            dataflow_confirmed: bool = False, save_dir: Path | None = None) -> dict[str, Any]:
     """Scan loaded bundle scripts read-only for RT slider config evidence.
 
     dataflow_confirmed=False by default: lexical proximity is evidence, NOT proof.
     The safe contract is PROVEN only when (a) a THRESHOLD anchor co-occurs with
     min/max/step AND (b) the caller explicitly confirms dataflow (rt_up/rt_down
     <-> slider model). rt_enable/rapid/trigger anchoring alone can never prove a
-    threshold grid."""
+    threshold grid.
+
+    save_dir: if set, the EXACT fetched chunk text is persisted as
+    <save_dir>/<sha256>.js and each resource is recorded with url + sha256 + byte
+    length so the exact evidence is retained for a later intentional dataflow
+    proof (never silently substituted by another bundle)."""
     fetch_fn = fetch_fn or (lambda url: urllib.request.urlopen(url, timeout=15).read().decode("utf-8", errors="replace"))
     candidates: list[dict[str, Any]] = []
     errors: list[str] = []
+    resources: list[dict[str, Any]] = []
+    if save_dir is not None:
+        Path(save_dir).mkdir(parents=True, exist_ok=True)
     for url in script_urls:
         try:
             text = fetch_fn(url)
         except Exception as exc:  # noqa: BLE001
             errors.append(f"{url}: {exc!r}")
             continue
+        raw = text.encode("utf-8", errors="replace")
+        sha = hashlib.sha256(raw).hexdigest()
+        res_rec: dict[str, Any] = {"url": url, "sha256": sha, "bytes": len(raw)}
+        if save_dir is not None:
+            dest = Path(save_dir) / f"{sha}.js"
+            dest.write_bytes(raw)
+            res_rec["saved_to"] = str(dest)
+        resources.append(res_rec)
         for anchor in ALL_RT_ANCHORS:
             for m in re.finditer(re.escape(anchor), text):
                 linkage = _window_linkage(text, m.start(), m.end())
@@ -117,7 +135,7 @@ def scan_rt_slider_contract(script_urls: list[str], fetch_fn: Callable[[str], st
                             "units_unconfirmed": True,
                         }
                     candidates.append({
-                        "anchor": anchor, "url": url,
+                        "anchor": anchor, "url": url, "sha256": sha,
                         "linkage": linkage, "provenance": "VENDOR_BUNDLE", "config": cfg,
                         "raw_unit_reading": reading,
                         "dataflow_confirmed": False,
@@ -140,6 +158,7 @@ def scan_rt_slider_contract(script_urls: list[str], fetch_fn: Callable[[str], st
     return {
         "source": "vendor_bundle_scan",
         "resources_scanned": len(script_urls),
+        "resources": resources,
         "errors": errors,
         "candidates": deduped,
         "proven": proven,

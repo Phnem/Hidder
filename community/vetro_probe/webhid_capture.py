@@ -669,7 +669,8 @@ def run_rt_ui_inspect(trace_path: Path, url: str, idle_seconds: int) -> int:
         urls = contract.get("script_urls") or []
         if urls:
             try:
-                bundle_contract = scan_rt_slider_contract(urls)
+                bundle_contract = scan_rt_slider_contract(
+                    urls, save_dir=trace_path.parent / "rt_bundle_chunks")
             except Exception as exc:  # noqa: BLE001
                 bundle_contract["errors"].append(f"scan failed: {exc!r}")
         bundle_artifact = trace_path.parent / "rt_vendor_slider_contract.json"
@@ -696,9 +697,14 @@ def run_rt_ui_inspect(trace_path: Path, url: str, idle_seconds: int) -> int:
         print(f"  evidence artifact = {artifact}")
         print(f"\nRT VENDOR BUNDLE SCAN (read-only HTTP GET of loaded scripts):")
         print(f"  resources scanned = {bundle_contract.get('resources_scanned')}")
+        for r in bundle_contract.get("resources", []):
+            saved = r.get("saved_to", "")
+            print(f"  resource sha256={r.get('sha256')[:16]}... bytes={r.get('bytes')} saved={saved or 'NO'}")
         print(f"  RT-linked config candidates = {len(bundle_contract.get('candidates', []))}")
-        for cand in bundle_contract.get("proven", []):
-            print(f"  PROVEN {cand['anchor']} @ {cand['url'][:60]}: {cand['config']}")
+        for cand in bundle_contract.get("candidates", []):
+            print(f"  [{cand['linkage']}] {cand['anchor']} @ {cand['url'][:60]}: {cand['config']} "
+                  f"(sha256={cand.get('sha256', '')[:16]}...)")
+        print(f"  dataflow_linkage = {bundle_contract.get('dataflow_linkage')}")
         print(f"  safe_rt_mutation_contract = {bundle_contract.get('safe_rt_mutation_contract')}")
         print(f"  bundle artifact = {bundle_artifact}")
         print("  NOTE: he.rt stays BLOCKED until the real Probe SET->GET round-trip is performed.")

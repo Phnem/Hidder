@@ -110,6 +110,17 @@ Compare the two remaining HE/input blockers:
   units UNCONFIRMED; the 5.00-vs-[0,4] bound reconciliation is UNRESOLVED (RT
   max is NOT clamped, actuation bounds are NOT weakened). SAFE RT MUTATION
   CONTRACT = NOT_PROVEN; RT REVALIDATION READY = NO.
+  DATAFLOW PROOF STATUS = EXHAUSTED: the exact chunk-CeBwaip2.js was fetched at
+  runtime but never persisted (only rt_vendor_slider_contract.json survived), so
+  the strict dataflow proof (candidate config -> rt_up/rt_down -> sync_rt/0x19)
+  cannot be performed on the exact file from retained artifacts. The scanner now
+  AUTO-PERSISTS every fetched chunk as rt_bundle_chunks/<sha256>.js (url+sha256+
+  bytes recorded) so any future intentional acquisition retains the exact evidence.
+  Per the stop rule, passive/source RT grid discovery is EXHAUSTED — no further
+  scanner/inspection cycle is proposed; he.rt stays BLOCKED and the project should
+  move to GUI/other work until stronger evidence is intentionally obtained (e.g. a
+  user-controlled reversible RT enable on one key + read-only slider inspection +
+  restore).
 - B. `keyboard.remap` — blocker strong E5 / WM_INPUT hDevice observable missing.
   Needs OS-level WM_INPUT correlation infrastructure, independent of the device
   protocol path.
