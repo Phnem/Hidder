@@ -92,6 +92,17 @@ def build_package(
             "baseline_restored": final_state.get("restored", False),
         },
     }
+    # Additive external/read-only closure (if present): Miner sees the distinction
+    # between the initial in-run aggregate read (possibly UNRELIABLE_DESYNC) and
+    # the authoritative follow-up zero-write verification + final physical verdict.
+    closure_path = package / "external_readonly_closure.json"
+    if closure_path.is_file():
+        manifest["external_closure"] = json.loads(closure_path.read_text(encoding="utf-8"))
+    verdict_path = package / "final_verdict.json"
+    if verdict_path.is_file():
+        vd = json.loads(verdict_path.read_text(encoding="utf-8"))
+        manifest["final_physical_verdict"] = vd.get("verdict")
+        manifest["final_verdict"] = vd
     (package / "run_manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     (package / "summary.json").write_text(json.dumps(manifest["summary"], ensure_ascii=False, indent=2), encoding="utf-8")
     return package
