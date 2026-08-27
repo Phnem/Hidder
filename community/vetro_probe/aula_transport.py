@@ -252,8 +252,16 @@ class AulaHidTransport(DeviceTransport):
             # Return enum directly to match bundle safe_values (2,3); executor compares enum-to-enum
             return enum_val
         if op_id == "he.rt":
-            # Not yet true GET in operations.py; use cached last set or default 0 for sim/real
-            return self._rt_cache.get("he.rt", 0)
+            # QUARANTINED: the 0x99 GET reply parser does not exist
+            # (rapid_trigger_units_crosscheck OPEN), so a cached SET value must NEVER
+            # satisfy a readback/final-state check. Fail closed: any he.rt GET raises,
+            # so baseline/readback/final-GET all fail closed and he.rt can never pass
+            # on cached state. The cache is retained only for SET-side UI convenience.
+            raise RuntimeError(
+                "he.rt readback NOT implemented: authoritative 0x99 GET reply parser absent "
+                "(rapid_trigger_units_crosscheck OPEN); cached SET value is NOT an "
+                "independent readback and cannot satisfy baseline/readback/final verification"
+            )
         if op_id == "he.deadzone":
             return self._rt_cache.get("he.deadzone", 0.5)
         if op_id == "keyboard.remap":

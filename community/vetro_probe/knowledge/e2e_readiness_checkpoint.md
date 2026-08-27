@@ -67,11 +67,18 @@ Compare the two remaining HE/input blockers:
   rt_enable is a SEPARATE field from the thresholds.
   NOT resolved: the `0x99` GET READBACK path has no parser in this repo
   (`parse_rt_get_reply` / `operations.get_rapid_trigger` absent), and the typed
-  transport `he.rt` GET returns a self-confirming cache — so an independent
-  "fresh GET B == B" / "final GET A == A" cannot be performed yet. The units
-  crosscheck is a REAL-DEVICE SET→GET round-trip and cannot be closed by static
-  tests. RT revalidation is therefore NOT READY until an authoritative 0x99
-  parser + independent readback exist (see test_vetro_probe_rt_crosscheck.py).
+  transport `he.rt` GET now QUARANTINES the old self-confirming cache (fail-closed:
+  any he.rt GET raises, so cached state can never satisfy baseline/readback/final
+  verification). A full scan of the real WebHID capture corpus
+  (DB/reports/oracle/aula_web/HERO_84_HE/**) found ZERO real `0x99` GET requests
+  and ZERO real `0x99` replies — the vendor app never exercised the HE/RT page in
+  any real capture. The 0x99 GET REQUEST format IS confirmed byte-exact
+  (`99000001000c <6 key ids>` == build_rt_get_frame). The reply layout is not in
+  vendor source (fetch function not located) and is NOT guessed. RT revalidation
+  is therefore NOT READY until a passive capture of the vendor's own RT-page
+  hydration yields a real 0x99 OUT→IN pair to implement parse_rt_get_reply
+  (see test_vetro_probe_rt_readback_gap.py; passive-only
+  `webhid_capture --rt-get-capture`).
 - B. `keyboard.remap` — blocker strong E5 / WM_INPUT hDevice observable missing.
   Needs OS-level WM_INPUT correlation infrastructure, independent of the device
   protocol path.

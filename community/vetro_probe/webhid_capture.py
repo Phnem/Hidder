@@ -473,6 +473,29 @@ def compute_health(per_target: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 
+def run_passive_rt_get_capture(trace_path: Path, url: str, idle_seconds: int) -> int:
+    """Passive-only capture for RT GET discovery (ZERO Probe writes).
+
+    The harness only hooks navigator.hid and observes traffic. The user opens the
+    official AULA app, connects, and navigates to the HE / Rapid Trigger page —
+    WITHOUT changing any RT value — so the vendor software itself issues the
+    current-state GET (0x99) whose reply we need to implement parse_rt_get_reply.
+    """
+    cap = WebHidCapture(trace_path, target_url=url)
+    cap.open()
+    print(f"\nCapture trace: {trace_path}")
+    print("PASSIVE RT GET DISCOVERY — instructions (do NOT change any RT value):")
+    print("  1. In the opened AULA app, click Connect and pick the HERO 84 HE device.")
+    print("  2. Navigate to the HE / Rapid Trigger (PERFORMANCE) page.")
+    print("  3. Wait for the UI state to hydrate (RT sliders/toggle fill in).")
+    print(f"  4. Leave it on that page until capture stops (~{idle_seconds}s).")
+    print("Capture is OBSERVE-ONLY: the harness issues ZERO HID writes.\n")
+    time.sleep(idle_seconds)
+    cap.close()
+    print(f"capture closed: {trace_path}")
+    return 0
+
+
 def run_health_and_sweep(trace_path: Path, url: str, idle_seconds: int) -> int:
     cap = WebHidCapture(trace_path, target_url=url)
     if not cap.launch():
@@ -651,7 +674,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--self-check", action="store_true", help="Launch browser, verify main-world injection + navigator.hid, exit (no interaction)")
     parser.add_argument("--smoke", type=str, default=None, help="Minimal capture smoke: 'brightness' (2 brightness actions only)")
     parser.add_argument("--sweep", action="store_true", help="Full controlled lighting sweep (exact UI value markers)")
+    parser.add_argument("--rt-get-capture", action="store_true", help="PASSIVE-only RT GET discovery: open AULA app, connect, navigate to HE/Rapid Trigger page WITHOUT changing values; harness issues ZERO HID writes. Captures the vendor's own 0x99 GET+reply.")
     args = parser.parse_args(argv)
+
+    if args.rt_get_capture:
+        return run_passive_rt_get_capture(args.trace, args.url, args.idle)
 
     if args.self_check:
         return _self_check(args.url)
