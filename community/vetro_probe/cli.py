@@ -438,7 +438,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--verify-final", action="store_true", help="READ-ONLY aggregate final verification of the current device against the baselines stored in --auto-dir. ZERO writes. Use after a full auto run when its in-run aggregate reader was unreliable.")
     parser.add_argument("--actuation-revalidation", action="store_true", help="Dedicated controlled physical revalidation of he.actuation (post 0.5mm-grid fix). NOT full --auto. Write-ahead + recovery-first + exact 372E:103E/aula_kb_v3_wired/FW0216 gate. ZERO writes on any gate mismatch.")
     parser.add_argument("--out", type=Path, default=None, help="Checkpoint/output directory for --actuation-revalidation (default: actuation_revalidation_checkpoint)")
+    parser.add_argument("--gui-rpc", action="store_true", help="Serve the GUI JSON-lines RPC on stdin/stdout (authoritative engine side; thin over the existing planner/executor/recovery).")
+    parser.add_argument("--gui-demo", action="store_true", help="With --gui-rpc: deterministic mock engine (zero HID, never emits physical evidence).")
+    parser.add_argument("--scenario", type=str, default="supported", help="With --gui-rpc --gui-demo: supported|fail_restored|manual|recovery_startup|unsupported_fw|no_device")
     args = parser.parse_args(argv)
+
+    if args.gui_rpc:
+        from .gui_rpc import main as gui_rpc_main
+        return gui_rpc_main(["--demo", "--scenario", args.scenario] if args.gui_demo else [])
 
     if args.list_ops:
         bundle = _load_bundle_with_fallback(args.bundle, args.operation)
