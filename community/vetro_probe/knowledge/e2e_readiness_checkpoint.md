@@ -59,15 +59,26 @@ No cross-feature inference.
 
 Compare the two remaining HE/input blockers:
 
-- A. `he.rt` — blocker `rapid_trigger_units_crosscheck` OPEN. The typed protocol
-  path exists (set/readback via `0x19/0x99`); closing it is an analogous dedicated
-  reversible real experiment (on-grid mm values), like the actuation revalidation.
+- A. `he.rt` — blocker `rapid_trigger_units_crosscheck` OPEN.
+  Resolved statically: raw scale = 0.01 mm (same PRECISION_DISTANCE convention as
+  actuation); record (8B) `key_id_hi, key_id_lo, rt_enable, rt_up_hi, rt_up_lo,
+  rt_down_hi, rt_down_lo, rt_global`; serializer golden vector is byte-exact vs
+  the real live capture `00 1e 01 00 0a 00 0a 01` (enable ON, up=down=0.10 mm);
+  rt_enable is a SEPARATE field from the thresholds.
+  NOT resolved: the `0x99` GET READBACK path has no parser in this repo
+  (`parse_rt_get_reply` / `operations.get_rapid_trigger` absent), and the typed
+  transport `he.rt` GET returns a self-confirming cache — so an independent
+  "fresh GET B == B" / "final GET A == A" cannot be performed yet. The units
+  crosscheck is a REAL-DEVICE SET→GET round-trip and cannot be closed by static
+  tests. RT revalidation is therefore NOT READY until an authoritative 0x99
+  parser + independent readback exist (see test_vetro_probe_rt_crosscheck.py).
 - B. `keyboard.remap` — blocker strong E5 / WM_INPUT hDevice observable missing.
   Needs OS-level WM_INPUT correlation infrastructure, independent of the device
   protocol path.
 
-Recommendation: **`he.rt` is cheaper to close next** (protocol + revalidation
-pattern already in place; remap requires new WM_INPUT observable infrastructure).
+Recommendation: `he.rt` is still the cheaper next target ONCE the 0x99 readback
+parser is added from vendor evidence; `keyboard.remap` requires new WM_INPUT
+observable infrastructure regardless.
 
 GUI can proceed in parallel: YES — the six-op autonomous set and the full E2E are
 closed; RT/remap are independent feature blockers and are not prerequisites for
