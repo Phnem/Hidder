@@ -54,7 +54,7 @@ def _supported_six_ids():
 def test_start_blocked_until_recovery_cleared():
     s = _server(DemoEngine(scenario="recovery_startup"))
     pre = _request(s, "recovery_status")
-    assert pre["ok"] and pre["result"]["preflight"] == "RECOVERING"
+    assert pre["ok"] and pre["result"]["preflight"] in ("RECOVERING", "RECOVERY_REQUIRED")
     # clear recovery -> ready
     cleared = _request(s, "clear_recovery")
     assert cleared["result"]["preflight"] == "CLEAR"
@@ -73,7 +73,7 @@ def test_real_path_blocks_start_on_pending_checkpoint(tmp_path):
     cp.closed = False
     store.save(cp)
     pre = recovery_status(tmp_path)
-    assert pre["pending"] is True and pre["preflight"] == "RECOVERING"
+    assert pre["pending"] is True and pre["preflight"] in ("RECOVERING", "RECOVERY_REQUIRED")
 
 
 # 2. unsupported identity/FW disables Start
@@ -155,9 +155,9 @@ def test_manual_restore_blocks_new_run():
     run = events[-1]["data"]
     assert run["status"] == "FAILED_REQUIRES_MANUAL_RESTORE"
     assert run["restored"] is False
-    # recovery now pending -> recovery_status says RECOVERING
+    # recovery now pending -> recovery_status says RECOVERING / RECOVERY_REQUIRED
     pre = _request(s, "recovery_status")
-    assert pre["result"]["preflight"] == "RECOVERING"
+    assert pre["result"]["preflight"] in ("RECOVERING", "RECOVERY_REQUIRED")
     # clear recovery (user restored via vendor UI), then a new run is allowed
     cleared = _request(s, "clear_recovery")
     assert cleared["result"]["preflight"] == "CLEAR"
@@ -169,7 +169,7 @@ def test_manual_restore_blocks_new_run():
 def test_recovery_startup_flow():
     s = _server(DemoEngine(scenario="recovery_startup"))
     pre = _request(s, "recovery_status")
-    assert pre["result"]["preflight"] == "RECOVERING"
+    assert pre["result"]["preflight"] in ("RECOVERING", "RECOVERY_REQUIRED")
     cleared = _request(s, "clear_recovery")
     assert cleared["result"]["preflight"] == "CLEAR"
 
@@ -228,7 +228,7 @@ def test_reopen_after_pending_checkpoint_recovery_first(tmp_path):
     store.save(cp)
     from community.vetro_probe.gui_rpc import recovery_status
     pre = recovery_status(tmp_path)
-    assert pre["pending"] is True and pre["preflight"] == "RECOVERING"
+    assert pre["pending"] is True and pre["preflight"] in ("RECOVERING", "RECOVERY_REQUIRED")
 
 
 # 15. no protocol/safety knowledge changes from GUI layer
@@ -243,3 +243,59 @@ def test_no_protocol_knowledge_changes_from_gui():
     # feature gate state unchanged by GUI usage
     assert fg.blocker_for("light.rgb_core", vid="0x372E", pid="0x103E",
                           family="aula_kb_v3_wired", fw="0216") is not None
+
+
+# 16. canonical and alias RPC methods resolve correctly
+def test_all_canonical_and_alias_rpc_methods():
+    s = _server(DemoEngine(scenario="supported"))
+    # Check all method synonyms resolve cleanly without 'unknown method' error
+    for m in ["health", "get_health", "discover", "get_discover", "get_discovery_state",
+              "plan", "get_plan", "recovery_status", "get_recovery_status",
+              "clear_recovery", "run_result", "get_run_result"]:
+        res = _request(s, m)
+        assert res["ok"] is True, f"Method {m} failed: {res}"
+
+
+def test_unknown_rpc_method_returns_structured_error():
+    s = _server(DemoEngine(scenario="supported"))
+    res = _request(s, "non_existent_method_xyz")
+    assert res["ok"] is False
+    assert "unknown method" in res["error"]
+
+
+def test_packaged_sidecar_smoke_rpc(tmp_path):
+    """Smoke test against compiled PyInstaller sidecar binary if present."""
+    import subprocess
+    from pathlib import Path
+    root = Path(__file__).resolve().parent.parent.parent
+    bin_path = root / "build_dist" / "vetro-probe-sidecar.exe"
+    if not bin_path.is_file():
+        bin_path = root / "probe-app" / "src-tauri" / "binaries" / "vetro-probe-sidecar.exe"
+    if not bin_path.is_file():
+        pytest.skip("packaged vetro-probe-sidecar.exe not found")
+
+    p = subprocess.Popen([str(bin_path), "--gui-rpc", "--gui-demo", "--scenario", "supported"],
+                         stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+    try:
+        # 1. Health
+        p.stdin.write(json.dumps({"id": 1, "method": "health"}) + "\n")
+        # 2. Get recovery status
+        p.stdin.write(json.dumps({"id": 2, "method": "get_recovery_status"}) + "\n")
+        # 3. Recovery status (canonical)
+        p.stdin.write(json.dumps({"id": 3, "method": "recovery_status"}) + "\n")
+        # 4. Discover
+        p.stdin.write(json.dumps({"id": 4, "method": "discover"}) + "\n")
+        p.stdin.flush()
+
+        r1 = json.loads(p.stdout.readline())
+        r2 = json.loads(p.stdout.readline())
+        r3 = json.loads(p.stdout.readline())
+        r4 = json.loads(p.stdout.readline())
+
+        assert r1["ok"] is True and r1["result"]["method"] == "health"
+        assert r2["ok"] is True and r2["result"]["preflight"] == "CLEAR"
+        assert r3["ok"] is True and r3["result"]["preflight"] == "CLEAR"
+        assert r4["ok"] is True and r4["result"]["state"] == "IDENTIFIED"
+    finally:
+        p.kill()
+

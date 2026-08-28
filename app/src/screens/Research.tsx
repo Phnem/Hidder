@@ -62,38 +62,59 @@ export function ResearchScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      const off = await onProbeEvents(handleEngineEvent);
-      if (cancelled) {
-        off();
-        return;
-      }
-      unlistenRef.current = off;
-      try {
-        const [rec, disc, pl] = await Promise.all([
-          probeRecoveryStatus(),
-          probeDiscover(),
-          probePlan(),
-        ]);
-        if (cancelled) return;
-        setRecovery(rec);
-        setDiscovery(disc);
-        setPlan(pl);
-        setScreen({ kind: "ready" });
-      } catch (cause) {
-        if (!cancelled) setScreen({ kind: "error", message: messageOf(cause) });
-      }
-    })();
-    return () => {
-      cancelled = true;
-      unlistenRef.current?.();
-    };
+  const init = useCallback(async () => {
+    setScreen({ kind: "startup" });
+    try {
+      // Bounded 12s timeout for startup RPC calls
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Probe engine initialization timed out (12s). Is the sidecar running?")), 12000),
+      );
+
+      const startupTask = (async () => {
+        if (!unlistenRef.current) {
+          try {
+            unlistenRef.current = await onProbeEvents(handleEngineEvent);
+          } catch (err) {
+            console.warn("Could not attach probe event listeners:", err);
+          }
+        }
+        const rec = await probeRecoveryStatus();
+        let disc: ProbeDiscovery | null = null;
+        let pl: ProbePlan | null = null;
+
+        // If recovery is clear, proceed to discover device and plan
+        if (rec.preflight === "CLEAR") {
+          [disc, pl] = await Promise.all([probeDiscover(), probePlan()]);
+        } else {
+          try {
+            disc = await probeDiscover();
+          } catch {
+            disc = null;
+          }
+        }
+        return { rec, disc, pl };
+      })();
+
+      const { rec, disc, pl } = await Promise.race([startupTask, timeout]);
+      setRecovery(rec);
+      setDiscovery(disc);
+      setPlan(pl);
+      setScreen({ kind: "ready" });
+    } catch (cause) {
+      setScreen({ kind: "error", message: messageOf(cause) });
+    }
   }, [handleEngineEvent]);
 
+  useEffect(() => {
+    void init();
+    return () => {
+      unlistenRef.current?.();
+      unlistenRef.current = undefined;
+    };
+  }, [init]);
+
   const start = useCallback(async () => {
-    if (discovery?.state !== "IDENTIFIED") return;
+    if (discovery?.state !== "IDENTIFIED" || recovery?.preflight !== "CLEAR") return;
     setScreen({ kind: "running" });
     setResult(null);
     setProgress({});
@@ -105,7 +126,7 @@ export function ResearchScreen() {
     } catch (cause) {
       setScreen({ kind: "error", message: messageOf(cause) });
     }
-  }, [discovery]);
+  }, [discovery, recovery]);
 
   const restoreConfirmed = useCallback(async () => {
     try {
@@ -114,6 +135,8 @@ export function ResearchScreen() {
       if (rec.preflight === "CLEAR") {
         const disc = await probeDiscover();
         setDiscovery(disc);
+        const pl = await probePlan();
+        setPlan(pl);
       }
     } catch (cause) {
       setScreen({ kind: "error", message: messageOf(cause) });
@@ -121,13 +144,31 @@ export function ResearchScreen() {
   }, []);
 
   if (screen.kind === "startup") {
-    return <div className="research"><p className="muted">Checking previous session…</p></div>;
+    return (
+      <div className="research">
+        <section className="panel">
+          <h2>Checking previous session…</h2>
+          <p className="muted">Verifying recovery preflight and device connection.</p>
+        </section>
+      </div>
+    );
   }
+
   if (screen.kind === "error") {
     return (
       <div className="research" role="alert">
-        <h2>Research is unavailable</h2>
-        <p className="muted">{screen.message}</p>
+        <section className="panel warn">
+          <h2>Probe engine failed to initialize</h2>
+          <p className="muted">{screen.message}</p>
+          <div className="actions">
+            <button type="button" onClick={() => void init()}>
+              Retry
+            </button>
+            <button type="button" onClick={() => void probeOpenResults()}>
+              Open results folder
+            </button>
+          </div>
+        </section>
       </div>
     );
   }
@@ -141,7 +182,9 @@ export function ResearchScreen() {
 
   return (
     <div className="research">
-      {recovery?.preflight === "RECOVERING" && (
+      {(recovery?.preflight === "RECOVERY_REQUIRED" ||
+        recovery?.preflight === "RECOVERING" ||
+        recovery?.preflight === "RECOVERY_IN_PROGRESS") && (
         <section className="panel warn" role="alert">
           <h2>Restoring previous device state…</h2>
           <p className="muted">{recovery.reason}</p>
@@ -149,7 +192,30 @@ export function ResearchScreen() {
             Research cannot start until the previous session is restored and verified.
           </p>
           <button type="button" onClick={() => void restoreConfirmed()}>
-            I have restored the device (demo)
+            I have restored the device (clear checkpoint)
+          </button>
+        </section>
+      )}
+
+      {recovery?.preflight === "MANUAL_RESTORE_REQUIRED" && (
+        <section className="panel warn" role="alert">
+          <h2>Manual device restore required</h2>
+          <p className="muted">{recovery.reason}</p>
+          <p>
+            Please restore your original device settings using the vendor software, then click below.
+          </p>
+          <button type="button" onClick={() => void restoreConfirmed()}>
+            I have restored the device
+          </button>
+        </section>
+      )}
+
+      {recovery?.preflight === "ERROR" && (
+        <section className="panel warn" role="alert">
+          <h2>Recovery preflight check failed</h2>
+          <p className="muted">{recovery.reason}</p>
+          <button type="button" onClick={() => void init()}>
+            Retry preflight
           </button>
         </section>
       )}

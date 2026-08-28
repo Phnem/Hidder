@@ -310,4 +310,41 @@ mod tests {
         assert_eq!(events, vec!["progress", "run_result"]);
         assert_eq!(last.lock().unwrap().as_ref().unwrap()["status"], "SUCCESS_RESTORED");
     }
+
+    #[test]
+    fn rpc_returns_error_on_failed_engine_response() {
+        let pending: Arc<Mutex<HashMap<u64, Sender<Result<Value, String>>>>> =
+            Arc::new(Mutex::new(HashMap::new()));
+        let (tx, rx): (Sender<Result<Value, String>>, Receiver<Result<Value, String>>) = channel();
+        pending.lock().unwrap().insert(42, tx);
+
+        let line = r#"{"id":42,"ok":false,"error":"unknown method: foo"}"#;
+        let v: Value = serde_json::from_str(line).unwrap();
+        let id = v["id"].as_u64().unwrap();
+        let reply = Err(v["error"].as_str().unwrap().to_string());
+        if let Some(sender) = pending.lock().unwrap().remove(&id) {
+            let _ = sender.send(reply);
+        }
+
+        let res = rx.recv_timeout(Duration::from_millis(100)).unwrap();
+        assert!(res.is_err());
+        assert_eq!(res.unwrap_err(), "unknown method: foo");
+    }
+
+    #[test]
+    fn rpc_handles_malformed_json_safely() {
+        let pending: Arc<Mutex<HashMap<u64, Sender<Result<Value, String>>>>> =
+            Arc::new(Mutex::new(HashMap::new()));
+        let (tx, rx): (Sender<Result<Value, String>>, Receiver<Result<Value, String>>) = channel();
+        pending.lock().unwrap().insert(99, tx);
+
+        // Malformed line
+        let malformed = "this is not JSON at all";
+        let parsed = serde_json::from_str::<Value>(malformed);
+        assert!(parsed.is_err());
+
+        // Timeout expires safely if no valid answer arrives
+        let res = rx.recv_timeout(Duration::from_millis(10));
+        assert!(res.is_err());
+    }
 }

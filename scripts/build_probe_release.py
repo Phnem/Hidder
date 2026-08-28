@@ -74,7 +74,17 @@ def main() -> None:
     portable_dir_name = f"VetroProbe-v{version}-win-x64-portable"
     portable_dir = DIST_RELEASE_DIR / portable_dir_name
     if portable_dir.exists():
-        shutil.rmtree(portable_dir)
+        try:
+            shutil.rmtree(portable_dir)
+        except Exception:
+            if sys.platform == "win32":
+                subprocess.run(
+                    ["powershell", "-Command", "Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.Name -like '*Vetro*' -or $_.Name -like '*probe*' } | Stop-Process -Force -ErrorAction SilentlyContinue"],
+                    shell=True,
+                )
+                import time
+                time.sleep(1)
+            shutil.rmtree(portable_dir, ignore_errors=True)
     portable_dir.mkdir(parents=True, exist_ok=True)
 
     shutil.copy2(main_exe, portable_dir / "Vetro Probe.exe")

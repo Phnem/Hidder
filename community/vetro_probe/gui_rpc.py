@@ -1,4 +1,4 @@
-﻿"""Vetro Probe research GUI <-> engine JSON-lines RPC (authoritative engine side).
+"""Vetro Probe research GUI <-> engine JSON-lines RPC (authoritative engine side).
 
 The GUI is a THIN product layer. This module is the only place the GUI talks to
 the Probe engine. It NEVER duplicates the executor: the real path delegates to
@@ -140,16 +140,25 @@ def plan_preview() -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 def recovery_status(run_dir: Path) -> dict[str, Any]:
-    from .runstate import RunStateStore
-    store = RunStateStore(run_dir)
-    cp = store.load()
-    if cp is not None and not cp.closed and getattr(cp, "write_may_have_applied", False):
-        return {"preflight": "RECOVERING", "pending": True,
-                "reason": "A previous session left an unverified state; it must be restored before research starts."}
-    if cp is not None and not cp.closed:
-        return {"preflight": "RECOVERING", "pending": True,
-                "reason": "A previous session did not finish; recovery-first must run before research starts."}
-    return {"preflight": "CLEAR", "pending": False, "reason": ""}
+    try:
+        from .runstate import RunStateStore
+        store = RunStateStore(run_dir)
+        cp = store.load()
+        if cp is not None and not cp.closed:
+            if getattr(cp, "write_may_have_applied", False):
+                return {
+                    "preflight": "RECOVERY_REQUIRED",
+                    "pending": True,
+                    "reason": "A previous session left an unverified state; it must be restored before research starts.",
+                }
+            return {
+                "preflight": "RECOVERY_IN_PROGRESS",
+                "pending": True,
+                "reason": "A previous session did not finish cleanly; recovery-first must complete before research starts.",
+            }
+        return {"preflight": "CLEAR", "pending": False, "reason": ""}
+    except Exception as exc:
+        return {"preflight": "ERROR", "pending": True, "reason": f"Recovery preflight check failed: {exc}"}
 
 
 # ---------------------------------------------------------------------------
@@ -288,6 +297,17 @@ def label_for(op_id: str) -> str:
 # Server
 # ---------------------------------------------------------------------------
 
+CANONICAL_RPC_METHODS = (
+    "health",
+    "discover",
+    "plan",
+    "recovery_status",
+    "clear_recovery",
+    "start_run",
+    "run_result",
+)
+
+
 class ProbeRpcServer:
     """JSON-lines RPC server over a stream pair (default stdin/stdout).
 
@@ -321,28 +341,50 @@ class ProbeRpcServer:
     # -- methods -------------------------------------------------------------
     def handle(self, req: dict[str, Any]) -> None:
         ident = req.get("id")
-        method = req.get("method", "")
+        raw_method = req.get("method", "")
+        method = str(raw_method).strip().lower()
+        if method.startswith("probe_"):
+            method = method[6:]
+
+        # Normalize common synonyms/getter aliases
+        if method in ("get_recovery_status", "recovery_status", "recovery"):
+            norm = "recovery_status"
+        elif method in ("get_plan", "plan"):
+            norm = "plan"
+        elif method in ("get_discovery_state", "get_discover", "discover", "discovery"):
+            norm = "discover"
+        elif method in ("get_run_result", "run_result", "result"):
+            norm = "run_result"
+        elif method in ("get_health", "health"):
+            norm = "health"
+        elif method in ("clear_recovery",):
+            norm = "clear_recovery"
+        elif method in ("start_run", "run"):
+            norm = "start_run"
+        else:
+            norm = method
+
         params = req.get("params", {}) or {}
         try:
-            if method == "health":
+            if norm == "health":
                 self._respond(ident, {"engine": "real" if self.engine is None else "demo",
-                                      "method": method})
-            elif method == "discover":
+                                      "method": "health"})
+            elif norm == "discover":
                 self._respond(ident, self._discover())
-            elif method == "plan":
+            elif norm == "plan":
                 self._respond(ident, plan_preview())
-            elif method == "recovery_status":
+            elif norm == "recovery_status":
                 self._respond(ident, self._recovery_status())
-            elif method == "clear_recovery":
+            elif norm == "clear_recovery":
                 if isinstance(self.engine, DemoEngine):
                     self.engine.clear_recovery()
                 self._respond(ident, self._recovery_status())
-            elif method == "start_run":
+            elif norm == "start_run":
                 self._respond(ident, self._start_run())
-            elif method == "run_result":
+            elif norm == "run_result":
                 self._respond(ident, self._run_result())
             else:
-                self._respond(ident, error=f"unknown method: {method}")
+                self._respond(ident, error=f"unknown method: {raw_method}")
         except Exception as exc:  # noqa: BLE001
             traceback.print_exc()
             self._respond(ident, error=f"{exc}")
