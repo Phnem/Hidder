@@ -13,6 +13,7 @@ import {
   onProbeEvents,
   probeClearRecovery,
   probeDiscover,
+  probeOpenResults,
   probePlan,
   probeRecoveryStatus,
   probeStartRun,
@@ -300,7 +301,10 @@ function ResultView({
       <p className="muted">Results ready.</p>
       <div className="actions">
         <button type="button" onClick={() => onShowDetails(!showDetails)}>
-          View details
+          {showDetails ? "Hide details" : "View details"}
+        </button>
+        <button type="button" onClick={() => void probeOpenResults()}>
+          Open results folder
         </button>
       </div>
       {showDetails && <Details result={result} />}

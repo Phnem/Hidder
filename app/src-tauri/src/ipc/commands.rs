@@ -48,6 +48,7 @@ pub const PROBE_START_RUN: &str = "probe_start_run";
 pub const PROBE_RUN_RESULT: &str = "probe_run_result";
 pub const PROBE_CLEAR_RECOVERY: &str = "probe_clear_recovery";
 pub const PROBE_SET_MODE: &str = "probe_set_mode";
+pub const PROBE_OPEN_RESULTS: &str = "probe_open_results";
 
 pub const ALL: &[&str] = &[
     BUILD_ID,
@@ -63,6 +64,7 @@ pub const ALL: &[&str] = &[
     PROBE_RUN_RESULT,
     PROBE_CLEAR_RECOVERY,
     PROBE_SET_MODE,
+    PROBE_OPEN_RESULTS,
     super::channels::SUBSCRIBE_ANALOG_STREAM,
 ];
 
@@ -189,6 +191,17 @@ pub fn probe_set_mode(
     };
     probe::replace(&app, mode)?;
     Ok(json!({"ok": true}))
+}
+
+/// Open the directory containing research results and journals in the file explorer.
+#[tauri::command]
+pub fn probe_open_results() -> Result<(), String> {
+    let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
+    #[cfg(windows)]
+    {
+        let _ = std::process::Command::new("explorer").arg(cwd).spawn();
+    }
+    Ok(())
 }
 
 /// Collapses "the service is gone" and "the device said no" into one message.

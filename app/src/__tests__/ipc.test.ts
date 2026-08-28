@@ -41,6 +41,7 @@ const {
   probeRunResult,
   probeClearRecovery,
   probeSetMode,
+  probeOpenResults,
   onProbeEvents,
   EVENTS,
   PROBE_EVENTS,
@@ -196,6 +197,7 @@ describe("Vetro Probe research IPC", () => {
     await probeRunResult();
     await probeClearRecovery();
     await probeSetMode("demo", "supported");
+    await probeOpenResults();
 
     expect(invoke.mock.calls.map(([name]) => name)).toEqual([
       "probe_discover",
@@ -205,6 +207,7 @@ describe("Vetro Probe research IPC", () => {
       "probe_run_result",
       "probe_clear_recovery",
       "probe_set_mode",
+      "probe_open_results",
     ]);
   });
 

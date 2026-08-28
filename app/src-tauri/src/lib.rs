@@ -89,6 +89,7 @@ pub fn run() {
             ipc::commands::probe_run_result,
             ipc::commands::probe_clear_recovery,
             ipc::commands::probe_set_mode,
+            ipc::commands::probe_open_results,
             ipc::channels::subscribe_analog_stream,
         ])
         .run(tauri::generate_context!());
@@ -134,6 +135,7 @@ mod tests {
             stringify!(probe_run_result),
             stringify!(probe_clear_recovery),
             stringify!(probe_set_mode),
+            stringify!(probe_open_results),
             stringify!(subscribe_analog_stream),
         ];
         for name in ipc::commands::ALL {

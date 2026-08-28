@@ -12,6 +12,13 @@ target/
 
 # PyInstaller / Diagnostic build folders
 build/
+build_dist/
+build_work/
+dist/
+app/src-tauri/binaries/
+probe-app/src-tauri/binaries/
+probe-app/node_modules/
+probe-app/dist/
 community/build/
 community/build_diagnostic/
 community/dist_diagnostic/
@@ -45,6 +52,8 @@ $RECYCLE.BIN/
 # Vetro Probe schemas + rank/knowledge artifacts are tracked (exception to *.json)
 !community/vetro_probe/schema/*.json
 !community/vetro_probe/knowledge/*.json
+!probe-app/*.json
+!probe-app/src-tauri/*.json
 
 # Vetro Probe dedicated capture browser profile (persistent WebHID grants; not committed)
 community/vetro_probe/.capture_profile/

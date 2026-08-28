@@ -307,6 +307,10 @@ export function probeSetMode(mode: "demo" | "real", scenario: string): Promise<{
   return invoke<{ ok: boolean }>("probe_set_mode", { mode, scenario });
 }
 
+export function probeOpenResults(): Promise<void> {
+  return invoke<void>("probe_open_results");
+}
+
 /** Event names must match app/src-tauri/src/ipc/events.rs exactly. */
 export const PROBE_EVENTS = {
   progress: "probe:progress",

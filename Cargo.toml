@@ -29,6 +29,7 @@ members = [
     "crates/pcore",
     # desktop application (Tauri)
     "app/src-tauri",
+    "probe-app/src-tauri",
     # development tools that are allowed in the workspace build
     "tools/emu",
     "tools/protodoc",

@@ -1,0 +1,86 @@
+"""Build script for packaging the authoritative Python Probe engine into a standalone sidecar.
+
+Produces `vetro-probe-sidecar.exe` with no dependencies on system Python or repository paths.
+"""
+
+from __future__ import annotations
+
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT_DIR = Path(__file__).resolve().parent.parent
+COMMUNITY_DIR = ROOT_DIR / "community"
+DB_DIR = ROOT_DIR / "DB"
+BUILD_DIST = ROOT_DIR / "build_dist"
+BUILD_WORK = ROOT_DIR / "build_work"
+ENTRY_POINT = COMMUNITY_DIR / "VetroProbe.py"
+
+
+def build_sidecar(target_dirs: list[Path] | None = None) -> Path:
+    print("\n=======================================================")
+    print("Building standalone Vetro Probe engine sidecar (PyInstaller)...")
+    print("=======================================================")
+
+    BUILD_DIST.mkdir(parents=True, exist_ok=True)
+    BUILD_WORK.mkdir(parents=True, exist_ok=True)
+
+    cmd = [
+        sys.executable,
+        "-m",
+        "PyInstaller",
+        "--onefile",
+        "--noupx",
+        "--name",
+        "vetro-probe-sidecar",
+        "--distpath",
+        str(BUILD_DIST),
+        "--workpath",
+        str(BUILD_WORK / "vetro-probe-sidecar"),
+        "--clean",
+        "--paths",
+        str(COMMUNITY_DIR),
+        "--paths",
+        str(DB_DIR),
+        "--paths",
+        str(ROOT_DIR),
+        "--collect-all",
+        "aula_kb_v3",
+        "--collect-all",
+        "community.vetro_probe",
+        str(ENTRY_POINT),
+    ]
+
+    res = subprocess.run(cmd, cwd=str(ROOT_DIR))
+    if res.returncode != 0:
+        print(f"[ERROR] PyInstaller failed with code {res.returncode}")
+        sys.exit(res.returncode)
+
+    exe_path = BUILD_DIST / "vetro-probe-sidecar.exe"
+    if not exe_path.is_file():
+        print(f"[ERROR] {exe_path} was not produced.")
+        sys.exit(1)
+
+    print(f"[SUCCESS] Standalone sidecar built: {exe_path} ({exe_path.stat().st_size / (1024*1024):.2f} MB)")
+
+    if target_dirs:
+        for tdir in target_dirs:
+            tdir.mkdir(parents=True, exist_ok=True)
+            dest = tdir / "vetro-probe-sidecar.exe"
+            shutil.copy2(exe_path, dest)
+            # Also copy with target triple name for Tauri externalBin conventions
+            triple_dest = tdir / "vetro-probe-sidecar-x86_64-pc-windows-msvc.exe"
+            shutil.copy2(exe_path, triple_dest)
+            print(f"[+] Copied to {dest} and {triple_dest}")
+
+    return exe_path
+
+
+if __name__ == "__main__":
+    targets = [
+        ROOT_DIR / "probe-app" / "src-tauri" / "binaries",
+        ROOT_DIR / "app" / "src-tauri" / "binaries",
+    ]
+    build_sidecar(targets)

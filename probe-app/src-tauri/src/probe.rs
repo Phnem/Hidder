@@ -1,13 +1,4 @@
-//! Sidecar process: spawns the Python Probe engine and bridges the JSON-lines RPC.
-//!
-//! Wire (mirrors `community/vetro_probe/gui_rpc.py`):
-//!   request  -> {"id": n, "method": "...", "params": {...}}\n
-//!   response -> {"id": n, "ok": true, "result": {...}}\n | {"id": n, "ok": false, "error": "..."}\n
-//!   event    -> {"event": "progress" | "run_result", "data": {...}}\n
-//!
-//! Responses are matched to callers by id (pending oneshots); events are
-//! forwarded to the window as `probe://progress` / `probe://run_result`. Non-JSON
-//! stdout lines (warnings, traces) are ignored rather than treated as protocol.
+//! Authoritative Vetro Probe Python engine sidecar bridge.
 
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Write};
@@ -20,21 +11,20 @@ use std::time::Duration;
 
 use serde::de::DeserializeOwned;
 use serde_json::{json, Value};
+use tauri::Manager;
+
+pub const PROBE_PROGRESS: &str = "probe:progress";
+pub const PROBE_RUN_RESULT: &str = "probe:run_result";
 
 /// Which sidecar mode to spawn.
 #[derive(Clone, Debug)]
 pub enum Mode {
-    /// Deterministic mock engine. Never touches hardware, never emits physical
-    /// evidence. `scenario` is one of the DemoEngine scenarios.
     Demo { scenario: String },
-    /// Real hardware. Requires an exact HERO84 (372E:103E / aula_kb_v3_wired / 0216).
     Real,
 }
 
-/// Handles events emitted by the engine (called on the reader thread).
 pub type EventSink = Arc<dyn Fn(&str, Value) + Send + Sync>;
 
-/// A running Python Probe engine sidecar.
 pub struct ProbeEngine {
     child: Child,
     stdin: Mutex<ChildStdin>,
@@ -43,14 +33,11 @@ pub struct ProbeEngine {
     last_run_result: Arc<Mutex<Option<Value>>>,
 }
 
-/// Repository root (where `community/` lives), so the sidecar can resolve the
-/// `community.vetro_probe` package. `CARGO_MANIFEST_DIR` = app/src-tauri.
 fn repo_root() -> PathBuf {
     let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     manifest.parent().and_then(|p| p.parent()).map(PathBuf::from).unwrap_or(manifest)
 }
 
-/// Finds the packaged standalone sidecar binary if present.
 fn find_bundled_binary(root: &PathBuf) -> Option<PathBuf> {
     let mut candidates = Vec::new();
     if let Ok(exe) = std::env::current_exe() {
@@ -69,7 +56,7 @@ fn find_bundled_binary(root: &PathBuf) -> Option<PathBuf> {
     candidates.into_iter().find(|p| p.is_file())
 }
 
-fn sidecar_command(mode: &Mode, root: &PathBuf) -> Command {
+pub fn sidecar_command(mode: &Mode, root: &PathBuf) -> Command {
     let mut cmd = if let Some(bin) = find_bundled_binary(root) {
         let mut c = Command::new(bin);
         c.arg("--gui-rpc");
@@ -105,8 +92,6 @@ fn sidecar_command(mode: &Mode, root: &PathBuf) -> Command {
 }
 
 impl ProbeEngine {
-    /// Spawn the sidecar and start its reader thread. `events` receives engine
-    /// events (data of `{"event": name, "data": ...}`) to forward to the window.
     pub fn start(mode: Mode, events: EventSink) -> Result<Self, String> {
         let root = repo_root();
         let mut child = sidecar_command(&mode, &root)
@@ -129,7 +114,6 @@ impl ProbeEngine {
             last_run_result: Arc::new(Mutex::new(None)),
         };
 
-        // Reader thread: parse lines, resolve responses or forward events.
         let pending = Arc::clone(&engine.pending);
         let last = Arc::clone(&engine.last_run_result);
         std::thread::spawn(move || {
@@ -141,7 +125,7 @@ impl ProbeEngine {
                     continue;
                 }
                 let Ok(v) = serde_json::from_str::<Value>(line) else {
-                    continue; // warning/trace, not protocol
+                    continue;
                 };
                 if let Some(id) = v.get("id").and_then(|i| i.as_u64()) {
                     let reply = if v.get("ok").and_then(|b| b.as_bool()).unwrap_or(false) {
@@ -166,7 +150,6 @@ impl ProbeEngine {
         Ok(engine)
     }
 
-    /// Send one request and wait for its response.
     pub fn call<T: DeserializeOwned>(&self, method: &str, params: Value) -> Result<T, String> {
         let id = self.seq.fetch_add(1, Ordering::SeqCst);
         let (tx, rx): (Sender<Result<Value, String>>, Receiver<Result<Value, String>>) = channel();
@@ -186,7 +169,6 @@ impl ProbeEngine {
         }
     }
 
-    /// The most recent `run_result` event the engine emitted, if any.
     pub fn last_run_result(&self) -> Option<Value> {
         self.last_run_result.lock().unwrap().clone()
     }
@@ -199,12 +181,95 @@ impl Drop for ProbeEngine {
     }
 }
 
+pub struct State(pub Arc<Mutex<Option<ProbeEngine>>>);
+
+impl State {
+    pub fn call(&self, method: &str, params: Value) -> Result<Value, String> {
+        let guard = self
+            .0
+            .lock()
+            .map_err(|_| "probe engine state lock poisoned".to_string())?;
+        let engine = guard
+            .as_ref()
+            .ok_or_else(|| "the Probe engine is not running".to_string())?;
+        engine.call(method, params)
+    }
+
+    pub fn last_run_result(&self) -> Result<Option<Value>, String> {
+        let guard = self
+            .0
+            .lock()
+            .map_err(|_| "probe engine state lock poisoned".to_string())?;
+        let engine = guard
+            .as_ref()
+            .ok_or_else(|| "the Probe engine is not running".to_string())?;
+        Ok(engine.last_run_result())
+    }
+}
+
+pub fn start<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    mode: Mode,
+) -> Result<State, String> {
+    let emitter = app.clone();
+    let sink: EventSink = Arc::new(move |name, data| {
+        let event = if name == "run_result" {
+            PROBE_RUN_RESULT
+        } else {
+            PROBE_PROGRESS
+        };
+        use tauri::Emitter;
+        let _ = emitter.emit(event, data);
+    });
+    let engine = ProbeEngine::start(mode, sink)?;
+    Ok(State(Arc::new(Mutex::new(Some(engine)))))
+}
+
+pub fn replace<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    mode: Mode,
+) -> Result<(), String> {
+    let emitter = app.clone();
+    let sink: EventSink = Arc::new(move |name, data| {
+        let event = if name == "run_result" {
+            PROBE_RUN_RESULT
+        } else {
+            PROBE_PROGRESS
+        };
+        use tauri::Emitter;
+        let _ = emitter.emit(event, data);
+    });
+    let engine = ProbeEngine::start(mode, sink)?;
+    let current = app.state::<State>();
+    let mut guard = current
+        .0
+        .lock()
+        .map_err(|_| "probe engine state lock poisoned".to_string())?;
+    *guard = Some(engine);
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    /// The RPC reader must resolve responses by id and forward events by name,
-    /// ignoring non-JSON lines. This is the framing contract with the Python side.
+    #[test]
+    fn sidecar_command_builds_valid_probe_invocation() {
+        let root = repo_root();
+        let cmd = sidecar_command(&Mode::Demo { scenario: "supported".into() }, &root);
+        let args: Vec<_> = cmd.get_args().map(|a| a.to_string_lossy().to_string()).collect();
+        assert!(args.contains(&"--gui-rpc".to_string()));
+        assert!(args.contains(&"--gui-demo".to_string()));
+    }
+
+    #[test]
+    fn bundled_binary_resolution_finds_packaged_sidecar() {
+        let root = repo_root();
+        let bin = find_bundled_binary(&root);
+        assert!(bin.is_some(), "expected to find compiled vetro-probe-sidecar.exe");
+        assert!(bin.unwrap().is_file());
+    }
+
     #[test]
     fn rpc_framing_contract_parses_responses_and_events() {
         let pending: Arc<Mutex<HashMap<u64, Sender<Result<Value, String>>>>> =
@@ -244,12 +309,5 @@ mod tests {
         assert_eq!(rx.recv_timeout(Duration::from_millis(100)).unwrap().unwrap()["state"], "IDENTIFIED");
         assert_eq!(events, vec!["progress", "run_result"]);
         assert_eq!(last.lock().unwrap().as_ref().unwrap()["status"], "SUCCESS_RESTORED");
-        // the engine must be spawnable only via a real Python; here we only assert
-        // the python command is shaped correctly (no hardware involved).
-        let root = repo_root();
-        let cmd = sidecar_command(&Mode::Demo { scenario: "supported".into() }, &root);
-        let args: Vec<_> = cmd.get_args().map(|a| a.to_string_lossy().to_string()).collect();
-        assert!(args.contains(&"--gui-rpc".to_string()));
-        assert!(args.contains(&"--gui-demo".to_string()));
     }
 }
