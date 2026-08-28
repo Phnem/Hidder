@@ -33,7 +33,35 @@ def run_step(description: str, cmd: list[str], cwd: Path) -> None:
         sys.exit(res.returncode)
 
 
+def check_worktree_cleanliness(allow_dirty: bool = False) -> tuple[str, bool]:
+    commit = "unknown"
+    dirty = False
+    try:
+        r = subprocess.run(["git", "rev-parse", "HEAD"], cwd=str(ROOT_DIR), capture_output=True, text=True)
+        if r.returncode == 0 and r.stdout.strip():
+            commit = r.stdout.strip()[:12]
+        s = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"], cwd=str(ROOT_DIR), capture_output=True, text=True)
+        if s.returncode == 0 and s.stdout.strip():
+            dirty = True
+            if not allow_dirty:
+                print(f"[ERROR] Release build aborted: tracked working tree is dirty.")
+                print(f"Modified tracked files:\n{s.stdout.strip()}")
+                print(f"Commit or stash changes before building an official release, or pass --allow-dirty.")
+                sys.exit(1)
+    except Exception as e:
+        print(f"[WARNING] Could not query git status: {e}")
+    return commit, dirty
+
+
 def main() -> None:
+    import argparse
+    parser = argparse.ArgumentParser(description="Build Standalone Vetro Probe Release")
+    parser.add_argument("--allow-dirty", action="store_true", help="Allow building from a dirty working tree")
+    args = parser.parse_args()
+
+    commit, dirty = check_worktree_cleanliness(allow_dirty=args.allow_dirty)
+    print(f"[+] Release build starting for HEAD commit: {commit} (dirty={dirty})")
+
     print("=======================================================")
     print("VETRO PROBE: STANDALONE RELEASE BUILD")
     print("=======================================================")

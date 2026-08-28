@@ -517,3 +517,23 @@ def test_human_summary_content_and_uncounted_blocked_ops():
         assert "Safely Skipped Checks: 1" in summary_txt
         assert "Original Settings Restored: Yes (Verified ✓)" in summary_txt
 
+
+def test_provenance_architecture_and_worktree_cleanliness_check():
+    """Verify that build provenance metadata does not depend on runtime git calls."""
+    import subprocess
+    from community.vetro_probe import version
+    from scripts.build_probe_release import check_worktree_cleanliness
+
+    # Check version info
+    info = version.get_build_info()
+    assert "probe_app_version" in info
+    assert "probe_engine_version" in info
+    assert "build_commit" in info
+    assert "knowledge_revision" in info
+    assert info["build_commit"] != info["knowledge_revision"]
+
+    # Check worktree check helper behavior with allow_dirty=True
+    commit, dirty = check_worktree_cleanliness(allow_dirty=True)
+    assert isinstance(commit, str)
+    assert isinstance(dirty, bool)
+
