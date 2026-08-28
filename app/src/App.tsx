@@ -40,6 +40,7 @@ import { DevicesScreen } from "./screens/Devices";
 import { ACTUATION, HeScreen } from "./screens/He";
 import { JournalScreen } from "./screens/Journal";
 import { AboutScreen } from "./screens/About";
+import { ResearchScreen } from "./screens/Research";
 import { connectionSummary } from "./components";
 
 /**
@@ -50,6 +51,7 @@ import { connectionSummary } from "./components";
  * screen appearing is a change somebody notices.
  */
 const SCREENS = [
+  { id: "research", label: "Research", ready: true },
   { id: "devices", label: "Devices", ready: true },
   { id: "he", label: "HE", ready: true },
   { id: "analog", label: "Analog Monitor", ready: false, ticket: "TICKET-15" },
@@ -238,6 +240,8 @@ export function App() {
             </button>
           </div>
         )}
+
+        {screen === "research" && <ResearchScreen />}
 
         {screen === "devices" && (
           <DevicesScreen

@@ -1,0 +1,60 @@
+/* Vetro Probe research screen — calm, minimal, safety-first. */
+.research {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 44rem;
+}
+.research .panel {
+  background: var(--surface, #f2f2f2);
+  border: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem;
+}
+.research .panel.warn {
+  border-color: #c8442f;
+}
+.research h2 {
+  margin: 0 0 0.25rem;
+}
+.research h3 {
+  margin: 1rem 0 0.4rem;
+  font-weight: 600;
+}
+.research .muted {
+  color: var(--muted, #666);
+}
+.research .plan-list {
+  list-style: none;
+  margin: 0.4rem 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.research .plan-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.research .op-state {
+  font-variant-numeric: tabular-nums;
+  color: var(--muted, #666);
+}
+.research .actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+.research .actions button:first-child {
+  font-weight: 700;
+}
+.research .details {
+  margin-top: 1rem;
+}
+.research .details pre {
+  white-space: pre-wrap;
+  font-size: 0.8rem;
+  max-height: 18rem;
+  overflow: auto;
+}

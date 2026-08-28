@@ -6,6 +6,7 @@
 //! capability model failed to hide something it was supposed to hide.
 
 pub mod ipc;
+pub mod probe;
 
 use pcore::DeviceService;
 use tauri::Manager;
@@ -58,6 +59,17 @@ pub fn run() {
                     log::error!("the device service did not start: {error}");
                 }
             }
+            // Vetro Probe research engine: deterministic demo mode by default
+            // (zero HID, never emits physical evidence). Real hardware mode is
+            // switched on only by an explicit `probe_set_mode`.
+            match probe::start(app.handle(), probe::Mode::Demo { scenario: "supported".into() }) {
+                Ok(state) => {
+                    app.manage(state);
+                }
+                Err(error) => {
+                    log::error!("the Probe engine sidecar did not start: {error}");
+                }
+            }
             Ok(())
         })
         // All three IPC mechanisms are wired. The channel command refuses for
@@ -70,6 +82,13 @@ pub fn run() {
             ipc::commands::disconnect_device,
             ipc::commands::read_capability,
             ipc::commands::journal,
+            ipc::commands::probe_discover,
+            ipc::commands::probe_plan,
+            ipc::commands::probe_recovery_status,
+            ipc::commands::probe_start_run,
+            ipc::commands::probe_run_result,
+            ipc::commands::probe_clear_recovery,
+            ipc::commands::probe_set_mode,
             ipc::channels::subscribe_analog_stream,
         ])
         .run(tauri::generate_context!());
@@ -108,6 +127,13 @@ mod tests {
             stringify!(disconnect_device),
             stringify!(read_capability),
             stringify!(journal),
+            stringify!(probe_discover),
+            stringify!(probe_plan),
+            stringify!(probe_recovery_status),
+            stringify!(probe_start_run),
+            stringify!(probe_run_result),
+            stringify!(probe_clear_recovery),
+            stringify!(probe_set_mode),
             stringify!(subscribe_analog_stream),
         ];
         for name in ipc::commands::ALL {

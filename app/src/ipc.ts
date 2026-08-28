@@ -200,6 +200,138 @@ export function journal(): Promise<JournalRow[]> {
   return invoke<JournalRow[]>("journal");
 }
 
+// --- Vetro Probe research flow (thin bridge to the Python engine sidecar) ----
+
+/** Device discovery state (no protocol knowledge leaks into the UI). */
+export type ProbeDiscoveryState =
+  | "NO_DEVICE"
+  | "DISCOVERING"
+  | "IDENTIFIED"
+  | "UNSUPPORTED"
+  | "IDENTITY_MISMATCH"
+  | "FW_UNSUPPORTED"
+  | "ERROR";
+
+export interface ProbeDeviceView {
+  name: string | null;
+  firmware: string | null;
+  family: string;
+}
+
+export interface ProbeDiscovery {
+  state: ProbeDiscoveryState;
+  device: ProbeDeviceView | null;
+  supportedCount: number;
+  reason: string;
+}
+
+export interface ProbeOperation {
+  id: string;
+  label: string;
+  classification: "AUTO_REVERSIBLE" | "BLOCKED" | string;
+  whySafe?: string;
+}
+
+export interface ProbePlan {
+  safe: ProbeOperation[];
+  blocked: ProbeOperation[];
+  safeCount: number;
+}
+
+export interface ProbeRecoveryStatus {
+  preflight: "CLEAR" | "RECOVERING" | "RECOVERED" | "BLOCKED" | string;
+  pending: boolean;
+  reason: string;
+}
+
+export interface ProbeRunResult {
+  status:
+    | "SUCCESS_RESTORED"
+    | "FAIL_RESTORED"
+    | "FAILED_REQUIRES_MANUAL_RESTORE"
+    | "RECOVERY_IN_PROGRESS"
+    | string;
+  restored: boolean;
+  checksCompleted: number;
+  checksTotal: number;
+  results: { id: string; label?: string; status: string; restored: boolean }[];
+  evidenceSource?: string;
+  physicalValidationEvidence?: boolean;
+  outputPath?: string | null;
+  error?: string;
+}
+
+export type ProbeProgressState =
+  | "QUEUED"
+  | "BASELINING"
+  | "TESTING"
+  | "VERIFYING"
+  | "RESTORING"
+  | "PASS"
+  | "BLOCKED"
+  | "FAILED"
+  | "RECOVERING";
+
+export interface ProbeProgress {
+  op: string;
+  label?: string;
+  state: ProbeProgressState;
+  text?: string;
+}
+
+export function probeDiscover(): Promise<ProbeDiscovery> {
+  return invoke<ProbeDiscovery>("probe_discover");
+}
+
+export function probePlan(): Promise<ProbePlan> {
+  return invoke<ProbePlan>("probe_plan");
+}
+
+export function probeRecoveryStatus(): Promise<ProbeRecoveryStatus> {
+  return invoke<ProbeRecoveryStatus>("probe_recovery_status");
+}
+
+export function probeStartRun(): Promise<{ started: boolean; error?: string }> {
+  return invoke<{ started: boolean; error?: string }>("probe_start_run");
+}
+
+export function probeRunResult(): Promise<ProbeRunResult> {
+  return invoke<ProbeRunResult>("probe_run_result");
+}
+
+export function probeClearRecovery(): Promise<ProbeRecoveryStatus> {
+  return invoke<ProbeRecoveryStatus>("probe_clear_recovery");
+}
+
+export function probeSetMode(mode: "demo" | "real", scenario: string): Promise<{ ok: boolean }> {
+  return invoke<{ ok: boolean }>("probe_set_mode", { mode, scenario });
+}
+
+/** Event names must match app/src-tauri/src/ipc/events.rs exactly. */
+export const PROBE_EVENTS = {
+  progress: "probe:progress",
+  runResult: "probe:run_result",
+} as const;
+
+export type ProbeEngineEvent =
+  | { kind: "progress"; progress: ProbeProgress }
+  | { kind: "runResult"; result: ProbeRunResult };
+
+/** Subscribes to both Probe engine events as one stream. */
+export async function onProbeEvents(
+  handler: (event: ProbeEngineEvent) => void,
+): Promise<UnlistenFn> {
+  const unlisteners = await Promise.all([
+    listen<ProbeProgress>(PROBE_EVENTS.progress, (e) =>
+      handler({ kind: "progress", progress: e.payload }),
+    ),
+    listen<ProbeRunResult>(PROBE_EVENTS.runResult, (e) =>
+      handler({ kind: "runResult", result: e.payload }),
+    ),
+  ]);
+  return () => unlisteners.forEach((off) => off());
+}
+
 // --- Mechanism 2: events (rare, backend-initiated) -------------------------
 
 /** Event names must match app/src-tauri/src/ipc/events.rs exactly. */

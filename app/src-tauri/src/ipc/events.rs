@@ -38,12 +38,20 @@ pub const BATTERY_CHANGED: &str = "device:battery-changed";
 /// The device's config endpoint failed. Payload: [`ProtocolErrorEvent`].
 pub const PROTOCOL_ERROR: &str = "device:protocol-error";
 
+/// Vetro Probe research progress. Payload: the engine's `progress` data
+/// ({op, label, state, text}).
+pub const PROBE_PROGRESS: &str = "probe:progress";
+/// Vetro Probe research finished. Payload: the engine's `run_result` data.
+pub const PROBE_RUN_RESULT: &str = "probe:run_result";
+
 pub const ALL: &[&str] = &[
     DEVICE_CONNECTED,
     DEVICE_UPDATED,
     DEVICE_DISCONNECTED,
     BATTERY_CHANGED,
     PROTOCOL_ERROR,
+    PROBE_PROGRESS,
+    PROBE_RUN_RESULT,
 ];
 
 /// Payload for [`DEVICE_DISCONNECTED`].

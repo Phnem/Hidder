@@ -21,9 +21,11 @@
 
 use pcaps::CapId;
 use pcore::{CapabilityReading, DeviceCard, JournalRow};
+use serde_json::json;
 use tauri::State;
 
 use crate::ipc::Devices;
+use crate::probe;
 
 /// Command names, declared once.
 ///
@@ -38,6 +40,14 @@ pub const CONNECT_DEVICE: &str = "connect_device";
 pub const DISCONNECT_DEVICE: &str = "disconnect_device";
 pub const READ_CAPABILITY: &str = "read_capability";
 pub const JOURNAL: &str = "journal";
+// Vetro Probe research flow (thin bridge to the Python engine sidecar).
+pub const PROBE_DISCOVER: &str = "probe_discover";
+pub const PROBE_PLAN: &str = "probe_plan";
+pub const PROBE_RECOVERY_STATUS: &str = "probe_recovery_status";
+pub const PROBE_START_RUN: &str = "probe_start_run";
+pub const PROBE_RUN_RESULT: &str = "probe_run_result";
+pub const PROBE_CLEAR_RECOVERY: &str = "probe_clear_recovery";
+pub const PROBE_SET_MODE: &str = "probe_set_mode";
 
 pub const ALL: &[&str] = &[
     BUILD_ID,
@@ -46,6 +56,13 @@ pub const ALL: &[&str] = &[
     DISCONNECT_DEVICE,
     READ_CAPABILITY,
     JOURNAL,
+    PROBE_DISCOVER,
+    PROBE_PLAN,
+    PROBE_RECOVERY_STATUS,
+    PROBE_START_RUN,
+    PROBE_RUN_RESULT,
+    PROBE_CLEAR_RECOVERY,
+    PROBE_SET_MODE,
     super::channels::SUBSCRIBE_ANALOG_STREAM,
 ];
 
@@ -115,6 +132,63 @@ pub fn journal(devices: State<'_, Devices>) -> Result<Vec<JournalRow>, String> {
         .service()
         .journal()
         .map_err(|error| error.to_string())
+}
+
+// --- Vetro Probe research flow (thin; the Python engine is authoritative) ----
+
+/// Current device discovery state (NO_DEVICE / IDENTIFIED / FW_UNSUPPORTED ...).
+#[tauri::command]
+pub fn probe_discover(probe: State<'_, probe::State>) -> Result<serde_json::Value, String> {
+    probe.call("discover", json!({}))
+}
+
+/// Plan preview straight from the backend planner (never hardcoded in the UI).
+#[tauri::command]
+pub fn probe_plan(probe: State<'_, probe::State>) -> Result<serde_json::Value, String> {
+    probe.call("plan", json!({}))
+}
+
+/// Recovery-first preflight (CLEAR / RECOVERING / ...).
+#[tauri::command]
+pub fn probe_recovery_status(probe: State<'_, probe::State>) -> Result<serde_json::Value, String> {
+    probe.call("recovery_status", json!({}))
+}
+
+/// Start the research run; progress/run_result arrive as `probe:progress` events.
+#[tauri::command]
+pub fn probe_start_run(probe: State<'_, probe::State>) -> Result<serde_json::Value, String> {
+    probe.call("start_run", json!({}))
+}
+
+/// The latest run result (also delivered as a `probe:run_result` event).
+#[tauri::command]
+pub fn probe_run_result(probe: State<'_, probe::State>) -> Result<serde_json::Value, String> {
+    if let Ok(Some(result)) = probe.last_run_result() {
+        return Ok(result);
+    }
+    probe.call("run_result", json!({}))
+}
+
+/// Clear a pending (demo) recovery after the user restored the device manually.
+#[tauri::command]
+pub fn probe_clear_recovery(probe: State<'_, probe::State>) -> Result<serde_json::Value, String> {
+    probe.call("clear_recovery", json!({}))
+}
+
+/// Switch the engine between deterministic demo and real hardware.
+#[tauri::command]
+pub fn probe_set_mode(
+    mode: String,
+    scenario: String,
+    app: tauri::AppHandle,
+) -> Result<serde_json::Value, String> {
+    let mode = if mode == "real" {
+        probe::Mode::Real
+    } else {
+        probe::Mode::Demo { scenario }
+    };
+    probe::replace(&app, mode)?;
+    Ok(json!({"ok": true}))
 }
 
 /// Collapses "the service is gone" and "the device said no" into one message.

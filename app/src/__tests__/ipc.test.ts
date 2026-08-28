@@ -34,7 +34,16 @@ const {
   onDeviceEvents,
   readCapability,
   subscribeAnalogStream,
+  probeDiscover,
+  probePlan,
+  probeRecoveryStatus,
+  probeStartRun,
+  probeRunResult,
+  probeClearRecovery,
+  probeSetMode,
+  onProbeEvents,
   EVENTS,
+  PROBE_EVENTS,
 } = await import("../ipc");
 
 beforeEach(() => {
@@ -177,3 +186,80 @@ describe("the analog stream", () => {
     expect(listen).not.toHaveBeenCalled();
   });
 });
+
+describe("Vetro Probe research IPC", () => {
+  test("each probe command sends the exact registered backend name", async () => {
+    await probeDiscover();
+    await probePlan();
+    await probeRecoveryStatus();
+    await probeStartRun();
+    await probeRunResult();
+    await probeClearRecovery();
+    await probeSetMode("demo", "supported");
+
+    expect(invoke.mock.calls.map(([name]) => name)).toEqual([
+      "probe_discover",
+      "probe_plan",
+      "probe_recovery_status",
+      "probe_start_run",
+      "probe_run_result",
+      "probe_clear_recovery",
+      "probe_set_mode",
+    ]);
+  });
+
+  test("probe events are registered with the exact names backend emits", () => {
+    expect(PROBE_EVENTS).toEqual({
+      progress: "probe:progress",
+      runResult: "probe:run_result",
+    });
+  });
+
+  test("subscribing to probe events registers both progress and runResult", async () => {
+    await onProbeEvents(() => {});
+    expect(listen.mock.calls.map(([name]) => name)).toEqual([
+      PROBE_EVENTS.progress,
+      PROBE_EVENTS.runResult,
+    ]);
+  });
+
+  test("unsubscribing undoes both listeners", async () => {
+    const offs = [vi.fn(), vi.fn()];
+    let next = 0;
+    listen.mockImplementation(() => Promise.resolve(offs[next++]!));
+
+    const unlisten = await onProbeEvents(() => {});
+    unlisten();
+    for (const off of offs) expect(off).toHaveBeenCalledOnce();
+  });
+
+  test("each probe event arrives tagged with kind", async () => {
+    const handlers: Record<string, (event: { payload: unknown }) => void> = {};
+    listen.mockImplementation((name: string, handler: (e: { payload: unknown }) => void) => {
+      handlers[name] = handler;
+      return Promise.resolve(() => {});
+    });
+
+    const seen: unknown[] = [];
+    await onProbeEvents((event) => seen.push(event));
+
+    handlers[PROBE_EVENTS.progress]!({
+      payload: { op: "keyboard.profile", state: "PASS", text: "Done" },
+    });
+    handlers[PROBE_EVENTS.runResult]!({
+      payload: { status: "SUCCESS_RESTORED", restored: true, checksCompleted: 6 },
+    });
+
+    expect(seen).toEqual([
+      {
+        kind: "progress",
+        progress: { op: "keyboard.profile", state: "PASS", text: "Done" },
+      },
+      {
+        kind: "runResult",
+        result: { status: "SUCCESS_RESTORED", restored: true, checksCompleted: 6 },
+      },
+    ]);
+  });
+});
+
