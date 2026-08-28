@@ -705,6 +705,14 @@ class AutoProbeRun:
         # aggregate reader returned impossible values: polling=17, win_lock=true,
         # brightness 'must be 7 bytes, got 1'). Each op gets its own fresh handle
         # so a stale reply from a previous read can never be consumed by the next.
+        try:
+            if hasattr(self.transport, "close"):
+                self.transport.close()
+            elif hasattr(self.transport, "invalidate"):
+                self.transport.invalidate()
+        except Exception:
+            pass
+
         values: dict[str, Any] = {}
         errors: dict[str, str] = {}
         reg_baseline = next((e.get("register_baseline") for e in self.plan

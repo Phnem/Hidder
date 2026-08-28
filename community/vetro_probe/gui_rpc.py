@@ -362,6 +362,14 @@ def label_for(op_id: str) -> str:
     return OP_LABELS.get(op_id, op_id)
 
 
+def diag_log(tag: str, **kwargs: Any) -> None:
+    parts = [f"[{time.time():.3f}]", "[SIDECAR PRE_OP]", tag]
+    if kwargs:
+        parts.append(json.dumps(kwargs, ensure_ascii=True))
+    line = " ".join(parts)
+    print(line, file=sys.stderr, flush=True)
+
+
 # ---------------------------------------------------------------------------
 # Real engine — authoritative physical execution (or deterministic mock transport)
 # ---------------------------------------------------------------------------
@@ -391,7 +399,11 @@ class RealEngine:
         from .identity import discover_real_instance_via_raw
         from .aula_transport import AulaHidTransport
 
+        diag_log("TRANSPORT_OPEN_BEGIN")
+        t0 = time.time()
         transport = AulaHidTransport.open_real(uuid=int(bundle.product.uuid))
+        open_dur_ms = round((time.time() - t0) * 1000, 2)
+        diag_log("TRANSPORT_OPEN_END", open_duration_ms=open_dur_ms)
         instance = discover_real_instance_via_raw(transport.raw)
 
         def enumerate_fn():
@@ -410,6 +422,7 @@ class RealEngine:
         from .bundle import production_bundle_for_hero84
         bundle = production_bundle_for_hero84()
         transport = None
+        diag_log("DISCOVERY_HANDLE_OPEN")
         try:
             transport, instance, _, _ = self.transport_factory(bundle)
             return discover_state(instance)
@@ -417,10 +430,13 @@ class RealEngine:
             return {"state": "NO_DEVICE", "device": None, "supported_count": 0, "reason": str(exc)}
         finally:
             if transport is not None and hasattr(transport, "close"):
+                diag_log("DISCOVERY_HANDLE_CLOSE_BEGIN")
                 try:
                     transport.close()
                 except Exception:
                     pass
+                diag_log("DISCOVERY_HANDLE_CLOSE_END")
+            diag_log("DISCOVERY_HANDLE_CLOSE_CONFIRMED")
 
     def recovery_status(self) -> dict[str, Any]:
         return recovery_status(self.run_dir)
@@ -447,6 +463,7 @@ class RealEngine:
                 "error": "recovery preflight is pending — recovery-first must complete before research starts",
             }
         if async_run:
+            diag_log("WORKER_THREAD_CREATED")
             self._thread = threading.Thread(target=self._run_worker, args=(emit,), daemon=True)
             self._thread.start()
         else:
@@ -468,15 +485,55 @@ class RealEngine:
     def _run_worker(self, emit) -> None:
         try:
             with self._busy:
+                diag_log("WORKER_THREAD_ENTERED", thread_id=threading.get_ident())
                 from .automation import AutoProbeRun
                 from .bundle import production_bundle_for_hero84
+                from .identity import ExactIdentityGate
+
+                self._emit(emit, "progress", {
+                    "op": "system",
+                    "label": "System",
+                    "state": "PREPARING",
+                    "text": "Preparing research...",
+                })
+                diag_log("REAL_RUN_ENTER")
 
                 bundle = production_bundle_for_hero84()
+                diag_log("PLAN_REVALIDATION_BEGIN")
                 plan = plan_preview()
+                diag_log("PLAN_REVALIDATION_END", safe_count=plan.get("safe_count", 0))
+
                 for op in plan.get("safe", []):
                     self._op_progress(emit, op["id"], "QUEUED", "Waiting...")
 
+                self._emit(emit, "progress", {
+                    "op": "system",
+                    "label": "System",
+                    "state": "OPENING_DEVICE",
+                    "text": "Opening device...",
+                })
                 transport, instance, enumerate_fn, make_transport = self.transport_factory(bundle)
+
+                self._emit(emit, "progress", {
+                    "op": "system",
+                    "label": "System",
+                    "state": "VERIFYING_DEVICE",
+                    "text": "Verifying device...",
+                })
+                diag_log("IDENTITY_REVALIDATION_BEGIN")
+                gate = ExactIdentityGate(bundle)
+                verdict = gate.evaluate(instance)
+                diag_log("IDENTITY_REVALIDATION_END", passed=verdict.passed, reason=verdict.reason)
+                if not verdict.passed:
+                    raise RuntimeError(f"Device exact identity evaluation failed: {verdict.reason}")
+
+                self._emit(emit, "progress", {
+                    "op": "system",
+                    "label": "System",
+                    "state": "PREPARING_BASELINE",
+                    "text": "Preparing baseline...",
+                })
+                diag_log("RUNSTATE_INIT_BEGIN")
 
                 def on_op_progress(op_id: str, state: str, text: str) -> None:
                     self._op_progress(emit, op_id, state, text)
@@ -491,6 +548,9 @@ class RealEngine:
                     reconnect_timeout_ms=15000,
                     on_op_progress=on_op_progress,
                 )
+                diag_log("RUNSTATE_INIT_END")
+                diag_log("AUTOPROBERUN_CONSTRUCTED")
+                diag_log("AUTOPROBERUN_RUN_ENTER")
                 run.run()
 
                 results = [
@@ -513,9 +573,8 @@ class RealEngine:
                     "output_path": str(run.package_dir) if run.package_dir else None,
                 }
                 self._emit(emit, "run_result", self._result)
-        except Exception as exc:
-            import traceback
-            traceback.print_exc()
+        except BaseException as exc:
+            diag_log("WORKER_EXCEPTION", error=str(exc), traceback=traceback.format_exc())
             self._result = {
                 "status": "ERROR",
                 "restored": False,
@@ -622,7 +681,10 @@ class ProbeRpcServer:
                 self.engine.clear_recovery()
                 self._respond(ident, self.engine.recovery_status())
             elif norm == "start_run":
-                self._respond(ident, self.engine.start_run(self.emit))
+                diag_log("START_RUN_RPC_RECEIVED", ident=ident)
+                res = self.engine.start_run(self.emit)
+                self._respond(ident, res)
+                diag_log("START_RUN_RESPONSE_SENT", ident=ident, res=res)
             elif norm == "run_result":
                 self._respond(ident, self.engine.run_result())
             else:

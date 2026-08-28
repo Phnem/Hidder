@@ -295,6 +295,18 @@ export function ResearchScreen() {
 
   const blocked = plan?.blocked ?? [];
 
+  const systemStageInfo = progress["system"];
+  let currentActivityText = "Researching device…";
+  if (isStarting) {
+    currentActivityText = "Starting research…";
+  } else if (activeOp) {
+    currentActivityText = `${activeOp.label}: ${friendlyStageText(activeOpInfo?.state, activeOp.label, activeOpInfo?.text)}`;
+  } else if (systemStageInfo?.text) {
+    currentActivityText = systemStageInfo.text;
+  } else if (completedCount === safeCount && safeCount > 0) {
+    currentActivityText = "Finalizing and restoring device baseline…";
+  }
+
   return (
     <div className="research">
       {(recovery?.preflight === "RECOVERY_REQUIRED" ||
@@ -337,8 +349,13 @@ export function ResearchScreen() {
 
       {discovery?.state === "NO_DEVICE" && (
         <section className="panel">
-          <h2>Connect your device</h2>
-          <p className="muted">Plug in a compatible keyboard and reopen this screen.</p>
+          <h2>Connect your keyboard to begin</h2>
+          <p className="muted">
+            Vetro Probe will automatically detect when a supported device is connected.
+          </p>
+          <button type="button" onClick={() => void init()}>
+            Scan for devices
+          </button>
         </section>
       )}
 
@@ -386,15 +403,7 @@ export function ResearchScreen() {
                 </div>
                 <div className="current-activity">
                   <span className="pulse-dot" />
-                  <span>
-                    {isStarting
-                      ? "Starting research…"
-                      : activeOp
-                        ? `${activeOp.label}: ${friendlyStageText(activeOpInfo?.state, activeOp.label, activeOpInfo?.text)}`
-                        : completedCount === safeCount
-                          ? "Finalizing and restoring device baseline…"
-                          : "Researching device…"}
-                  </span>
+                  <span>{currentActivityText}</span>
                 </div>
                 <p className="keep-connected-notice">Keep the device connected until research is complete.</p>
                 {isStalled && (
@@ -419,9 +428,11 @@ export function ResearchScreen() {
                           {JSON.stringify(
                             {
                               elapsedSeconds,
+                              lastProgressAgeSeconds: Math.max(0, Math.floor((Date.now() - lastEventTimeRef.current) / 1000)),
                               completedCount,
                               safeCount,
-                              currentActivity: activeOp?.label ?? "unknown",
+                              systemStage: systemStageInfo?.state ?? "IDLE",
+                              currentActivity: currentActivityText,
                               progress,
                             },
                             null,

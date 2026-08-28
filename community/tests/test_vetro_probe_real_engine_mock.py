@@ -194,3 +194,84 @@ def test_real_engine_progress_stages_streamed_properly():
             assert "BASELINING" in op_states, f"Missing BASELINING for {op}"
             assert "PASS" in op_states, f"Missing PASS for {op}"
 
+
+def test_real_engine_exclusive_handle_lifecycle():
+    """Models Windows exclusive device access.
+
+    1. discover() opens and immediately closes transport.
+    2. start_run() opens transport without colliding with discovery.
+    3. Leaked handle would trigger deterministic exclusive lock violation.
+    """
+    class ExclusiveDeviceState:
+        def __init__(self):
+            self.open_handles = 0
+
+    dev_state = ExclusiveDeviceState()
+    inst = mock_hero84_instance()
+    initial_state = {
+        "keyboard.profile": 0, "keyboard.polling": 2, "device.win_lock": False,
+        "he.deadzone": 0.5, "he.actuation": 2.0, "light.brightness": 10,
+    }
+
+    class ExclusiveMockTransport(FakeTransport):
+        def __init__(self, ds, shared_state=None, **kwargs):
+            super().__init__(**kwargs)
+            self.ds = ds
+            if shared_state is not None:
+                self._state = shared_state
+            if self.ds.open_handles > 0:
+                raise RuntimeError("Windows exclusive lock violation: device already open by another handle")
+            self.ds.open_handles += 1
+            self._closed = False
+
+        def close(self):
+            if not self._closed:
+                self.ds.open_handles -= 1
+                self._closed = True
+
+        def invalidate(self):
+            super().invalidate()
+            self.close()
+
+    def make_exclusive_factory():
+        shared_state = dict(initial_state)
+        def factory(bundle):
+            trans = ExclusiveMockTransport(dev_state, shared_state=shared_state, initial_state=shared_state, reconnect_ops={"keyboard.polling"})
+            def enumerate_fn():
+                return inst
+            def make_transport():
+                return ExclusiveMockTransport(dev_state, shared_state=shared_state, initial_state=shared_state, reconnect_ops={"keyboard.polling"})
+            return trans, inst, enumerate_fn, make_transport
+        return factory
+
+    with tempfile.TemporaryDirectory() as td:
+        engine = RealEngine(run_dir=Path(td), transport_factory=make_exclusive_factory(), is_physical=False)
+        disc = engine.discover()
+        assert disc["state"] == "IDENTIFIED"
+        assert dev_state.open_handles == 0, f"discover() leaked handle: open_handles={dev_state.open_handles}"
+
+        events = []
+        engine.start_run(lambda e: events.append(e), async_run=False)
+        res = engine.run_result()
+        assert res["status"] == "COMPLETE_PASS"
+        assert res["checks_completed"] == 6
+        assert dev_state.open_handles == 0
+
+
+def test_real_engine_worker_exception_handling():
+    """Proves that exceptions in the worker thread do NOT cause silent hangs."""
+    def broken_factory(bundle):
+        raise RuntimeError("Deterministic device failure on open")
+
+    with tempfile.TemporaryDirectory() as td:
+        engine = RealEngine(run_dir=Path(td), transport_factory=broken_factory, is_physical=False)
+        events = []
+        engine.start_run(lambda e: events.append(e), async_run=False)
+
+        res = engine.run_result()
+        assert res["status"] == "ERROR"
+        assert "Deterministic device failure" in res["error"]
+        result_evts = [e for e in events if e.get("event") == "run_result"]
+        assert len(result_evts) == 1
+        assert result_evts[0]["data"]["status"] == "ERROR"
+
