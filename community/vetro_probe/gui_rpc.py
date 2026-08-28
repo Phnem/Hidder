@@ -354,6 +354,18 @@ class DemoEngine:
             "output_path": None,
         }
 
+    def diagnostic_state(self) -> dict[str, Any]:
+        return {
+            "run_id": "demo",
+            "worker_alive": bool(self._thread and self._thread.is_alive()),
+            "worker_thread_id": self._thread.ident if self._thread else None,
+            "engine_busy": self._busy.locked(),
+            "last_backend_step": "DEMO_IDLE" if not self._busy.locked() else "DEMO_RUNNING",
+            "last_backend_step_ts": time.time(),
+            "last_progress_age_seconds": 0.0,
+            "thread_dump": {},
+        }
+
     def run_result(self) -> dict[str, Any]:
         return self._result or {"status": "IDLE", "results": [], "checks_completed": 0}
 
@@ -394,16 +406,41 @@ class RealEngine:
         self._thread: threading.Thread | None = None
         self._result: dict[str, Any] | None = None
         self._events: list[dict[str, Any]] = []
+        self._last_backend_step: str = "IDLE"
+        self._last_backend_step_ts: float = time.time()
+        self._run_id: str | None = None
+
+    def _step(self, tag: str, **kwargs: Any) -> None:
+        self._last_backend_step = tag
+        self._last_backend_step_ts = time.time()
+        diag_log(tag, **kwargs)
+
+    def diagnostic_state(self) -> dict[str, Any]:
+        frames = sys._current_frames()
+        threads = {}
+        for tid, frame in frames.items():
+            threads[str(tid)] = "".join(traceback.format_stack(frame))
+
+        return {
+            "run_id": self._run_id,
+            "worker_alive": bool(self._thread and self._thread.is_alive()),
+            "worker_thread_id": self._thread.ident if self._thread else None,
+            "engine_busy": self._busy.locked(),
+            "last_backend_step": self._last_backend_step,
+            "last_backend_step_ts": self._last_backend_step_ts,
+            "last_progress_age_seconds": round(time.time() - self._last_backend_step_ts, 2),
+            "thread_dump": threads,
+        }
 
     def _default_transport_factory(self, bundle):
         from .identity import discover_real_instance_via_raw
         from .aula_transport import AulaHidTransport
 
-        diag_log("TRANSPORT_OPEN_BEGIN")
+        self._step("TRANSPORT_OPEN_BEGIN")
         t0 = time.time()
         transport = AulaHidTransport.open_real(uuid=int(bundle.product.uuid))
         open_dur_ms = round((time.time() - t0) * 1000, 2)
-        diag_log("TRANSPORT_OPEN_END", open_duration_ms=open_dur_ms)
+        self._step("TRANSPORT_OPEN_END", open_duration_ms=open_dur_ms)
         instance = discover_real_instance_via_raw(transport.raw)
 
         def enumerate_fn():
@@ -422,7 +459,7 @@ class RealEngine:
         from .bundle import production_bundle_for_hero84
         bundle = production_bundle_for_hero84()
         transport = None
-        diag_log("DISCOVERY_HANDLE_OPEN")
+        self._step("DISCOVERY_HANDLE_OPEN")
         try:
             transport, instance, _, _ = self.transport_factory(bundle)
             return discover_state(instance)
@@ -430,13 +467,13 @@ class RealEngine:
             return {"state": "NO_DEVICE", "device": None, "supported_count": 0, "reason": str(exc)}
         finally:
             if transport is not None and hasattr(transport, "close"):
-                diag_log("DISCOVERY_HANDLE_CLOSE_BEGIN")
+                self._step("DISCOVERY_HANDLE_CLOSE_BEGIN")
                 try:
                     transport.close()
                 except Exception:
                     pass
-                diag_log("DISCOVERY_HANDLE_CLOSE_END")
-            diag_log("DISCOVERY_HANDLE_CLOSE_CONFIRMED")
+                self._step("DISCOVERY_HANDLE_CLOSE_END")
+            self._step("DISCOVERY_HANDLE_CLOSE_CONFIRMED")
 
     def recovery_status(self) -> dict[str, Any]:
         return recovery_status(self.run_dir)
@@ -462,8 +499,9 @@ class RealEngine:
                 "started": False,
                 "error": "recovery preflight is pending — recovery-first must complete before research starts",
             }
+        self._run_id = f"run_{int(time.time())}"
         if async_run:
-            diag_log("WORKER_THREAD_CREATED")
+            self._step("WORKER_THREAD_CREATED", run_id=self._run_id)
             self._thread = threading.Thread(target=self._run_worker, args=(emit,), daemon=True)
             self._thread.start()
         else:
@@ -485,7 +523,7 @@ class RealEngine:
     def _run_worker(self, emit) -> None:
         try:
             with self._busy:
-                diag_log("WORKER_THREAD_ENTERED", thread_id=threading.get_ident())
+                self._step("WORKER_THREAD_ENTERED", thread_id=threading.get_ident(), run_id=self._run_id)
                 from .automation import AutoProbeRun
                 from .bundle import production_bundle_for_hero84
                 from .identity import ExactIdentityGate
@@ -496,15 +534,26 @@ class RealEngine:
                     "state": "PREPARING",
                     "text": "Preparing research...",
                 })
-                diag_log("REAL_RUN_ENTER")
+                self._step("REAL_RUN_ENTER")
 
+                self._step("PREPARE_STEP_1_BUNDLE_LOAD_BEGIN")
                 bundle = production_bundle_for_hero84()
-                diag_log("PLAN_REVALIDATION_BEGIN")
-                plan = plan_preview()
-                diag_log("PLAN_REVALIDATION_END", safe_count=plan.get("safe_count", 0))
+                self._step("PREPARE_STEP_1_BUNDLE_LOAD_END")
 
+                self._emit(emit, "progress", {
+                    "op": "system",
+                    "label": "System",
+                    "state": "VALIDATING_PLAN",
+                    "text": "Validating test plan...",
+                })
+                self._step("PREPARE_STEP_2_PLAN_VALIDATION_BEGIN")
+                plan = plan_preview()
+                self._step("PREPARE_STEP_2_PLAN_VALIDATION_END", safe_count=plan.get("safe_count", 0))
+
+                self._step("PREPARE_STEP_3_QUEUE_OPS_BEGIN")
                 for op in plan.get("safe", []):
                     self._op_progress(emit, op["id"], "QUEUED", "Waiting...")
+                self._step("PREPARE_STEP_3_QUEUE_OPS_END")
 
                 self._emit(emit, "progress", {
                     "op": "system",
@@ -520,10 +569,10 @@ class RealEngine:
                     "state": "VERIFYING_DEVICE",
                     "text": "Verifying device...",
                 })
-                diag_log("IDENTITY_REVALIDATION_BEGIN")
+                self._step("IDENTITY_REVALIDATION_BEGIN")
                 gate = ExactIdentityGate(bundle)
                 verdict = gate.evaluate(instance)
-                diag_log("IDENTITY_REVALIDATION_END", passed=verdict.passed, reason=verdict.reason)
+                self._step("IDENTITY_REVALIDATION_END", passed=verdict.passed, reason=verdict.reason)
                 if not verdict.passed:
                     raise RuntimeError(f"Device exact identity evaluation failed: {verdict.reason}")
 
@@ -533,7 +582,7 @@ class RealEngine:
                     "state": "PREPARING_BASELINE",
                     "text": "Preparing baseline...",
                 })
-                diag_log("RUNSTATE_INIT_BEGIN")
+                self._step("RUNSTATE_INIT_BEGIN")
 
                 def on_op_progress(op_id: str, state: str, text: str) -> None:
                     self._op_progress(emit, op_id, state, text)
@@ -548,9 +597,9 @@ class RealEngine:
                     reconnect_timeout_ms=15000,
                     on_op_progress=on_op_progress,
                 )
-                diag_log("RUNSTATE_INIT_END")
-                diag_log("AUTOPROBERUN_CONSTRUCTED")
-                diag_log("AUTOPROBERUN_RUN_ENTER")
+                self._step("RUNSTATE_INIT_END")
+                self._step("AUTOPROBERUN_CONSTRUCTED")
+                self._step("AUTOPROBERUN_RUN_ENTER")
                 run.run()
 
                 results = [
@@ -574,7 +623,7 @@ class RealEngine:
                 }
                 self._emit(emit, "run_result", self._result)
         except BaseException as exc:
-            diag_log("WORKER_EXCEPTION", error=str(exc), traceback=traceback.format_exc())
+            self._step("WORKER_EXCEPTION", error=str(exc), traceback=traceback.format_exc())
             self._result = {
                 "status": "ERROR",
                 "restored": False,
@@ -687,6 +736,8 @@ class ProbeRpcServer:
                 diag_log("START_RUN_RESPONSE_SENT", ident=ident, res=res)
             elif norm == "run_result":
                 self._respond(ident, self.engine.run_result())
+            elif norm in ("diagnostics", "diagnostic_state", "get_diagnostics", "get_diagnostic_state"):
+                self._respond(ident, self.engine.diagnostic_state())
             else:
                 self._respond(ident, error=f"unknown method: {raw_method}")
         except Exception as exc:  # noqa: BLE001

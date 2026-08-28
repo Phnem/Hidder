@@ -152,13 +152,20 @@ def example_hero84_bundle() -> Bundle:
     return parse_bundle(data)
 
 
+_CACHED_HERO84_BUNDLE: Bundle | None = None
+
+
 def production_bundle_for_hero84() -> Bundle:
     """Load production bundle from compiled registry (no hardcoded opcode)."""
+    global _CACHED_HERO84_BUNDLE
+    if _CACHED_HERO84_BUNDLE is not None:
+        return _CACHED_HERO84_BUNDLE
     try:
         from .bundle_export import export_bundle_for_uuid
 
         data = export_bundle_for_uuid()
-        return parse_bundle(data)
+        _CACHED_HERO84_BUNDLE = parse_bundle(data)
+        return _CACHED_HERO84_BUNDLE
     except Exception as e:
         # Fall back to synthetic for CI without DB checkout, but mark as such
         # Tests that require production truth should skip if registry unavailable

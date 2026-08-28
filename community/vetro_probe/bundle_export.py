@@ -99,27 +99,16 @@ def _registry_product(uuid: int):
 
 
 def _knowledge_revision() -> str:
-    # IR hash = hash of registry_data.py + git commit if available
+    # Deterministic static/file-based revision (zero subprocesses, frozen/packaged safe)
     try:
-        import subprocess
         from pathlib import Path as _P
         repo_root = _P(__file__).resolve().parents[2]
-        # git commit
-        commit = ""
-        try:
-            r = subprocess.run(["git", "rev-parse", "HEAD"], cwd=str(repo_root), capture_output=True, text=True, timeout=2)
-            if r.returncode == 0:
-                commit = r.stdout.strip()[:12]
-        except Exception:
-            pass
-        # registry_data hash
         rd = repo_root / "DB" / "aula_kb_v3" / "registry_data.py"
         if rd.is_file():
-            h = hashlib.sha256(rd.read_bytes()).hexdigest()[:12]
-            return f"{commit}:{h}" if commit else h
-        return commit or "unknown"
+            return hashlib.sha256(rd.read_bytes()).hexdigest()[:12]
+        return "aula_kb_v3_r1"
     except Exception:
-        return "unknown"
+        return "aula_kb_v3_r1"
 
 
 def export_bundle_for_uuid(uuid: int = HERO84_UUID) -> dict[str, Any]:

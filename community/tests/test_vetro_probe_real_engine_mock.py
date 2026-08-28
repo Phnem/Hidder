@@ -187,12 +187,32 @@ def test_real_engine_progress_stages_streamed_properly():
         prog_events = [e["data"] for e in events if e.get("event") == "progress"]
         ops = ["keyboard.profile", "keyboard.polling", "device.win_lock", "he.deadzone", "he.actuation", "light.brightness"]
 
+        # System stages must be emitted in exact truthful order
+        sys_states = [p["state"] for p in prog_events if p["op"] == "system"]
+        assert "PREPARING" in sys_states
+        assert "VALIDATING_PLAN" in sys_states
+        assert "OPENING_DEVICE" in sys_states
+        assert "VERIFYING_DEVICE" in sys_states
+        assert "PREPARING_BASELINE" in sys_states
+
         # Every op must have received QUEUED, BASELINING, and PASS
         for op in ops:
             op_states = [p["state"] for p in prog_events if p["op"] == op]
             assert "QUEUED" in op_states, f"Missing QUEUED for {op}"
             assert "BASELINING" in op_states, f"Missing BASELINING for {op}"
             assert "PASS" in op_states, f"Missing PASS for {op}"
+
+
+def test_real_engine_diagnostic_state_and_thread_dump():
+    factory, _ = make_mock_transport_factory()
+    with tempfile.TemporaryDirectory() as td:
+        engine = RealEngine(run_dir=Path(td), transport_factory=factory, is_physical=False)
+        diag = engine.diagnostic_state()
+        assert "engine_busy" in diag
+        assert "last_backend_step" in diag
+        assert "thread_dump" in diag
+        assert isinstance(diag["thread_dump"], dict)
+        assert len(diag["thread_dump"]) > 0  # current thread stack must be present
 
 
 def test_real_engine_exclusive_handle_lifecycle():
