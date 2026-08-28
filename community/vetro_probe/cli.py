@@ -420,6 +420,167 @@ def run_headless(
     return out
 
 
+def preview_guided_plan(bundle_path: Path | None = None) -> int:
+    from .bundle import production_bundle_for_hero84
+    from .guided_validator import GuidedValidationEngine, GuidedValidationContext
+    from .transport import FakeTransport
+    from .observable import FakeObservableListener
+    from .feature_gates import blocker_for
+
+    bundle = production_bundle_for_hero84() if not (bundle_path and Path(bundle_path).is_file()) else load_bundle(Path(bundle_path))
+    ctx = GuidedValidationContext(
+        bundle=bundle,
+        transport=FakeTransport(),
+        observable_listener=FakeObservableListener(),
+        device_identity={
+            "vendor": bundle.product.name.split()[0] if bundle.product.name else "AULA",
+            "name": bundle.product.name,
+            "vid": bundle.product.vid,
+            "pid": bundle.product.pid,
+            "firmware": bundle.firmware_branch,
+            "family": bundle.family,
+            "connection": bundle.connection_mode,
+        },
+    )
+
+    print(f"\n=======================================================")
+    print(f"GUIDED VALIDATION PLAN PREVIEW (NO WRITES)")
+    print(f"Device:   {bundle.product.name} ({bundle.product.vid}:{bundle.product.pid})")
+    print(f"Firmware: {bundle.firmware_branch} ({bundle.connection_mode})")
+    print(f"Family:   {bundle.family}")
+    print(f"=======================================================")
+
+    engine = GuidedValidationEngine()
+    applicable = engine.plan_validators(ctx)
+
+    print("\n[ELIGIBLE CAPABILITY VALIDATORS]")
+    for v in applicable:
+        print(f"  [+] {v.capability_name:<20} {v.representative_explanation()}")
+
+    print("\n[BLOCKED / INELIGIBLE GROUPS]")
+    all_known = ["keyboard.remap", "he.rt", "light.global_color", "light.effect", "custom.per_key"]
+    for op_id in all_known:
+        b = blocker_for(op_id, vid=bundle.product.vid, pid=bundle.product.pid, family=bundle.family, fw=bundle.firmware_branch)
+        if b:
+            print(f"  [-] {op_id:<20} BLOCKED: {b}")
+    print(f"=======================================================\n")
+    return 0
+
+
+def run_guided_validation(
+    bundle_path: Path | None = None,
+    run_dir: Path | None = None,
+    use_real: bool = False,
+    use_sim: bool = False,
+    auto_confirm: bool = False,
+) -> int:
+    import time
+    from .bundle import production_bundle_for_hero84
+    from .guided_validator import GuidedValidationEngine, GuidedValidationContext
+    from .device_certificate import CertificateStore
+    from .version import PROBE_APP_VERSION, get_build_commit
+    from .recovery import RecoveryJournal
+
+    bundle = production_bundle_for_hero84() if not (bundle_path and Path(bundle_path).is_file()) else load_bundle(Path(bundle_path))
+    out_dir = run_dir or Path.cwd() / f"vetro_guided_{int(time.time())}"
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    # 1. Recovery Preflight
+    journal_path = out_dir / "recovery_journal.json"
+    if journal_path.is_file():
+        try:
+            prev_journal_data = json.loads(journal_path.read_text(encoding="utf-8"))
+            if prev_journal_data.get("armed"):
+                print(f"[VetroProbe Guided] WARNING: Unclean prior session detected in {out_dir}", file=sys.stderr)
+        except Exception:
+            pass
+
+    # 2. Identity & Transport Resolution
+    if use_real:
+        from .aula_transport import AulaHidTransport
+        from .identity import ExactIdentityGate
+        print(f"[VetroProbe Guided] Connecting to physical hardware {bundle.product.vid}:{bundle.product.pid}...")
+        try:
+            transport, instance = _create_real_transport(bundle)
+        except Exception as e:
+            print(f"[VetroProbe Guided] Physical device connection failed: {e}", file=sys.stderr)
+            return 1
+
+        gate = ExactIdentityGate()
+        gate_res = gate.verify(instance, bundle)
+        if not gate_res.ok:
+            print(f"[VetroProbe Guided] ExactIdentityGate REJECTED device: {gate_res.reason}", file=sys.stderr)
+            return 1
+        if instance.firmware_version != bundle.firmware_branch:
+            print(f"[VetroProbe Guided] Firmware mismatch: observed {instance.firmware_version}, expected {bundle.firmware_branch}", file=sys.stderr)
+            return 1
+
+        from .observable import HumanConfirmationListener
+        listener = HumanConfirmationListener(auto_response="yes" if auto_confirm else None)
+    elif use_sim:
+        from .identity import mock_hero84_instance
+        transport = _create_sim_transport(bundle)
+        instance = mock_hero84_instance(firmware=bundle.firmware_branch)
+        from .observable import FakeObservableListener
+        listener = FakeObservableListener(auto_pass=True)
+    else:
+        from .identity import mock_hero84_instance
+        transport = _create_fake_transport(bundle, "light.brightness")
+        instance = mock_hero84_instance(firmware=bundle.firmware_branch)
+        from .observable import FakeObservableListener
+        listener = FakeObservableListener(auto_pass=True)
+
+    # 3. Setup GuidedValidationEngine
+    cert_store = CertificateStore(base_dir=out_dir / "certificates")
+    engine = GuidedValidationEngine(cert_store=cert_store)
+
+    ctx = GuidedValidationContext(
+        bundle=bundle,
+        transport=transport,
+        observable_listener=listener,
+        device_identity={
+            "vendor": getattr(instance, "manufacturer", "") or "AULA",
+            "name": getattr(instance, "product_string", "") or bundle.product.name,
+            "vid": f"0x{instance.vid:04X}" if isinstance(instance.vid, int) else str(instance.vid),
+            "pid": f"0x{instance.pid:04X}" if isinstance(instance.pid, int) else str(instance.pid),
+            "firmware": instance.firmware_version,
+            "descriptor_hash": instance.descriptor_hash,
+            "family": bundle.family,
+            "connection": instance.connection_mode or bundle.connection_mode,
+        },
+        build_commit=get_build_commit(),
+        app_version=PROBE_APP_VERSION,
+    )
+
+    print(f"\n=======================================================")
+    print(f"VETRO PROBE: GUIDED HARDWARE VALIDATION")
+    print(f"Device:   {ctx.device_identity['name']} ({ctx.device_identity['vid']}:{ctx.device_identity['pid']})")
+    print(f"Firmware: {instance.firmware_version} (Mode: {'REAL_HARDWARE' if use_real else 'MOCK/SIM'})")
+    print(f"Output:   {out_dir}")
+    print(f"=======================================================\n")
+
+    res = engine.run_validation(ctx)
+
+    # Save summary and certificate
+    (out_dir / "guided_validation_summary.json").write_text(json.dumps(res, indent=2), encoding="utf-8")
+    if "certificate" in res:
+        (out_dir / "guided_validation_certificate.json").write_text(json.dumps(res["certificate"], indent=2), encoding="utf-8")
+
+    print(f"\n=======================================================")
+    print(f"GUIDED VALIDATION RESULT: {res['verdict']}")
+    print(f"State:               {res['state']}")
+    print(f"Duration:            {res.get('duration_seconds', 0)}s")
+    print(f"Validated Groups:    {res.get('validated_groups', [])}")
+    print(f"Rollback Verified:   {res.get('rollback_verified', False)}")
+    if res.get("certificate_path"):
+        print(f"Certificate Saved:   {res['certificate_path']}")
+    if res.get("error"):
+        print(f"Error:               {res['error']}")
+    print(f"=======================================================\n")
+
+    return 0 if res.get("verdict") == "COMPLETE_PASS" else 2
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="vetro_probe", description="Vetro Probe — Physical Validation (headless vertical slice)")
     parser.add_argument("--bundle", type=Path, help="Path to preview bundle JSON (vetro.preview-bundle.v1)")
@@ -435,6 +596,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--auto-dir", type=Path, default=None, help="Run-state/package directory for --auto (default: vetro_auto_<ts>)")
     parser.add_argument("--label", type=str, default="auto", help="Human label for the auto run")
     parser.add_argument("--plan-dry", action="store_true", help="Dry/no-write: build the HERO84 plan (classification only) and print it. No transport reads/writes, no baselining, no execution.")
+    parser.add_argument("--guided", "--guided-validation", dest="guided", action="store_true", help="Run the unified Guided Validation Engine (machine-readable plan, capability-scoped certification, verified rollback).")
+    parser.add_argument("--plan-guided-dry", action="store_true", help="Preview the exact planned guided validation campaign for this device scope without any transport writes.")
+    parser.add_argument("--run-dir", type=Path, default=None, help="Output directory for guided validation results and certificate")
+    parser.add_argument("--yes", "-y", action="store_true", help="Auto-confirm physical observable prompts (e.g. for automated dry runs)")
     parser.add_argument("--verify-final", action="store_true", help="READ-ONLY aggregate final verification of the current device against the baselines stored in --auto-dir. ZERO writes. Use after a full auto run when its in-run aggregate reader was unreliable.")
     parser.add_argument("--actuation-revalidation", action="store_true", help="Dedicated controlled physical revalidation of he.actuation (post 0.5mm-grid fix). NOT full --auto. Write-ahead + recovery-first + exact 372E:103E/aula_kb_v3_wired/FW0216 gate. ZERO writes on any gate mismatch.")
     parser.add_argument("--out", type=Path, default=None, help="Checkpoint/output directory for --actuation-revalidation (default: actuation_revalidation_checkpoint)")
@@ -442,6 +607,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--gui-demo", action="store_true", help="With --gui-rpc: deterministic mock engine (zero HID, never emits physical evidence).")
     parser.add_argument("--scenario", type=str, default="supported", help="With --gui-rpc --gui-demo: supported|fail_restored|manual|recovery_startup|unsupported_fw|no_device")
     args = parser.parse_args(argv)
+
+    if args.plan_guided_dry:
+        return preview_guided_plan(args.bundle)
+
+    if args.guided:
+        return run_guided_validation(
+            bundle_path=args.bundle,
+            run_dir=args.run_dir or args.auto_dir or args.out,
+            use_real=args.real,
+            use_sim=args.sim,
+            auto_confirm=args.yes,
+        )
 
     if args.gui_rpc:
         from .gui_rpc import main as gui_rpc_main

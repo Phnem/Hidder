@@ -93,8 +93,14 @@ class LightingCapabilityValidator(BaseCapabilityValidator):
     capability_name = "lighting"
 
     def is_applicable(self, ctx: GuidedValidationContext) -> bool:
-        # Check if bundle has lighting operations allowlisted
-        return ctx.bundle.has_operation("light.brightness") or ctx.bundle.has_operation("light.global_color")
+        from .feature_gates import blocker_for
+        vid = ctx.device_identity.get("vid")
+        pid = ctx.device_identity.get("pid")
+        family = ctx.device_identity.get("family")
+        fw = ctx.device_identity.get("firmware")
+        has_brightness = ctx.bundle.has_operation("light.brightness") and blocker_for("light.brightness", vid=vid, pid=pid, family=family, fw=fw) is None
+        has_global_color = ctx.bundle.has_operation("light.global_color") and blocker_for("light.global_color", vid=vid, pid=pid, family=family, fw=fw) is None
+        return bool(has_brightness or has_global_color)
 
     def representative_explanation(self) -> str:
         return (
@@ -103,7 +109,13 @@ class LightingCapabilityValidator(BaseCapabilityValidator):
         )
 
     def validate(self, ctx: GuidedValidationContext) -> CapabilityValidationResult:
-        op_id = "light.brightness" if ctx.bundle.has_operation("light.brightness") else "light.global_color"
+        from .feature_gates import blocker_for
+        vid = ctx.device_identity.get("vid")
+        pid = ctx.device_identity.get("pid")
+        family = ctx.device_identity.get("family")
+        fw = ctx.device_identity.get("firmware")
+        has_brightness = ctx.bundle.has_operation("light.brightness") and blocker_for("light.brightness", vid=vid, pid=pid, family=family, fw=fw) is None
+        op_id = "light.brightness" if has_brightness else "light.global_color"
         ev = TestEvidence(
             operation=op_id,
             safe_command_id=op_id,
@@ -219,7 +231,13 @@ class RemapCapabilityValidator(BaseCapabilityValidator):
     capability_name = "remap"
 
     def is_applicable(self, ctx: GuidedValidationContext) -> bool:
-        return ctx.bundle.has_operation("keyboard.remap")
+        from .feature_gates import blocker_for
+        vid = ctx.device_identity.get("vid")
+        pid = ctx.device_identity.get("pid")
+        family = ctx.device_identity.get("family")
+        fw = ctx.device_identity.get("firmware")
+        # Strictly check feature gate: if blocked by missing strong E5 observable, not applicable!
+        return bool(ctx.bundle.has_operation("keyboard.remap") and blocker_for("keyboard.remap", vid=vid, pid=pid, family=family, fw=fw) is None)
 
     def representative_explanation(self) -> str:
         return (
@@ -361,11 +379,17 @@ class HallEffectCapabilityValidator(BaseCapabilityValidator):
     capability_name = "hall_effect"
 
     def is_applicable(self, ctx: GuidedValidationContext) -> bool:
-        # STRICT RULE: only applicable if device has Hall Effect / Analog capability!
+        # STRICT RULE: only applicable if device has Hall Effect / Analog capability and is eligible!
         family = ctx.device_identity.get("family", "").lower()
         name = ctx.device_identity.get("name", "").lower()
-        is_he = ("he" in family or "analog" in family or "he" in name) and "mechanical" not in family
-        return bool(is_he and ctx.bundle.has_operation("he.actuation"))
+        is_he = ("he" in family or "analog" in family or "he" in name) and "mechanical" not in family and "unknown" not in family
+        if not is_he:
+            return False
+        from .feature_gates import blocker_for
+        vid = ctx.device_identity.get("vid")
+        pid = ctx.device_identity.get("pid")
+        fw = ctx.device_identity.get("firmware")
+        return bool(ctx.bundle.has_operation("he.actuation") and blocker_for("he.actuation", vid=vid, pid=pid, family=family, fw=fw) is None)
 
     def representative_explanation(self) -> str:
         return (
@@ -659,6 +683,7 @@ class GuidedValidationEngine:
                 "certificate_path": str(cert_path),
                 "validated_groups": validated_groups,
                 "coverage_explanation": explanations,
+                "rollback_verified": final_state_verified,
             }
         else:
             return {

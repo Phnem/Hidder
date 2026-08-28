@@ -121,9 +121,11 @@ class TestGuidedValidationFlow:
             device_identity={"vendor": "AULA", "name": "HERO 84 HE", "vid": "0x372E", "pid": "0x103E", "firmware": "0216", "family": "aula_kb_v3_wired"},
         )
 
+        # On AULA physical hardware, remap is blocked by missing strong E5 observable
         validator = RemapCapabilityValidator()
-        assert validator.is_applicable(ctx) is True
+        assert validator.is_applicable(ctx) is False
 
+        # Directly testing validator execution on mock transport
         res = validator.validate(ctx)
         assert res.passed is True
         assert res.rollback_verified is True
@@ -225,7 +227,7 @@ class TestGuidedValidationFlow:
                     "pid": "0x103E",
                     "descriptor_hash": "desc-hero84-test",
                     "firmware": "0216",
-                    "family": "aula_he_v3",
+                    "family": "aula_kb_v3_wired",
                     "connection": "wired",
                 },
                 build_commit="78b4510",
@@ -237,8 +239,9 @@ class TestGuidedValidationFlow:
             assert result["state"] == STATE_VALIDATED
             assert result["verdict"] == "COMPLETE_PASS"
             assert "lighting" in result["validated_groups"]
-            assert "remap" in result["validated_groups"]
             assert "hall_effect" in result["validated_groups"]
+            assert "read_only_inventory" in result["validated_groups"]
+            assert "remap" not in result["validated_groups"]
 
             cert = result["certificate"]
             assert cert["schema"] == SCHEMA_DEVICE_CERTIFICATE

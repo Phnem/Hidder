@@ -69,6 +69,10 @@ class TestEvidence:
         # E6 is server-side quorum, never set inside Probe
         return s
 
+    def to_dict(self) -> dict[str, Any]:
+        from dataclasses import asdict
+        return asdict(self)
+
 
 def verdict_from_evidence(ev: TestEvidence) -> str:
     if ev.status in ("SKIP", "BLOCKED"):
