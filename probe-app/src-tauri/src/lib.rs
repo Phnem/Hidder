@@ -24,14 +24,8 @@ pub fn run() {
                 .build(),
         )
         .setup(move |app| {
-            match probe::start(app.handle(), initial_mode) {
-                Ok(state) => {
-                    app.manage(state);
-                }
-                Err(error) => {
-                    log::error!("the Probe engine sidecar did not start: {error}");
-                }
-            }
+            let state = probe::start(app.handle(), initial_mode)?;
+            app.manage(state);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

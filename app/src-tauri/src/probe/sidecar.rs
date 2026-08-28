@@ -66,6 +66,15 @@ fn chrono_or_now() -> String {
     format!("{}.{:03}", dur.as_secs(), dur.subsec_millis())
 }
 
+fn run_dir() -> PathBuf {
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            return dir.to_path_buf();
+        }
+    }
+    std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
+}
+
 /// Repository root (where `community/` lives), so the sidecar can resolve the
 /// `community.vetro_probe` package. `CARGO_MANIFEST_DIR` = app/src-tauri.
 fn repo_root() -> PathBuf {
@@ -83,8 +92,16 @@ fn find_bundled_binary(root: &PathBuf) -> Option<PathBuf> {
             candidates.push(dir.join("binaries").join("vetro-probe-sidecar.exe"));
             candidates.push(dir.join("binaries").join("vetro-probe-sidecar-x86_64-pc-windows-msvc.exe"));
             candidates.push(dir.join("resources").join("binaries").join("vetro-probe-sidecar.exe"));
+            candidates.push(dir.join("resources").join("binaries").join("vetro-probe-sidecar-x86_64-pc-windows-msvc.exe"));
             candidates.push(dir.join("_up_").join("binaries").join("vetro-probe-sidecar.exe"));
+            candidates.push(dir.join("_up_").join("binaries").join("vetro-probe-sidecar-x86_64-pc-windows-msvc.exe"));
         }
+    }
+    if let Ok(cwd) = std::env::current_dir() {
+        candidates.push(cwd.join("vetro-probe-sidecar.exe"));
+        candidates.push(cwd.join("vetro-probe-sidecar-x86_64-pc-windows-msvc.exe"));
+        candidates.push(cwd.join("binaries").join("vetro-probe-sidecar.exe"));
+        candidates.push(cwd.join("resources").join("binaries").join("vetro-probe-sidecar.exe"));
     }
     candidates.push(root.join("build_dist").join("vetro-probe-sidecar.exe"));
     candidates.push(root.join("probe-app").join("src-tauri").join("binaries").join("vetro-probe-sidecar.exe"));
@@ -93,26 +110,31 @@ fn find_bundled_binary(root: &PathBuf) -> Option<PathBuf> {
 }
 
 pub fn sidecar_command(mode: &Mode, root: &PathBuf) -> Command {
-    let mut cmd = if let Some(bin) = find_bundled_binary(root) {
+    let working_dir = run_dir();
+    let (mut cmd, target_dir) = if let Some(bin) = find_bundled_binary(root) {
         trace_diag(&format!("SPAWN_RESOLVE: using packaged sidecar binary {:?}", bin));
         let mut c = Command::new(bin);
         c.arg("--gui-rpc");
-        c
+        (c, working_dir)
     } else {
         trace_diag("SPAWN_RESOLVE: falling back to system Python -m community.vetro_probe.cli");
         let mut c = Command::new("python");
         c.arg("-m")
             .arg("community.vetro_probe.cli")
-            .arg("--gui-rpc")
-            .env("PYTHONPATH", root.as_os_str());
-        c
+            .arg("--gui-rpc");
+        if root.is_dir() {
+            c.env("PYTHONPATH", root.as_os_str());
+            (c, root.clone())
+        } else {
+            (c, working_dir)
+        }
     };
 
     if let Mode::Demo { scenario } = mode {
         cmd.arg("--gui-demo").arg("--scenario").arg(scenario);
     }
 
-    cmd.current_dir(root)
+    cmd.current_dir(&target_dir)
         .env("PYTHONIOENCODING", "utf-8")
         .env("PYTHONUTF8", "1")
         .env("PYTHONUNBUFFERED", "1")

@@ -56,6 +56,15 @@ fn chrono_or_now() -> String {
     format!("{}.{:03}", dur.as_secs(), dur.subsec_millis())
 }
 
+fn run_dir() -> PathBuf {
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            return dir.to_path_buf();
+        }
+    }
+    std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
+}
+
 fn repo_root() -> PathBuf {
     let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     manifest.parent().and_then(|p| p.parent()).map(PathBuf::from).unwrap_or(manifest)
@@ -70,8 +79,16 @@ fn find_bundled_binary(root: &PathBuf) -> Option<PathBuf> {
             candidates.push(dir.join("binaries").join("vetro-probe-sidecar.exe"));
             candidates.push(dir.join("binaries").join("vetro-probe-sidecar-x86_64-pc-windows-msvc.exe"));
             candidates.push(dir.join("resources").join("binaries").join("vetro-probe-sidecar.exe"));
+            candidates.push(dir.join("resources").join("binaries").join("vetro-probe-sidecar-x86_64-pc-windows-msvc.exe"));
             candidates.push(dir.join("_up_").join("binaries").join("vetro-probe-sidecar.exe"));
+            candidates.push(dir.join("_up_").join("binaries").join("vetro-probe-sidecar-x86_64-pc-windows-msvc.exe"));
         }
+    }
+    if let Ok(cwd) = std::env::current_dir() {
+        candidates.push(cwd.join("vetro-probe-sidecar.exe"));
+        candidates.push(cwd.join("vetro-probe-sidecar-x86_64-pc-windows-msvc.exe"));
+        candidates.push(cwd.join("binaries").join("vetro-probe-sidecar.exe"));
+        candidates.push(cwd.join("resources").join("binaries").join("vetro-probe-sidecar.exe"));
     }
     candidates.push(root.join("build_dist").join("vetro-probe-sidecar.exe"));
     candidates.push(root.join("probe-app").join("src-tauri").join("binaries").join("vetro-probe-sidecar.exe"));
@@ -80,26 +97,31 @@ fn find_bundled_binary(root: &PathBuf) -> Option<PathBuf> {
 }
 
 pub fn sidecar_command(mode: &Mode, root: &PathBuf) -> Command {
-    let mut cmd = if let Some(bin) = find_bundled_binary(root) {
+    let working_dir = run_dir();
+    let (mut cmd, target_dir) = if let Some(bin) = find_bundled_binary(root) {
         trace_diag(&format!("SPAWN_RESOLVE: using packaged sidecar binary {:?}", bin));
         let mut c = Command::new(bin);
         c.arg("--gui-rpc");
-        c
+        (c, working_dir)
     } else {
         trace_diag("SPAWN_RESOLVE: falling back to system Python -m community.vetro_probe.cli");
         let mut c = Command::new("python");
         c.arg("-m")
             .arg("community.vetro_probe.cli")
-            .arg("--gui-rpc")
-            .env("PYTHONPATH", root.as_os_str());
-        c
+            .arg("--gui-rpc");
+        if root.is_dir() {
+            c.env("PYTHONPATH", root.as_os_str());
+            (c, root.clone())
+        } else {
+            (c, working_dir)
+        }
     };
 
     if let Mode::Demo { scenario } = mode {
         cmd.arg("--gui-demo").arg("--scenario").arg(scenario);
     }
 
-    cmd.current_dir(root)
+    cmd.current_dir(&target_dir)
         .env("PYTHONIOENCODING", "utf-8")
         .env("PYTHONUTF8", "1")
         .env("PYTHONUNBUFFERED", "1")
@@ -326,18 +348,27 @@ impl Drop for ProbeEngine {
     }
 }
 
-pub struct State(pub Arc<Mutex<Option<ProbeEngine>>>);
+pub struct State(pub Arc<Mutex<Option<ProbeEngine>>>, pub Arc<Mutex<Option<String>>>);
 
 impl State {
+    pub fn new() -> Self {
+        Self(Arc::new(Mutex::new(None)), Arc::new(Mutex::new(None)))
+    }
+
     pub fn call(&self, method: &str, params: Value) -> Result<Value, String> {
         let guard = self
             .0
             .lock()
             .map_err(|_| "probe engine state lock poisoned".to_string())?;
-        let engine = guard
-            .as_ref()
-            .ok_or_else(|| "the Probe engine is not running".to_string())?;
-        engine.call(method, params)
+        if let Some(engine) = guard.as_ref() {
+            engine.call(method, params)
+        } else {
+            let err_guard = self.1.lock().unwrap();
+            let detail = err_guard
+                .as_deref()
+                .unwrap_or("the Probe engine is not running");
+            Err(format!("The Probe engine sidecar did not start: {detail}"))
+        }
     }
 
     pub fn last_run_result(&self) -> Result<Option<Value>, String> {
@@ -345,10 +376,11 @@ impl State {
             .0
             .lock()
             .map_err(|_| "probe engine state lock poisoned".to_string())?;
-        let engine = guard
-            .as_ref()
-            .ok_or_else(|| "the Probe engine is not running".to_string())?;
-        Ok(engine.last_run_result())
+        if let Some(engine) = guard.as_ref() {
+            Ok(engine.last_run_result())
+        } else {
+            Ok(None)
+        }
     }
 }
 
@@ -356,6 +388,7 @@ pub fn start<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
     mode: Mode,
 ) -> Result<State, String> {
+    let state = State::new();
     let emitter = app.clone();
     let sink: EventSink = Arc::new(move |name, data| {
         let event = if name == "run_result" {
@@ -366,8 +399,16 @@ pub fn start<R: tauri::Runtime>(
         use tauri::Emitter;
         let _ = emitter.emit(event, data);
     });
-    let engine = ProbeEngine::start(mode, sink)?;
-    Ok(State(Arc::new(Mutex::new(Some(engine)))))
+    match ProbeEngine::start(mode, sink) {
+        Ok(engine) => {
+            *state.0.lock().unwrap() = Some(engine);
+        }
+        Err(err) => {
+            trace_diag(&format!("PROBE_START_ERROR_CAPTURED: {err}"));
+            *state.1.lock().unwrap() = Some(err);
+        }
+    }
+    Ok(state)
 }
 
 pub fn replace<R: tauri::Runtime>(
@@ -391,6 +432,9 @@ pub fn replace<R: tauri::Runtime>(
         .lock()
         .map_err(|_| "probe engine state lock poisoned".to_string())?;
     *guard = Some(engine);
+    if let Ok(mut err_lock) = current.1.lock() {
+        *err_lock = None;
+    }
     Ok(())
 }
 
