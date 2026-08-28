@@ -7,6 +7,7 @@ without touching physical HID hardware.
 
 from __future__ import annotations
 
+import json
 import tempfile
 import time
 from pathlib import Path
@@ -439,6 +440,14 @@ def test_package_manifest_versions_and_sha256():
         assert manifest["probe_engine_version"] == "0.3.0"
         assert manifest["package_schema_version"] == "vetro.run-manifest.v1"
         assert manifest["run_id"] == "run-meta99"
+        assert manifest["knowledge_revision"] == "aula_kb_v3_r1"
+        assert "build_commit" in manifest
+        assert manifest["build_commit"] != manifest["knowledge_revision"], "build_commit must NOT equal knowledge_revision"
+
+        pkg_meta = json.loads((pkg_dir / "package_metadata.json").read_text(encoding="utf-8"))
+        assert pkg_meta["build_commit"] == manifest["build_commit"]
+        assert pkg_meta["knowledge_revision"] == "aula_kb_v3_r1"
+        assert pkg_meta["build_commit"] != pkg_meta["knowledge_revision"]
 
         # Check sha256 file
         sha256_files = list(Path(td).glob("*.sha256"))
@@ -461,7 +470,7 @@ def test_failed_run_diagnostic_package_export():
             base_dir=pkg_dir,
             run_id="run-fail88",
             label="error_diag",
-            discovery={"product_string": "AULA HERO84 HE", "firmware": "0216"},
+            discovery={"product_string": "AULA HERO84 HE", "firmware": "0216", "knowledge_revision": "aula_kb_v3_r1"},
             plan=[],
             evidence=[],
             baselines={},
@@ -473,6 +482,10 @@ def test_failed_run_diagnostic_package_export():
         diag_zips = list(Path(td).glob("VetroProbe_DIAGNOSTIC_*.zip"))
         assert len(diag_zips) >= 1
         assert "VetroProbe_DIAGNOSTIC_" in diag_zips[0].name
+
+        manifest = json.loads((pkg_dir / "run_manifest.json").read_text(encoding="utf-8"))
+        assert manifest["build_commit"] != manifest["knowledge_revision"]
+        assert manifest["knowledge_revision"] == "aula_kb_v3_r1"
 
 
 def test_human_summary_content_and_uncounted_blocked_ops():

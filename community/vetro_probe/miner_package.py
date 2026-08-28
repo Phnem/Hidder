@@ -14,8 +14,13 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
-PROBE_APP_VERSION = "0.3.0"
-PROBE_ENGINE_VERSION = "0.3.0"
+from .version import (
+    DEFAULT_KNOWLEDGE_REVISION,
+    PROBE_APP_VERSION,
+    PROBE_ENGINE_VERSION,
+    get_build_commit,
+)
+
 PACKAGE_SCHEMA_VERSION = "vetro.run-manifest.v1"
 
 
@@ -183,12 +188,16 @@ def build_package(
         json.dumps({"schema": "vetro.miner-observations.v1", "observations": observations},
                    ensure_ascii=False, indent=2), encoding="utf-8")
 
+    know_rev = discovery_clean.get("knowledge_revision") or "aula_kb_v3_r1"
+    b_commit = get_build_commit()
+
     manifest = {
         "schema": PACKAGE_SCHEMA_VERSION,
         "package_schema_version": PACKAGE_SCHEMA_VERSION,
         "probe_app_version": PROBE_APP_VERSION,
         "probe_engine_version": PROBE_ENGINE_VERSION,
-        "build_commit": discovery.get("knowledge_revision") or "aula_kb_v3_r1",
+        "build_commit": b_commit,
+        "knowledge_revision": know_rev,
         "run_id": run_id,
         "label": label,
         "terminal": terminal,
@@ -233,6 +242,8 @@ def build_package(
         f"VID/PID: {vid_str}:{pid_str}",
         f"Family: {fam_str}",
         f"Run ID: {run_id}",
+        f"Build Commit: {b_commit}",
+        f"Knowledge Revision: {know_rev}",
         f"Result: {terminal}",
         f"Executed Checks: {manifest['summary']['executed']}",
         f"Passed Checks: {manifest['summary']['passed']}",
@@ -294,6 +305,9 @@ def build_package(
         "package_sha256": sha256_hash,
         "run_id": run_id,
         "probe_app_version": PROBE_APP_VERSION,
+        "probe_engine_version": PROBE_ENGINE_VERSION,
+        "build_commit": b_commit,
+        "knowledge_revision": know_rev,
         "terminal": terminal,
     }, indent=2), encoding="utf-8")
 
