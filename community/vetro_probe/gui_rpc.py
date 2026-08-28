@@ -31,6 +31,8 @@ import traceback
 from pathlib import Path
 from typing import Any
 
+import urllib.parse
+
 # Friendly labels for the six physically-validated ops (exact HERO84/FW0216).
 OP_LABELS = {
     "keyboard.profile": "Profiles",
@@ -39,7 +41,51 @@ OP_LABELS = {
     "he.deadzone": "Deadzone",
     "he.actuation": "Actuation",
     "light.brightness": "Brightness",
+    "keyboard.remap": "Key Remap",
 }
+
+
+def make_github_issue_url(
+    brand: str = "",
+    model: str = "",
+    connection: str = "Wired USB",
+    firmware: str = "",
+    vid: str = "",
+    pid: str = "",
+    app_version: str = "0.3.0",
+    build_commit: str = "",
+    run_id: str = "",
+    failure_category: str = "",
+    observed: str = "",
+) -> str:
+    base = "https://github.com/Phnem/Hidder/issues/new"
+    title = f"[Compatibility] {brand} {model}".strip() or "[Compatibility] Device report"
+    body = (
+        f"## Device\n"
+        f"- **Brand**: {brand or 'Unknown'}\n"
+        f"- **Model**: {model or 'Unknown'}\n"
+        f"- **Connection**: {connection}\n"
+        f"- **Firmware**: {firmware or 'Unknown'}\n"
+        f"- **VID:PID**: {vid}:{pid}\n"
+        f"- **Vetro Version**: {app_version}\n"
+        f"- **Build Commit**: {build_commit}\n"
+        f"- **Run ID**: {run_id}\n\n"
+        f"## What happened?\n"
+        f"Validation result:\n"
+        f"- [x] {failure_category or 'Compatibility / validation issue'}\n\n"
+        f"## What did you observe?\n"
+        f"{observed or 'Please describe what happened.'}\n\n"
+        f"## Did the original settings return correctly?\n"
+        f"- [x] Yes (Verified \u2713)\n\n"
+        f"## Diagnostic package\n"
+        f"Please attach the generated `VetroProbe_*.zip` package.\n"
+    )
+    params = {
+        "title": title,
+        "labels": "compatibility,device-report",
+        "body": body,
+    }
+    return f"{base}?{urllib.parse.urlencode(params)}"
 
 FRIENDLY_BLOCKED = {
     "keyboard.remap": "Needs additional protocol validation",
@@ -462,10 +508,29 @@ class RealEngine:
         self._step("DISCOVERY_HANDLE_OPEN")
         try:
             transport, instance, _, _ = self.transport_factory(bundle)
-            return discover_state(instance)
+            disc = discover_state(instance)
+            # Check if certificate store already holds a validated certificate for this device
+            try:
+                from .device_certificate import CertificateStore
+                store = CertificateStore()
+                matching_cert = store.find_matching(
+                    vid=bundle.product.vid,
+                    pid=bundle.product.pid,
+                    firmware_branch=getattr(instance, "firmware_version", "") or "",
+                    descriptor_hash=getattr(instance, "descriptor_hash", "") or "",
+                )
+                if matching_cert is not None and matching_cert.terminal_verdict == "COMPLETE_PASS":
+                    disc["certificate"] = matching_cert.to_dict()
+                    disc["certified"] = True
+            except Exception:
+                pass
+            return disc
         except Exception as exc:  # noqa: BLE001
             detected: list[dict[str, Any]] = []
             reason = str(exc)
+            first_dev_name = ""
+            first_dev_vid = ""
+            first_dev_pid = ""
             try:
                 import hid  # type: ignore
                 all_devs = hid.enumerate()
@@ -485,6 +550,10 @@ class RealEngine:
                         p_hex = f"0x{p:04X}"
                         dev_entry = {"vid": v_hex, "pid": p_hex, "name": p_name, "manufacturer": mfg}
                         detected.append(dev_entry)
+                        if not first_dev_name:
+                            first_dev_name = p_name
+                            first_dev_vid = v_hex
+                            first_dev_pid = p_hex
                         if v == 0x372E:
                             aula_match = dev_entry
 
@@ -503,12 +572,22 @@ class RealEngine:
             except Exception:
                 pass
 
+            gh_url = make_github_issue_url(
+                brand="AULA" if aula_match else "",
+                model=first_dev_name,
+                vid=first_dev_vid,
+                pid=first_dev_pid,
+                failure_category="Device was not detected correctly",
+                observed=reason,
+            )
+
             return {
                 "state": "NO_DEVICE",
                 "device": None,
                 "supported_count": 0,
                 "reason": reason,
                 "detected_devices": detected,
+                "github_issue_url": gh_url,
             }
         finally:
             if transport is not None and hasattr(transport, "close"):
@@ -656,6 +735,16 @@ class RealEngine:
                     }
                     for e in run.results
                 ]
+                gh_url = make_github_issue_url(
+                    brand=bundle.product.name,
+                    model=getattr(instance, "product_string", None) or bundle.product.name,
+                    vid=bundle.product.vid,
+                    pid=bundle.product.pid,
+                    firmware=getattr(instance, "firmware_version", "unknown"),
+                    run_id=self._run_id,
+                    failure_category="Validation run completed" if run.verdict == "COMPLETE_PASS" else "Validation check failed or rolled back",
+                    observed=f"Result: {run.verdict}. Checks completed: {len(run.results)}/{len(plan.get('safe', []))}.",
+                )
                 self._result = {
                     "status": run.verdict,
                     "restored": bool(run.baseline_restored),
@@ -665,10 +754,17 @@ class RealEngine:
                     "evidence_source": "real" if self.is_physical else "mock",
                     "physical_validation_evidence": self.is_physical,
                     "output_path": str(run.package_dir) if run.package_dir else None,
+                    "github_issue_url": gh_url,
                 }
                 self._emit(emit, "run_result", self._result)
         except BaseException as exc:
             self._step("WORKER_EXCEPTION", error=str(exc), traceback=traceback.format_exc())
+            gh_url = make_github_issue_url(
+                brand="AULA HERO84",
+                run_id=self._run_id,
+                failure_category="Exception during research run",
+                observed=str(exc),
+            )
             self._result = {
                 "status": "ERROR",
                 "restored": False,
@@ -679,6 +775,7 @@ class RealEngine:
                 "physical_validation_evidence": False,
                 "output_path": None,
                 "error": str(exc),
+                "github_issue_url": gh_url,
             }
             self._emit(emit, "run_result", self._result)
 

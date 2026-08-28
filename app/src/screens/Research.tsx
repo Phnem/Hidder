@@ -93,6 +93,8 @@ export const translations = {
     stopped_title: "Research stopped",
     stopped_restored_text: "Your original device settings were restored successfully.",
     stopped_error_text: "Research run stopped with an error.",
+    report_issue_btn: "Report compatibility problem",
+    calm_failure_desc: "Compatibility check could not be completed. Your previous settings were restored where possible. You can send the diagnostic report so we can add support for this device.",
   },
   ru: {
     app_title: "Vetro Probe",
@@ -158,6 +160,8 @@ export const translations = {
     stopped_title: "Исследование остановлено",
     stopped_restored_text: "Исходные настройки устройства были успешно восстановлены.",
     stopped_error_text: "Исследование завершилось с ошибкой.",
+    report_issue_btn: "Сообщить о проблеме на GitHub",
+    calm_failure_desc: "Проверка совместимости не была завершена. Ваши исходные настройки были восстановлены. Вы можете отправить диагностический отчет, чтобы мы добавили поддержку этого устройства.",
   },
 };
 
@@ -872,12 +876,22 @@ function ResultView({
       <section className="panel warn" role="alert">
         <h2>{t.stopped_manual_title}</h2>
         <p className="muted">{t.stopped_manual_text}</p>
+        <p style={{ marginTop: "0.5rem", fontSize: "0.9rem" }}>{t.calm_failure_desc}</p>
         <div className="actions">
           <button type="button" onClick={onRestart}>
             {t.run_again}
           </button>
           <button type="button" onClick={() => void probeOpenResults()}>
             {t.open_results_folder}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const url = result.github_issue_url || result.githubIssueUrl || "https://github.com/Phnem/Hidder/issues/new";
+              window.open(url, "_blank");
+            }}
+          >
+            {t.report_issue_btn}
           </button>
           <button type="button" onClick={() => void handleCopy("Diagnostics")}>
             {copied ? t.diag_copied : t.copy_diagnostics}
@@ -898,6 +912,7 @@ function ResultView({
         <p className="muted">
           {result.restored ? t.stopped_restored_text : t.stopped_error_text}
         </p>
+        <p style={{ marginTop: "0.5rem", fontSize: "0.9rem" }}>{t.calm_failure_desc}</p>
         <p className="muted">
           {completed} / {total} {t.checks_completed_stat}.
         </p>
@@ -908,6 +923,15 @@ function ResultView({
           </button>
           <button type="button" onClick={() => void probeOpenResults()}>
             {t.open_results_folder}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const url = result.github_issue_url || result.githubIssueUrl || "https://github.com/Phnem/Hidder/issues/new";
+              window.open(url, "_blank");
+            }}
+          >
+            {t.report_issue_btn}
           </button>
           <button type="button" onClick={() => void handleCopy("Diagnostics")}>
             {copied ? t.diag_copied : t.copy_diagnostics}

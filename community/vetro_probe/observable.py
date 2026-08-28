@@ -13,17 +13,18 @@ from __future__ import annotations
 
 import time
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 
 @dataclass(frozen=True)
 class ObservableRequest:
-    kind: str  # "press_key" | "press_button" | "move_mouse" | "he_press"
-    target: str  # e.g. "PrtSc", "MouseButton4", "W", "move"
+    kind: str  # "press_key" | "press_button" | "move_mouse" | "he_press" | "visual_confirm"
+    target: str  # e.g. "PrtSc", "MouseButton4", "W", "move", "green_color"
     prompt_ru: str = ""
     prompt_en: str = ""
     timeout_ms: int = 15000
+    options: list[str] = field(default_factory=lambda: ["yes", "no"])
 
 
 @dataclass
@@ -32,17 +33,68 @@ class ObservableResult:
     observed: dict[str, Any] | None = None
     error: str = ""
     latency_ms: int = 0
-    # Classification for E5 strength (per requirement)
+    # Classification for evidence strength (per spec):
     # - "simulated": FakeObservable auto-pass (not hardware)
     # - "uncorrelated_os": GetAsyncKeyState/GetCursorPos (auxiliary, not strong)
     # - "device_correlated": WM_INPUT hDevice matches PhysicalInstance (strong E5)
-    source: str = "simulated"  # simulated | uncorrelated_os | device_correlated | prototype
+    # - "human_physical_observable": Human confirmation (explicitly marked, never pretending machine-observed)
+    source: str = "simulated"  # simulated | uncorrelated_os | device_correlated | human_physical_observable | prototype
 
 
 class ObservableListener(ABC):
     @abstractmethod
     def wait_for(self, req: ObservableRequest) -> ObservableResult:
         ...
+
+
+class HumanConfirmationListener(ObservableListener):
+    """Explicit human physical observable (e.g. lighting color confirmation).
+    
+    Never pretends to be machine-observed: source is strictly 'human_physical_observable'.
+    """
+
+    def __init__(self, callback: Any = None, auto_response: str | None = None) -> None:
+        self.callback = callback
+        self.auto_response = auto_response
+
+    def wait_for(self, req: ObservableRequest) -> ObservableResult:
+        start = time.time()
+        if self.auto_response is not None:
+            ans = self.auto_response.lower()
+            ok = ans in ("yes", "y", "true", "ok", "да")
+            latency = int((time.time() - start) * 1000)
+            return ObservableResult(
+                ok=ok,
+                observed={"human_response": self.auto_response, "prompt": req.prompt_en or req.prompt_ru},
+                error="" if ok else "User reported visual check failed (answered No)",
+                latency_ms=latency,
+                source="human_physical_observable",
+            )
+        if self.callback is not None:
+            res = self.callback(req)
+            latency = int((time.time() - start) * 1000)
+            if isinstance(res, bool):
+                return ObservableResult(
+                    ok=res,
+                    observed={"human_response": "yes" if res else "no"},
+                    error="" if res else "User reported visual check failed",
+                    latency_ms=latency,
+                    source="human_physical_observable",
+                )
+            if isinstance(res, dict):
+                ok = bool(res.get("ok", False))
+                return ObservableResult(
+                    ok=ok,
+                    observed=res,
+                    error="" if ok else res.get("error", "Human confirmation failed"),
+                    latency_ms=latency,
+                    source="human_physical_observable",
+                )
+        return ObservableResult(
+            False,
+            error="No interactive confirmation handler configured",
+            source="human_physical_observable",
+        )
 
 
 class FakeObservableListener(ObservableListener):
@@ -78,7 +130,8 @@ VK_MAP: dict[str, int] = {
     "I": 0x49, "J": 0x4A, "K": 0x4B, "L": 0x4C, "M": 0x4D, "N": 0x4E, "O": 0x4F, "P": 0x50,
     "Q": 0x51, "R": 0x52, "S": 0x53, "T": 0x54, "U": 0x55, "V": 0x56, "W": 0x57, "X": 0x58,
     "Y": 0x59, "Z": 0x5A,
-    "PrtSc": 0x2C, "F7": 0x76, "F8": 0x77,
+    "Insert": 0x2D, "Ins": 0x2D, "Delete": 0x2E, "Home": 0x24, "End": 0x23, "PageUp": 0x21, "PageDown": 0x22,
+    "PrtSc": 0x2C, "F7": 0x76, "F8": 0x77, "F9": 0x78, "F10": 0x79, "F11": 0x7A, "F12": 0x7B,
     "MouseButton4": 0x05,  # VK_XBUTTON1
     "MouseButton5": 0x06,  # VK_XBUTTON2
 }

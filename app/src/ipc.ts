@@ -232,6 +232,9 @@ export interface ProbeDiscovery {
   reason: string;
   detected_devices?: DetectedDevice[];
   detectedDevices?: DetectedDevice[];
+  github_issue_url?: string;
+  githubIssueUrl?: string;
+  certified?: boolean;
 }
 
 export interface ProbeOperation {
@@ -274,6 +277,8 @@ export interface ProbeRunResult {
   outputPath?: string | null;
   output_path?: string | null;
   error?: string;
+  github_issue_url?: string;
+  githubIssueUrl?: string;
 }
 
 export type ProbeProgressState =

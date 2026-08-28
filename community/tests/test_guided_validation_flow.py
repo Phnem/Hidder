@@ -1,0 +1,337 @@
+"""Comprehensive test suite for Guided Hardware Validation Flow.
+
+Verifies:
+- Guided capability validators (Lighting, Remap, Hall Effect, Mechanical Digital, Read-Only Inventory)
+- Observable listener taxonomy (Human physical observable vs OS device-correlated vs simulated)
+- Safe key constraints (NEVER remap critical/system keys)
+- Mechanical keyboards NEVER receive partial-depth or analog actuation tests
+- Hall Effect keyboards receive actuation threshold validation
+- Immediate rollback on visual or input observable failure
+- Durable DeviceValidationCertificate generation, storage, and fingerprint/firmware matching
+- Certificate invalidation on identity/firmware change
+- GitHub issue URL generation and template handoff
+- Rollback-first safety and fail-closed state management
+"""
+
+import os
+import tempfile
+import urllib.parse
+from pathlib import Path
+
+import pytest
+
+from community.vetro_probe.bundle import production_bundle_for_hero84
+from community.vetro_probe.device_certificate import (
+    DeviceValidationCertificate, CertificateStore, SCHEMA_DEVICE_CERTIFICATE,
+)
+from community.vetro_probe.guided_validator import (
+    GuidedValidationEngine, GuidedValidationContext,
+    LightingCapabilityValidator, RemapCapabilityValidator,
+    HallEffectCapabilityValidator, MechanicalKeyboardValidator,
+    ReadOnlyInventoryValidator,
+    FORBIDDEN_REMAP_KEYS,
+    STATE_VALIDATED, STATE_VALIDATION_FAILED,
+)
+from community.vetro_probe.gui_rpc import make_github_issue_url
+from community.vetro_probe.observable import (
+    ObservableRequest, ObservableResult,
+    HumanConfirmationListener, FakeObservableListener,
+)
+from community.vetro_probe.transport import FakeTransport
+
+
+def _mock_hero84_transport(initial_state: dict | None = None) -> FakeTransport:
+    init = initial_state or {
+        "light.brightness": 50,
+        "light.global_color": {"r": 255, "g": 0, "b": 0},
+        "keyboard.remap": {"source": "Insert", "target": "Insert"},
+        "he.actuation": 18,
+        "he.deadzone": 2,
+        "keyboard.polling": 1000,
+        "device.win_lock": False,
+        "keyboard.profile": 1,
+    }
+    return FakeTransport(initial_state=init)
+
+
+class TestGuidedValidationFlow:
+    """Guided Hardware Validation Unit & Flow Tests."""
+
+    def test_lighting_validation_success_with_human_observable(self):
+        bundle = production_bundle_for_hero84()
+        transport = _mock_hero84_transport({"light.brightness": 40})
+        human_listener = HumanConfirmationListener(auto_response="yes")
+
+        ctx = GuidedValidationContext(
+            bundle=bundle,
+            transport=transport,
+            observable_listener=human_listener,
+            device_identity={"vendor": "AULA", "name": "HERO 84 HE", "vid": "0x372E", "pid": "0x103E", "firmware": "0216", "family": "aula_kb_v3_wired"},
+        )
+
+        validator = LightingCapabilityValidator()
+        assert validator.is_applicable(ctx) is True
+
+        res = validator.validate(ctx)
+        assert res.passed is True
+        assert res.rollback_verified is True
+        assert res.evidence.status == "PASS"
+        assert res.evidence.observable_pass is True
+        assert res.evidence.observable_source == "human_physical_observable"
+        # Verify state was restored to baseline (40)
+        val, _ = transport.get("light.brightness")
+        assert val == 40
+
+    def test_lighting_validation_fails_when_user_says_no_and_rolls_back(self):
+        bundle = production_bundle_for_hero84()
+        transport = _mock_hero84_transport({"light.brightness": 60})
+        # User says lighting did not change
+        human_listener = HumanConfirmationListener(auto_response="no")
+
+        ctx = GuidedValidationContext(
+            bundle=bundle,
+            transport=transport,
+            observable_listener=human_listener,
+            device_identity={"vendor": "AULA", "name": "HERO 84 HE", "vid": "0x372E", "pid": "0x103E", "firmware": "0216", "family": "aula_kb_v3_wired"},
+        )
+
+        validator = LightingCapabilityValidator()
+        res = validator.validate(ctx)
+
+        assert res.passed is False
+        assert "Visual check failed" in res.error
+        assert res.rollback_verified is True
+        # Verify rollback restored original baseline value (60)
+        val, _ = transport.get("light.brightness")
+        assert val == 60
+
+    def test_successful_remap_validation_with_safe_secondary_key(self):
+        bundle = production_bundle_for_hero84()
+        transport = _mock_hero84_transport()
+        # Fake OS listener that expects 'A' on step 1, then 'Insert' on step 2
+        fake_os = FakeObservableListener(expectations={
+            "press_key:A": {"vk": 0x41, "target": "A"},
+            "press_key:Insert": {"vk": 0x2D, "target": "Insert"},
+        })
+
+        ctx = GuidedValidationContext(
+            bundle=bundle,
+            transport=transport,
+            observable_listener=fake_os,
+            device_identity={"vendor": "AULA", "name": "HERO 84 HE", "vid": "0x372E", "pid": "0x103E", "firmware": "0216", "family": "aula_kb_v3_wired"},
+        )
+
+        validator = RemapCapabilityValidator()
+        assert validator.is_applicable(ctx) is True
+
+        res = validator.validate(ctx)
+        assert res.passed is True
+        assert res.rollback_verified is True
+        assert res.evidence.status == "PASS"
+
+    def test_remap_fails_on_wrong_key_and_rolls_back(self):
+        bundle = production_bundle_for_hero84()
+        transport = _mock_hero84_transport()
+        # Fake OS listener where step 1 fails (wrong key or timeout)
+        fake_os = FakeObservableListener(expectations={
+            "press_key:A": {"fail": True, "error": "timeout - user pressed wrong key"},
+        })
+
+        ctx = GuidedValidationContext(
+            bundle=bundle,
+            transport=transport,
+            observable_listener=fake_os,
+            device_identity={"vendor": "AULA", "name": "HERO 84 HE", "vid": "0x372E", "pid": "0x103E", "firmware": "0216", "family": "aula_kb_v3_wired"},
+        )
+
+        validator = RemapCapabilityValidator()
+        res = validator.validate(ctx)
+
+        assert res.passed is False
+        assert "Remap input observable failed" in res.error
+        assert res.rollback_verified is True
+
+    def test_critical_keys_strictly_forbidden_from_remap(self):
+        for bad_key in ["Esc", "Escape", "Enter", "Power", "Sleep", "Reset", "Win"]:
+            assert bad_key in FORBIDDEN_REMAP_KEYS
+
+    def test_hall_effect_validation_on_he_keyboard(self):
+        bundle = production_bundle_for_hero84()
+        transport = _mock_hero84_transport({"he.actuation": 18})
+        fake_os = FakeObservableListener(expectations={
+            "he_press:W": {"travel": 2.5, "target": "W"},
+        })
+
+        ctx = GuidedValidationContext(
+            bundle=bundle,
+            transport=transport,
+            observable_listener=fake_os,
+            device_identity={"vendor": "AULA", "name": "HERO 84 HE", "vid": "0x372E", "pid": "0x103E", "firmware": "0216", "family": "aula_he_v3"},
+        )
+
+        validator = HallEffectCapabilityValidator()
+        assert validator.is_applicable(ctx) is True
+
+        res = validator.validate(ctx)
+        assert res.passed is True
+        assert res.rollback_verified is True
+        assert res.evidence.status == "PASS"
+        # Verify baseline restored
+        val, _ = transport.get("he.actuation")
+        assert val == 18
+
+    def test_mechanical_keyboard_never_receives_partial_depth_instructions(self):
+        bundle = production_bundle_for_hero84()
+        transport = _mock_hero84_transport()
+        fake_os = FakeObservableListener()
+
+        # Device is a standard mechanical keyboard (NOT Hall Effect)
+        ctx = GuidedValidationContext(
+            bundle=bundle,
+            transport=transport,
+            observable_listener=fake_os,
+            device_identity={"vendor": "Standard", "name": "Mechanical Keyboard Pro", "vid": "0x1234", "pid": "0x5678", "firmware": "1.0", "family": "standard_mechanical_kb"},
+        )
+
+        he_validator = HallEffectCapabilityValidator()
+        mech_validator = MechanicalKeyboardValidator()
+
+        # HE validator MUST REFUSE to run on mechanical keyboard
+        assert he_validator.is_applicable(ctx) is False
+
+        # Mechanical validator is applicable and only checks digital capabilities
+        assert mech_validator.is_applicable(ctx) is True
+        res = mech_validator.validate(ctx)
+        assert res.passed is True
+        assert res.capability == "mechanical_digital"
+
+    def test_guided_validation_engine_complete_pass_flow_and_certificate(self):
+        with tempfile.TemporaryDirectory() as td:
+            cert_store = CertificateStore(base_dir=Path(td))
+            engine = GuidedValidationEngine(cert_store=cert_store)
+
+            bundle = production_bundle_for_hero84()
+            transport = _mock_hero84_transport()
+            fake_os = FakeObservableListener(auto_pass=True)
+
+            ctx = GuidedValidationContext(
+                bundle=bundle,
+                transport=transport,
+                observable_listener=fake_os,
+                device_identity={
+                    "vendor": "AULA",
+                    "name": "HERO 84 HE",
+                    "vid": "0x372E",
+                    "pid": "0x103E",
+                    "descriptor_hash": "desc-hero84-test",
+                    "firmware": "0216",
+                    "family": "aula_he_v3",
+                    "connection": "wired",
+                },
+                build_commit="78b4510",
+                app_version="0.3.0",
+            )
+
+            result = engine.run_validation(ctx)
+
+            assert result["state"] == STATE_VALIDATED
+            assert result["verdict"] == "COMPLETE_PASS"
+            assert "lighting" in result["validated_groups"]
+            assert "remap" in result["validated_groups"]
+            assert "hall_effect" in result["validated_groups"]
+
+            cert = result["certificate"]
+            assert cert["schema"] == SCHEMA_DEVICE_CERTIFICATE
+            assert cert["terminal_verdict"] == "COMPLETE_PASS"
+            assert cert["identity"]["vid"] == "0x372E"
+            assert cert["identity"]["pid"] == "0x103E"
+            assert cert["identity"]["firmware_branch"] == "0216"
+
+            # Check that certificate was persistently saved and can be found
+            found = cert_store.find_matching(
+                vid="0x372E",
+                pid="0x103E",
+                firmware_branch="0216",
+                descriptor_hash="desc-hero84-test",
+            )
+            assert found is not None
+            assert found.terminal_verdict == "COMPLETE_PASS"
+
+    def test_certificate_invalidation_on_firmware_or_descriptor_change(self):
+        with tempfile.TemporaryDirectory() as td:
+            cert_store = CertificateStore(base_dir=Path(td))
+            cert = DeviceValidationCertificate(
+                vendor="AULA",
+                model="HERO 84 HE",
+                vid="0x372E",
+                pid="0x103E",
+                descriptor_hash="desc-hero84-orig",
+                firmware_branch="0216",
+                final_state_verified=True,
+                terminal_verdict="COMPLETE_PASS",
+            )
+            cert_store.save(cert)
+
+            # Same firmware -> matches
+            assert cert_store.find_matching(vid="0x372E", pid="0x103E", firmware_branch="0216", descriptor_hash="desc-hero84-orig") is not None
+
+            # Different firmware -> MUST NOT match
+            assert cert_store.find_matching(vid="0x372E", pid="0x103E", firmware_branch="0999", descriptor_hash="desc-hero84-orig") is None
+
+            # Different descriptor hash -> MUST NOT match
+            assert cert_store.find_matching(vid="0x372E", pid="0x103E", firmware_branch="0216", descriptor_hash="desc-different-hw") is None
+
+    def test_engine_stops_mutations_immediately_on_first_failure(self):
+        with tempfile.TemporaryDirectory() as td:
+            cert_store = CertificateStore(base_dir=Path(td))
+            engine = GuidedValidationEngine(cert_store=cert_store)
+
+            bundle = production_bundle_for_hero84()
+            transport = _mock_hero84_transport({"light.brightness": 50})
+            # Visual check fails
+            human_listener = HumanConfirmationListener(auto_response="no")
+
+            ctx = GuidedValidationContext(
+                bundle=bundle,
+                transport=transport,
+                observable_listener=human_listener,
+                device_identity={"vendor": "AULA", "name": "HERO 84 HE", "vid": "0x372E", "pid": "0x103E", "firmware": "0216", "family": "aula_he_v3"},
+            )
+
+            result = engine.run_validation(ctx)
+
+            assert result["state"] == STATE_VALIDATION_FAILED
+            assert result["verdict"] == "FAILED"
+            assert result["failed_capability"] == "lighting"
+            assert result["rollback_verified"] is True
+            # Verified baseline was preserved
+            val, _ = transport.get("light.brightness")
+            assert val == 50
+
+    def test_github_issue_url_generation(self):
+        url = make_github_issue_url(
+            brand="EPOMAKER",
+            model="TH99",
+            connection="Wired USB",
+            firmware="1.0.4",
+            vid="0x3151",
+            pid="0x4015",
+            app_version="0.3.0",
+            build_commit="78b4510",
+            run_id="run_12345",
+            failure_category="Lighting validation failed",
+            observed="Lighting stayed white instead of green.",
+        )
+
+        assert url.startswith("https://github.com/Phnem/Hidder/issues/new?")
+        parsed = urllib.parse.urlparse(url)
+        params = urllib.parse.parse_qs(parsed.query)
+
+        assert "[Compatibility] EPOMAKER TH99" in params["title"][0]
+        assert "compatibility,device-report" in params["labels"][0]
+        assert "0x3151:0x4015" in params["body"][0]
+        assert "run_12345" in params["body"][0]
+        assert "Lighting stayed white" in params["body"][0]
+        # Verify no local Windows paths leaked in URL
+        assert "C:\\" not in url
+        assert "D:\\" not in url

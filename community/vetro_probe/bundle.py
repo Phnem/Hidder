@@ -47,6 +47,9 @@ class Bundle:
     def get_operation(self, op_id: str) -> OperationDef | None:
         return self.operations.get(op_id)
 
+    def has_operation(self, op_id: str) -> bool:
+        return op_id in self.operations
+
     def has_bounds(self, op_id: str) -> bool:
         return op_id in self.bounds
 
