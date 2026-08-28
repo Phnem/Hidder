@@ -246,18 +246,24 @@ export interface ProbeRecoveryStatus {
 
 export interface ProbeRunResult {
   status:
+    | "COMPLETE_PASS"
     | "SUCCESS_RESTORED"
     | "FAIL_RESTORED"
     | "FAILED_REQUIRES_MANUAL_RESTORE"
     | "RECOVERY_IN_PROGRESS"
     | string;
   restored: boolean;
-  checksCompleted: number;
-  checksTotal: number;
+  checksCompleted?: number;
+  checksTotal?: number;
+  checks_completed?: number;
+  checks_total?: number;
   results: { id: string; label?: string; status: string; restored: boolean }[];
   evidenceSource?: string;
+  evidence_source?: string;
   physicalValidationEvidence?: boolean;
+  physical_validation_evidence?: boolean;
   outputPath?: string | null;
+  output_path?: string | null;
   error?: string;
 }
 

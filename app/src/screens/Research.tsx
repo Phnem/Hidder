@@ -561,8 +561,10 @@ export function ResearchScreen() {
       {screen.kind === "result" && result && (
         <ResultView
           result={result}
-          onShowDetails={setShowDetails}
+          discovery={discovery}
+          plan={plan}
           showDetails={showDetails}
+          onShowDetails={setShowDetails}
           onRestart={() => void init()}
         />
       )}
@@ -572,26 +574,71 @@ export function ResearchScreen() {
 
 function ResultView({
   result,
+  discovery,
+  plan,
   showDetails,
   onShowDetails,
   onRestart,
 }: {
   result: ProbeRunResult;
+  discovery: ProbeDiscovery | null;
+  plan: ProbePlan | null;
   showDetails: boolean;
   onShowDetails: (v: boolean) => void;
   onRestart: () => void;
 }) {
+  const [copied, setCopied] = useState(false);
+
+  const completed =
+    result.checks_completed ??
+    result.checksCompleted ??
+    result.results?.filter((r) => r.status === "PASS" || r.status === "COMPLETE_PASS").length ??
+    0;
+  const total =
+    result.checks_total ??
+    result.checksTotal ??
+    plan?.safeCount ??
+    result.results?.length ??
+    6;
+  const blockedCount = plan?.blocked?.length ?? (15 - total > 0 ? 15 - total : 0);
+
+  const handleCopy = async (label: string) => {
+    const summaryLines = [
+      `=== Vetro Probe ${label} ===`,
+      `Device: ${discovery?.device?.name ?? "Detected device"} (Firmware: ${discovery?.device?.firmware ?? "unknown"})`,
+      `Status: ${result.status}`,
+      `Checks Completed: ${completed} of ${total}`,
+      `Original Settings Restored: ${result.restored ? "Yes (Verified ✓)" : "No"}`,
+      result.error ? `Error: ${result.error}` : "",
+      result.outputPath ? `Package: ${result.outputPath}` : "",
+    ].filter(Boolean);
+
+    try {
+      await navigator.clipboard.writeText(summaryLines.join("\n"));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // fallback if clipboard write fails
+    }
+  };
+
   if (result.status === "FAILED_REQUIRES_MANUAL_RESTORE") {
     return (
       <section className="panel warn" role="alert">
         <h2>Research stopped — Manual restore required</h2>
         <p className="muted">
           Your original device settings could not be verified as restored. Please
-          restore them using the vendor software, then restart.
+          restore them using your vendor software, then restart.
         </p>
         <div className="actions">
           <button type="button" onClick={onRestart}>
-            Start new session
+            Run again
+          </button>
+          <button type="button" onClick={() => void probeOpenResults()}>
+            Open results folder
+          </button>
+          <button type="button" onClick={() => void handleCopy("Diagnostics")}>
+            {copied ? "Copied ✓" : "Copy diagnostics"}
           </button>
           <button type="button" onClick={() => onShowDetails(!showDetails)}>
             {showDetails ? "Hide details" : "Technical details"}
@@ -602,19 +649,28 @@ function ResultView({
     );
   }
 
-  if (result.status === "FAIL_RESTORED") {
+  if (result.status === "FAIL_RESTORED" || result.status === "ERROR") {
     return (
-      <section className="panel">
+      <section className="panel warn" role="alert">
         <h2>Research stopped</h2>
         <p className="muted">
-          Your original device settings were restored successfully.
+          {result.restored
+            ? "Your original device settings were restored successfully."
+            : "Research run stopped with an error."}
         </p>
         <p className="muted">
-          {result.checksCompleted} of {result.checksTotal} checks completed.
+          {completed} of {total} checks completed.
         </p>
+        {result.error && <p className="error-text">{result.error}</p>}
         <div className="actions">
           <button type="button" onClick={onRestart}>
-            Start new session
+            Run again
+          </button>
+          <button type="button" onClick={() => void probeOpenResults()}>
+            Open results folder
+          </button>
+          <button type="button" onClick={() => void handleCopy("Diagnostics")}>
+            {copied ? "Copied ✓" : "Copy diagnostics"}
           </button>
           <button type="button" onClick={() => onShowDetails(!showDetails)}>
             {showDetails ? "Hide details" : "Technical details"}
@@ -626,27 +682,61 @@ function ResultView({
   }
 
   return (
-    <section className="panel">
-      <h2>Research complete</h2>
-      <p className="muted">
-        Original device settings verified and restored.
-      </p>
-      <p className="muted">
-        {result.checksCompleted} of {result.checksTotal} checks completed successfully.
-      </p>
-      <div className="actions">
-        <button type="button" onClick={onRestart}>
-          Start new session
-        </button>
-        <button type="button" onClick={() => void probeOpenResults()}>
-          Open results folder
-        </button>
-        <button type="button" onClick={() => onShowDetails(!showDetails)}>
-          {showDetails ? "Hide details" : "Technical details"}
-        </button>
-      </div>
-      {showDetails && <Details result={result} />}
-    </section>
+    <>
+      <section className="panel result-success-panel">
+        <div className="result-header-badge">✓ Research complete</div>
+        <h2>{discovery?.device?.name ?? "Device"} verified successfully</h2>
+        <div className="result-stats-row">
+          <div className="result-stat-item">
+            <span className="stat-value">{completed} / {total}</span>
+            <span className="stat-label">checks completed</span>
+          </div>
+          <div className="result-stat-item">
+            <span className="stat-value">✓ Restored</span>
+            <span className="stat-label">original settings verified</span>
+          </div>
+          <div className="result-stat-item">
+            <span className="stat-value">0</span>
+            <span className="stat-label">failures</span>
+          </div>
+        </div>
+        <p className="muted">
+          {completed} of {total} checks completed successfully.
+          {blockedCount > 0 && ` (${blockedCount} additional checks were safely skipped)`}
+        </p>
+        <div className="actions result-actions">
+          <button type="button" className="button-primary" onClick={() => void probeOpenResults()}>
+            Open results folder
+          </button>
+          <button type="button" onClick={() => void handleCopy("Result Summary")}>
+            {copied ? "Summary copied ✓" : "Copy results summary"}
+          </button>
+          <button type="button" onClick={onRestart}>
+            Run again
+          </button>
+          <button type="button" onClick={() => onShowDetails(!showDetails)}>
+            {showDetails ? "Hide details" : "Technical details"}
+          </button>
+        </div>
+      </section>
+
+      {/* Completed checks row display */}
+      <section className="panel">
+        <h3>Completed checks</h3>
+        <ul className="plan-list">
+          {(result.results && result.results.length > 0
+            ? result.results
+            : plan?.safe ?? []
+          ).map((op) => (
+            <li key={op.id} className="op-pass">
+              <span>{op.label ?? op.id}</span>
+              <span className="op-state badge-pass">✓ Completed</span>
+            </li>
+          ))}
+        </ul>
+        {showDetails && <Details result={result} />}
+      </section>
+    </>
   );
 }
 

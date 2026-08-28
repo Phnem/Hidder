@@ -105,4 +105,21 @@ def build_package(
         manifest["final_verdict"] = vd
     (package / "run_manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     (package / "summary.json").write_text(json.dumps(manifest["summary"], ensure_ascii=False, indent=2), encoding="utf-8")
+
+    # Build single-file tester handoff archives (vetro_probe_results.zip)
+    try:
+        import zipfile
+        zip_targets = [
+            package / "vetro_probe_results.zip",
+            package.parent / "vetro_probe_results.zip",
+        ]
+        for zip_target in zip_targets:
+            with zipfile.ZipFile(zip_target, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+                for file_path in package.rglob("*"):
+                    if file_path.is_file() and file_path.name != "vetro_probe_results.zip":
+                        arcname = file_path.relative_to(package)
+                        zf.write(file_path, arcname)
+    except Exception:
+        pass
+
     return package

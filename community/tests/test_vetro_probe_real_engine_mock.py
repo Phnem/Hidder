@@ -295,3 +295,35 @@ def test_real_engine_worker_exception_handling():
         assert len(result_evts) == 1
         assert result_evts[0]["data"]["status"] == "ERROR"
 
+
+def test_miner_package_generates_zip_archive():
+    """Verify that build_package creates a single-file ZIP archive."""
+    import zipfile
+    from community.vetro_probe.miner_package import build_package
+    from community.vetro_probe.identity import mock_hero84_instance
+
+    inst = mock_hero84_instance()
+    with tempfile.TemporaryDirectory() as td:
+        pkg_dir = Path(td) / "test_run"
+        built = build_package(
+            base_dir=pkg_dir,
+            run_id="run-test123",
+            label="test",
+            discovery={"product_string": inst.product_string, "vid": inst.vid, "pid": inst.pid},
+            plan=[{"operation": "keyboard.profile", "classification": "AUTO_REVERSIBLE"}],
+            evidence=[],
+            baselines={},
+            final_state={"restored": True},
+            certificates=[],
+            recovery={},
+            terminal="COMPLETE_PASS",
+        )
+        assert built.is_dir()
+        assert (built / "run_manifest.json").is_file()
+        zip_path = Path(td) / "vetro_probe_results.zip"
+        assert zip_path.is_file(), "vetro_probe_results.zip was not created in parent dir"
+        with zipfile.ZipFile(zip_path, "r") as zf:
+            names = zf.namelist()
+            assert "run_manifest.json" in names
+            assert "device_identity.json" in names
+

@@ -185,6 +185,68 @@
   animation: probe-pulse 0.9s infinite ease-in-out;
 }
 
+/* --- Result Success Card & Summary --------------------------------------- */
+
+.research .result-success-panel {
+  border-color: color-mix(in srgb, #3fb950 35%, transparent);
+  background: color-mix(in srgb, #3fb950 6%, transparent);
+}
+
+.research .result-header-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #3fb950;
+  margin-bottom: 0.25rem;
+}
+
+.research .result-stats-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.research .result-stat-item {
+  display: flex;
+  flex-direction: column;
+  padding: 0.6rem 0.8rem;
+  background: color-mix(in srgb, var(--surface, #1e1e1e) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border, #333) 80%, transparent);
+  border-radius: 6px;
+}
+
+.research .result-stat-item .stat-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text, #eee);
+}
+
+.research .result-stat-item .stat-label {
+  font-size: 0.75rem;
+  color: var(--muted, #888);
+  margin-top: 0.15rem;
+}
+
+.research .result-actions {
+  flex-wrap: wrap;
+}
+
+.research .button-primary {
+  background: var(--accent, #febe10);
+  color: #111;
+  font-weight: 700;
+  border: none;
+}
+
+.research .button-primary:hover {
+  filter: brightness(1.08);
+}
+
 /* --- Actions & Details ---------------------------------------------------- */
 
 .research .actions {

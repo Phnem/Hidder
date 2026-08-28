@@ -58,7 +58,17 @@ pub fn probe_open_results() -> Result<(), String> {
     let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
     #[cfg(windows)]
     {
-        let _ = std::process::Command::new("explorer").arg(cwd).spawn();
+        let zip_path = cwd.join("vetro_probe_results.zip");
+        let run_dir = cwd.join("vetro_gui_run");
+        if zip_path.exists() {
+            let _ = std::process::Command::new("explorer")
+                .arg(format!("/select,{}", zip_path.display()))
+                .spawn();
+        } else if run_dir.exists() {
+            let _ = std::process::Command::new("explorer").arg(&run_dir).spawn();
+        } else {
+            let _ = std::process::Command::new("explorer").arg(&cwd).spawn();
+        }
     }
     Ok(())
 }
