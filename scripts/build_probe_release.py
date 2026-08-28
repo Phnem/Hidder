@@ -98,7 +98,7 @@ def main() -> None:
         bundle_dir = PROBE_APP_DIR / "src-tauri" / "target" / "release" / "bundle"
 
     # 5. Assemble Portable Package
-    version = "0.3.0"
+    version = "0.3.1"
     portable_dir_name = f"VetroProbe-v{version}-win-x64-portable"
     portable_dir = DIST_RELEASE_DIR / portable_dir_name
     if portable_dir.exists():

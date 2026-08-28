@@ -1,0 +1,75 @@
+{
+  "schema": "vetro.guided-validation-plan.v1",
+  "version": 1,
+  "family": "aula_kb_v3_wired",
+  "scope": {
+    "vid": "0x372E",
+    "pid": "0x103E",
+    "firmware": "0216",
+    "connection": "wired"
+  },
+  "validation_groups": [
+    {
+      "group_id": "lighting",
+      "representative_operation": "light.brightness",
+      "covered_members": [
+        "light.brightness"
+      ],
+      "shared_invariants": "Register 0x01 lighting frame with canonical device echo validation",
+      "safe_test_strategy": "distinct brightness shift (10 vs 100)",
+      "rollback_contract": "RESTORE_VALUE_AND_READBACK",
+      "observable_contract": "HUMAN_PHYSICAL_OBSERVABLE",
+      "residual_requirements": [
+        "per_key_rgb_blocked",
+        "effect_selector_blocked"
+      ],
+      "status": "ELIGIBLE"
+    },
+    {
+      "group_id": "he_actuation",
+      "representative_operation": "he.actuation",
+      "covered_members": [
+        "he.actuation",
+        "he.deadzone"
+      ],
+      "shared_invariants": "Native 0.01mm integer encoding with 0.5mm step quantization",
+      "safe_test_strategy": "step to 1.0mm (raw 100) on-grid",
+      "rollback_contract": "RESTORE_VALUE_AND_READBACK",
+      "observable_contract": "HE_TRAVEL_OBSERVABLE",
+      "residual_requirements": [
+        "rapid_trigger_blocked"
+      ],
+      "status": "ELIGIBLE"
+    },
+    {
+      "group_id": "keyboard_digital",
+      "representative_operation": "keyboard.polling",
+      "covered_members": [
+        "keyboard.polling",
+        "device.win_lock",
+        "keyboard.profile"
+      ],
+      "shared_invariants": "Atomic enum command / feature bitmask",
+      "safe_test_strategy": "discrete enum cycle",
+      "rollback_contract": "RESTORE_VALUE_AND_READBACK",
+      "observable_contract": "NONE",
+      "residual_requirements": [],
+      "status": "ELIGIBLE"
+    },
+    {
+      "group_id": "keyboard_remap",
+      "representative_operation": "keyboard.remap",
+      "covered_members": [
+        "keyboard.remap"
+      ],
+      "shared_invariants": "EEPROM key index table update",
+      "safe_test_strategy": "Insert -> A -> Insert",
+      "rollback_contract": "RESTORE_VALUE_AND_READBACK",
+      "observable_contract": "STRONG_WM_INPUT_CORRELATED",
+      "residual_requirements": [
+        "strong_device_correlated_raw_input_hook_required"
+      ],
+      "status": "BLOCKED"
+    }
+  ]
+}

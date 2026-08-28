@@ -68,7 +68,7 @@ class GuidedValidationContext:
     observable_listener: ObservableListener
     device_identity: dict[str, Any]
     build_commit: str = ""
-    app_version: str = "0.3.0"
+    app_version: str = "0.3.1"
     on_step_progress: Callable[[str, dict[str, Any]], None] | None = None
     on_prompt: Callable[[ObservableRequest], Any] | None = None
 

@@ -39,8 +39,8 @@ def generate_build_metadata() -> str:
 BUILD_COMMIT = "{commit}"
 BUILD_DIRTY = {dirty}
 BUILD_TIMESTAMP = {ts}
-PROBE_APP_VERSION = "0.3.0"
-PROBE_ENGINE_VERSION = "0.3.0"
+PROBE_APP_VERSION = "0.3.1"
+PROBE_ENGINE_VERSION = "0.3.1"
 '''
     meta_file.write_text(code, encoding="utf-8")
     print(f"[+] Embedded build metadata: commit={commit} dirty={dirty}")

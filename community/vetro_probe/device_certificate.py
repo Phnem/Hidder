@@ -43,8 +43,8 @@ class DeviceValidationCertificate:
     knowledge_revision: str = ""
     
     # Build & Provenance Metadata
-    app_version: str = "0.3.0"
-    engine_version: str = "0.3.0"
+    app_version: str = "0.3.1"
+    engine_version: str = "0.3.1"
     build_commit: str = ""
     
     # Validation Execution Details
@@ -112,8 +112,8 @@ class DeviceValidationCertificate:
             connection_mode=ident.get("connection_mode", ""),
             protocol_family=ident.get("protocol_family", ""),
             knowledge_revision=ident.get("knowledge_revision", ""),
-            app_version=bld.get("app_version", "0.3.0"),
-            engine_version=bld.get("engine_version", "0.3.0"),
+            app_version=bld.get("app_version", "0.3.1"),
+            engine_version=bld.get("engine_version", "0.3.1"),
             build_commit=bld.get("build_commit", ""),
             validated_capability_groups=val.get("validated_capability_groups", []),
             individual_operations=val.get("individual_operations", []),
@@ -153,6 +153,63 @@ class DeviceValidationCertificate:
         if knowledge_revision and self.knowledge_revision:
             if knowledge_revision != self.knowledge_revision:
                 return False
+        return True
+
+    def authorizes_operation(
+        self,
+        operation_id: str,
+        bundle: Any = None,
+        *,
+        vid: str = "",
+        pid: str = "",
+        firmware_branch: str = "",
+        descriptor_hash: str = "",
+    ) -> bool:
+        """Strict capability-scoped check.
+        
+        Certificate MUST NOT be a blanket permission token.
+        An operation is authorized by this certificate IFF:
+          1. The certificate is valid for the exact physical device scope.
+          2. The certificate explicitly records the validated capability group covering this operation.
+          3. The operation is not blocked by feature gates or safety invariants.
+        """
+        if not self.is_valid_for(
+            vid=vid or self.vid,
+            pid=pid or self.pid,
+            descriptor_hash=descriptor_hash or self.descriptor_hash,
+            firmware_branch=firmware_branch or self.firmware_branch,
+            connection_mode=self.connection_mode,
+        ):
+            return False
+
+        # Map operations to capability groups
+        op_to_group = {
+            "light.brightness": "lighting",
+            "light.global_color": "lighting",
+            "keyboard.remap": "keyboard.remap",
+            "he.actuation": "he.actuation",
+            "he.deadzone": "he.actuation",
+            "keyboard.polling": "keyboard.polling",
+            "device.win_lock": "device.win_lock",
+            "keyboard.profile": "keyboard.profile",
+        }
+
+        group = op_to_group.get(operation_id)
+        if not group:
+            return False
+
+        # Must be explicitly recorded in validated_capability_groups
+        if group not in self.validated_capability_groups and operation_id not in self.validated_capability_groups:
+            return False
+
+        # Verify operation is not globally blocked by feature policy
+        try:
+            from .feature_gates import blocker_for
+            if blocker_for(operation_id, vid=self.vid, pid=self.pid, family=self.protocol_family, fw=self.firmware_branch) is not None:
+                return False
+        except Exception:
+            pass
+
         return True
 
 

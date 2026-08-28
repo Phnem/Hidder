@@ -52,7 +52,7 @@ def make_github_issue_url(
     firmware: str = "",
     vid: str = "",
     pid: str = "",
-    app_version: str = "0.3.0",
+    app_version: str = "0.3.1",
     build_commit: str = "",
     run_id: str = "",
     failure_category: str = "",

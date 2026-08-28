@@ -3,7 +3,7 @@ import { ResearchScreen } from "../../app/src/screens/Research";
 import { probeSetMode } from "../../app/src/ipc";
 
 export function StandaloneApp() {
-  const [version] = useState("0.3.0");
+  const [version] = useState("0.3.1");
 
   useEffect(() => {
     // If started with ?mode=demo, configure demo scenario

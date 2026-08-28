@@ -229,7 +229,7 @@ class TestGuidedValidationFlow:
                     "connection": "wired",
                 },
                 build_commit="78b4510",
-                app_version="0.3.0",
+                app_version="0.3.1",
             )
 
             result = engine.run_validation(ctx)
@@ -316,7 +316,7 @@ class TestGuidedValidationFlow:
             firmware="1.0.4",
             vid="0x3151",
             pid="0x4015",
-            app_version="0.3.0",
+            app_version="0.3.1",
             build_commit="78b4510",
             run_id="run_12345",
             failure_category="Lighting validation failed",
@@ -335,3 +335,84 @@ class TestGuidedValidationFlow:
         # Verify no local Windows paths leaked in URL
         assert "C:\\" not in url
         assert "D:\\" not in url
+
+    def test_certificate_cannot_expose_ineligible_or_unvalidated_operation(self):
+        cert = DeviceValidationCertificate(
+            vendor="AULA",
+            model="HERO 84 HE",
+            vid="0x372E",
+            pid="0x103E",
+            firmware_branch="0216",
+            validated_capability_groups=["lighting"],
+            final_state_verified=True,
+            terminal_verdict="COMPLETE_PASS",
+        )
+
+        # Lighting group is validated
+        assert cert.authorizes_operation("light.brightness") is True
+
+        # Remap is NOT validated -> MUST NOT be authorized
+        assert cert.authorizes_operation("keyboard.remap") is False
+
+        # Rapid trigger is NOT validated -> MUST NOT be authorized
+        assert cert.authorizes_operation("he.rt") is False
+
+        # Factory reset is destructive/ineligible -> MUST NOT be authorized
+        assert cert.authorizes_operation("factory_reset") is False
+
+    def test_certificate_covering_actuation_cannot_expose_rapid_trigger(self):
+        cert = DeviceValidationCertificate(
+            vendor="AULA",
+            model="HERO 84 HE",
+            vid="0x372E",
+            pid="0x103E",
+            firmware_branch="0216",
+            validated_capability_groups=["he.actuation"],
+            final_state_verified=True,
+            terminal_verdict="COMPLETE_PASS",
+        )
+
+        # he.actuation and he.deadzone share the proven actuation group
+        assert cert.authorizes_operation("he.actuation") is True
+        assert cert.authorizes_operation("he.deadzone") is True
+
+        # he.rt (Rapid Trigger) is NOT covered by actuation group -> MUST be rejected
+        assert cert.authorizes_operation("he.rt") is False
+
+    def test_unknown_switch_technology_never_receives_analog_plan(self):
+        bundle = production_bundle_for_hero84()
+        transport = _mock_hero84_transport()
+        fake_os = FakeObservableListener()
+
+        # Device with unknown / unspecified switch technology
+        ctx = GuidedValidationContext(
+            bundle=bundle,
+            transport=transport,
+            observable_listener=fake_os,
+            device_identity={"vendor": "UnknownVendor", "name": "Generic KB", "vid": "0x9999", "pid": "0x8888", "firmware": "1.0", "family": "unknown_family"},
+        )
+
+        he_validator = HallEffectCapabilityValidator()
+        assert he_validator.is_applicable(ctx) is False
+
+    def test_rebuild_does_not_invalidate_hardware_proof_if_scope_unchanged(self):
+        cert = DeviceValidationCertificate(
+            vendor="AULA",
+            model="HERO 84 HE",
+            vid="0x372E",
+            pid="0x103E",
+            descriptor_hash="desc-orig",
+            firmware_branch="0216",
+            build_commit="commit_aaa",
+            final_state_verified=True,
+            terminal_verdict="COMPLETE_PASS",
+        )
+
+        # Same hardware scope with new application rebuild -> still valid
+        assert cert.is_valid_for(
+            vid="0x372E",
+            pid="0x103E",
+            descriptor_hash="desc-orig",
+            firmware_branch="0216",
+            connection_mode="wired",
+        ) is True

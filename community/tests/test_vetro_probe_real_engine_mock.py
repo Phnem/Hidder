@@ -436,8 +436,8 @@ def test_package_manifest_versions_and_sha256():
             terminal="COMPLETE_PASS",
         )
         manifest = json.loads((pkg_dir / "run_manifest.json").read_text(encoding="utf-8"))
-        assert manifest["probe_app_version"] == "0.3.0"
-        assert manifest["probe_engine_version"] == "0.3.0"
+        assert manifest["probe_app_version"] == "0.3.1"
+        assert manifest["probe_engine_version"] == "0.3.1"
         assert manifest["package_schema_version"] == "vetro.run-manifest.v1"
         assert manifest["run_id"] == "run-meta99"
         assert manifest["knowledge_revision"] == "aula_kb_v3_r1"

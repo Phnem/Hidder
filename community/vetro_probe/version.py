@@ -5,8 +5,8 @@ from __future__ import annotations
 import time
 from typing import Any
 
-PROBE_APP_VERSION = "0.3.0"
-PROBE_ENGINE_VERSION = "0.3.0"
+PROBE_APP_VERSION = "0.3.1"
+PROBE_ENGINE_VERSION = "0.3.1"
 DEFAULT_KNOWLEDGE_REVISION = "aula_kb_v3_r1"
 
 try:

@@ -413,7 +413,7 @@ export function ResearchScreen() {
     <div className="probe-top-bar">
       <div className="probe-app-title">
         {t.app_title}
-        <span className="version-tag">v0.3.0</span>
+        <span className="version-tag">v0.3.1</span>
       </div>
       <div className="lang-switcher">
         <button
@@ -854,7 +854,7 @@ function ResultView({
 
   const handleCopy = async (label: string) => {
     const summaryLines = [
-      `Vetro Probe v0.3.0 ${label}:`,
+      `Vetro Probe v0.3.1 ${label}:`,
       `Device: ${discovery?.device?.name ?? "Detected device"} (FW ${discovery?.device?.firmware ?? "unknown"})`,
       `Status: ${result.status} (${completed}/${total} passed, 0 failed${blockedCount > 0 ? `, ${blockedCount} safely skipped` : ""})`,
       `Original Settings Restored: ${result.restored ? "Yes (Verified ✓)" : "No"}`,
