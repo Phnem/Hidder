@@ -13,6 +13,7 @@ Verifies:
 - Rollback-first safety and fail-closed state management
 """
 
+import json
 import os
 import tempfile
 import urllib.parse
@@ -453,3 +454,112 @@ class TestGuidedValidationFlow:
             firmware_branch="0216",
             connection_mode="wired",
         ) is True
+
+    def test_run_guided_validation_real_branch_with_injected_transport(self, monkeypatch):
+        from community.vetro_probe.cli import run_guided_validation
+        from community.vetro_probe.identity import PhysicalInstance
+
+        mock_instance = PhysicalInstance(
+            vid="0x372E",
+            pid="0x103E",
+            descriptor_hash="desc-test-hero84",
+            firmware_version="0216",
+            connection_mode="wired",
+            interfaces=[0, 1, 2],
+            report_ids=[1, 2, 4],
+            product_string="AULA HERO84 HE",
+            manufacturer="AULA",
+        )
+        mock_transport = _mock_hero84_transport({"light.brightness": 10})
+
+        write_calls = []
+        orig_set = mock_transport.set
+        def tracking_set(op, val):
+            write_calls.append((op, val))
+            return orig_set(op, val)
+        mock_transport.set = tracking_set
+
+        monkeypatch.setattr("community.vetro_probe.cli._create_real_transport", lambda b: (mock_transport, mock_instance))
+
+        with tempfile.TemporaryDirectory() as td:
+            out_dir = Path(td) / "run_out"
+            rc = run_guided_validation(run_dir=out_dir, use_real=True, auto_confirm=True)
+            assert rc == 0
+
+            # Verified certificate produced with lighting.brightness
+            summary = json.loads((out_dir / "guided_validation_summary.json").read_text(encoding="utf-8"))
+            assert summary["verdict"] == "COMPLETE_PASS"
+            assert summary["validated_groups"] == ["lighting.brightness"]
+            assert summary["rollback_verified"] is True
+
+            # Exactly 2 writes: 1 test mutation (brightness 5) and 1 rollback (brightness 10)
+            assert len(write_calls) == 2
+            assert write_calls[0][0] == "light.brightness"
+            assert write_calls[1][0] == "light.brightness"
+
+    def test_run_guided_validation_real_branch_fails_closed_on_identity_mismatch(self, monkeypatch):
+        from community.vetro_probe.cli import run_guided_validation
+        from community.vetro_probe.identity import PhysicalInstance
+
+        # Wrong VID / PID (e.g. 0x9999:0x8888)
+        bad_instance = PhysicalInstance(
+            vid="0x9999",
+            pid="0x8888",
+            descriptor_hash="desc-test-bad",
+            firmware_version="0216",
+            connection_mode="wired",
+            interfaces=[0],
+            report_ids=[1],
+        )
+        mock_transport = _mock_hero84_transport({"light.brightness": 10})
+        write_calls = []
+        mock_transport.set = lambda op, val: write_calls.append((op, val))
+
+        monkeypatch.setattr("community.vetro_probe.cli._create_real_transport", lambda b: (mock_transport, bad_instance))
+
+        with tempfile.TemporaryDirectory() as td:
+            out_dir = Path(td) / "run_out"
+            rc = run_guided_validation(run_dir=out_dir, use_real=True, auto_confirm=True)
+            assert rc == 1
+            # STRICT REQUIREMENT: ZERO physical writes occurred
+            assert len(write_calls) == 0
+
+    def test_run_guided_validation_real_branch_fails_closed_on_firmware_mismatch(self, monkeypatch):
+        from community.vetro_probe.cli import run_guided_validation
+        from community.vetro_probe.identity import PhysicalInstance
+
+        # Unsupported firmware branch
+        bad_fw_instance = PhysicalInstance(
+            vid="0x372E",
+            pid="0x103E",
+            descriptor_hash="desc-test-badfw",
+            firmware_version="9999",
+            connection_mode="wired",
+            interfaces=[0],
+            report_ids=[1],
+        )
+        mock_transport = _mock_hero84_transport({"light.brightness": 10})
+        write_calls = []
+        mock_transport.set = lambda op, val: write_calls.append((op, val))
+
+        monkeypatch.setattr("community.vetro_probe.cli._create_real_transport", lambda b: (mock_transport, bad_fw_instance))
+
+        with tempfile.TemporaryDirectory() as td:
+            out_dir = Path(td) / "run_out"
+            rc = run_guided_validation(run_dir=out_dir, use_real=True, auto_confirm=True)
+            assert rc == 1
+            # STRICT REQUIREMENT: ZERO physical writes occurred
+            assert len(write_calls) == 0
+
+    def test_run_guided_validation_real_branch_fails_closed_on_connection_error(self, monkeypatch):
+        from community.vetro_probe.cli import run_guided_validation
+
+        def failing_connect(bundle):
+            raise RuntimeError("Device node not found / busy")
+
+        monkeypatch.setattr("community.vetro_probe.cli._create_real_transport", failing_connect)
+
+        with tempfile.TemporaryDirectory() as td:
+            out_dir = Path(td) / "run_out"
+            rc = run_guided_validation(run_dir=out_dir, use_real=True, auto_confirm=True)
+            assert rc == 1

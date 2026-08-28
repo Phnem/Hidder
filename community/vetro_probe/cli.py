@@ -495,90 +495,108 @@ def run_guided_validation(
         except Exception:
             pass
 
-    # 2. Identity & Transport Resolution
-    if use_real:
-        from .aula_transport import AulaHidTransport
-        from .identity import ExactIdentityGate
-        print(f"[VetroProbe Guided] Connecting to physical hardware {bundle.product.vid}:{bundle.product.pid}...")
-        try:
-            transport, instance = _create_real_transport(bundle)
-        except Exception as e:
-            print(f"[VetroProbe Guided] Physical device connection failed: {e}", file=sys.stderr)
-            return 1
+    transport = None
+    try:
+        # 2. Identity & Transport Resolution
+        if use_real:
+            from .identity import ExactIdentityGate
+            print(f"[VetroProbe Guided] Connecting to physical hardware {bundle.product.vid}:{bundle.product.pid}...")
+            try:
+                transport, instance = _create_real_transport(bundle)
+            except Exception as e:
+                print(f"\n[VetroProbe Guided] Preflight failed before any device settings were changed.", file=sys.stderr)
+                print(f"Reason: Physical device connection failed: {e}", file=sys.stderr)
+                print(f"Physical mutations performed: 0\n", file=sys.stderr)
+                return 1
 
-        gate = ExactIdentityGate()
-        gate_res = gate.verify(instance, bundle)
-        if not gate_res.ok:
-            print(f"[VetroProbe Guided] ExactIdentityGate REJECTED device: {gate_res.reason}", file=sys.stderr)
-            return 1
-        if instance.firmware_version != bundle.firmware_branch:
-            print(f"[VetroProbe Guided] Firmware mismatch: observed {instance.firmware_version}, expected {bundle.firmware_branch}", file=sys.stderr)
-            return 1
+            gate = ExactIdentityGate(bundle)
+            verdict = gate.evaluate(instance)
+            if not verdict.passed:
+                print(f"\n[VetroProbe Guided] Preflight failed before any device settings were changed.", file=sys.stderr)
+                print(f"Reason: ExactIdentityGate REJECTED device: {verdict.reason}", file=sys.stderr)
+                print(f"Physical mutations performed: 0\n", file=sys.stderr)
+                return 1
 
-        from .observable import HumanConfirmationListener
-        listener = HumanConfirmationListener(auto_response="yes" if auto_confirm else None)
-    elif use_sim:
-        from .identity import mock_hero84_instance
-        transport = _create_sim_transport(bundle)
-        instance = mock_hero84_instance(firmware=bundle.firmware_branch)
-        from .observable import FakeObservableListener
-        listener = FakeObservableListener(auto_pass=True)
-    else:
-        from .identity import mock_hero84_instance
-        transport = _create_fake_transport(bundle, "light.brightness")
-        instance = mock_hero84_instance(firmware=bundle.firmware_branch)
-        from .observable import FakeObservableListener
-        listener = FakeObservableListener(auto_pass=True)
+            from .observable import HumanConfirmationListener
+            listener = HumanConfirmationListener(auto_response="yes" if auto_confirm else None)
+        elif use_sim:
+            from .identity import mock_hero84_instance, ExactIdentityGate
+            transport = _create_sim_transport(bundle)
+            instance = mock_hero84_instance(firmware=bundle.firmware_branch)
+            gate = ExactIdentityGate(bundle)
+            verdict = gate.evaluate(instance)
+            if not verdict.passed:
+                print(f"\n[VetroProbe Guided] Preflight failed: {verdict.reason}", file=sys.stderr)
+                return 1
+            from .observable import FakeObservableListener
+            listener = FakeObservableListener(auto_pass=True)
+        else:
+            from .identity import mock_hero84_instance, ExactIdentityGate
+            transport = _create_fake_transport(bundle, "light.brightness")
+            instance = mock_hero84_instance(firmware=bundle.firmware_branch)
+            gate = ExactIdentityGate(bundle)
+            verdict = gate.evaluate(instance)
+            if not verdict.passed:
+                print(f"\n[VetroProbe Guided] Preflight failed: {verdict.reason}", file=sys.stderr)
+                return 1
+            from .observable import FakeObservableListener
+            listener = FakeObservableListener(auto_pass=True)
 
-    # 3. Setup GuidedValidationEngine
-    cert_store = CertificateStore(base_dir=out_dir / "certificates")
-    engine = GuidedValidationEngine(cert_store=cert_store)
+        # 3. Setup GuidedValidationEngine
+        cert_store = CertificateStore(base_dir=out_dir / "certificates")
+        engine = GuidedValidationEngine(cert_store=cert_store)
 
-    ctx = GuidedValidationContext(
-        bundle=bundle,
-        transport=transport,
-        observable_listener=listener,
-        device_identity={
-            "vendor": getattr(instance, "manufacturer", "") or "AULA",
-            "name": getattr(instance, "product_string", "") or bundle.product.name,
-            "vid": f"0x{instance.vid:04X}" if isinstance(instance.vid, int) else str(instance.vid),
-            "pid": f"0x{instance.pid:04X}" if isinstance(instance.pid, int) else str(instance.pid),
-            "firmware": instance.firmware_version,
-            "descriptor_hash": instance.descriptor_hash,
-            "family": bundle.family,
-            "connection": instance.connection_mode or bundle.connection_mode,
-        },
-        build_commit=get_build_commit(),
-        app_version=PROBE_APP_VERSION,
-    )
+        ctx = GuidedValidationContext(
+            bundle=bundle,
+            transport=transport,
+            observable_listener=listener,
+            device_identity={
+                "vendor": getattr(instance, "manufacturer", "") or "AULA",
+                "name": getattr(instance, "product_string", "") or bundle.product.name,
+                "vid": f"0x{instance.vid:04X}" if isinstance(instance.vid, int) else str(instance.vid),
+                "pid": f"0x{instance.pid:04X}" if isinstance(instance.pid, int) else str(instance.pid),
+                "firmware": instance.firmware_version,
+                "descriptor_hash": instance.descriptor_hash,
+                "family": bundle.family,
+                "connection": instance.connection_mode or bundle.connection_mode,
+            },
+            build_commit=get_build_commit(),
+            app_version=PROBE_APP_VERSION,
+        )
 
-    print(f"\n=======================================================")
-    print(f"VETRO PROBE: GUIDED HARDWARE VALIDATION")
-    print(f"Device:   {ctx.device_identity['name']} ({ctx.device_identity['vid']}:{ctx.device_identity['pid']})")
-    print(f"Firmware: {instance.firmware_version} (Mode: {'REAL_HARDWARE' if use_real else 'MOCK/SIM'})")
-    print(f"Output:   {out_dir}")
-    print(f"=======================================================\n")
+        print(f"\n=======================================================")
+        print(f"VETRO PROBE: GUIDED HARDWARE VALIDATION")
+        print(f"Device:   {ctx.device_identity['name']} ({ctx.device_identity['vid']}:{ctx.device_identity['pid']})")
+        print(f"Firmware: {instance.firmware_version} (Mode: {'REAL_HARDWARE' if use_real else 'MOCK/SIM'})")
+        print(f"Output:   {out_dir}")
+        print(f"=======================================================\n")
 
-    res = engine.run_validation(ctx)
+        res = engine.run_validation(ctx)
 
-    # Save summary and certificate
-    (out_dir / "guided_validation_summary.json").write_text(json.dumps(res, indent=2), encoding="utf-8")
-    if "certificate" in res:
-        (out_dir / "guided_validation_certificate.json").write_text(json.dumps(res["certificate"], indent=2), encoding="utf-8")
+        # Save summary and certificate
+        (out_dir / "guided_validation_summary.json").write_text(json.dumps(res, indent=2), encoding="utf-8")
+        if "certificate" in res:
+            (out_dir / "guided_validation_certificate.json").write_text(json.dumps(res["certificate"], indent=2), encoding="utf-8")
 
-    print(f"\n=======================================================")
-    print(f"GUIDED VALIDATION RESULT: {res['verdict']}")
-    print(f"State:               {res['state']}")
-    print(f"Duration:            {res.get('duration_seconds', 0)}s")
-    print(f"Validated Groups:    {res.get('validated_groups', [])}")
-    print(f"Rollback Verified:   {res.get('rollback_verified', False)}")
-    if res.get("certificate_path"):
-        print(f"Certificate Saved:   {res['certificate_path']}")
-    if res.get("error"):
-        print(f"Error:               {res['error']}")
-    print(f"=======================================================\n")
+        print(f"\n=======================================================")
+        print(f"GUIDED VALIDATION RESULT: {res['verdict']}")
+        print(f"State:               {res['state']}")
+        print(f"Duration:            {res.get('duration_seconds', 0)}s")
+        print(f"Validated Groups:    {res.get('validated_groups', [])}")
+        print(f"Rollback Verified:   {res.get('rollback_verified', False)}")
+        if res.get("certificate_path"):
+            print(f"Certificate Saved:   {res['certificate_path']}")
+        if res.get("error"):
+            print(f"Error:               {res['error']}")
+        print(f"=======================================================\n")
 
-    return 0 if res.get("verdict") == "COMPLETE_PASS" else 2
+        return 0 if res.get("verdict") == "COMPLETE_PASS" else 2
+    finally:
+        if transport is not None and hasattr(transport, "close"):
+            try:
+                transport.close()
+            except Exception:
+                pass
 
 
 def main(argv: list[str] | None = None) -> int:
