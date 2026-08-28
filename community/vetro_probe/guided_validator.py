@@ -143,10 +143,10 @@ class LightingCapabilityValidator(BaseCapabilityValidator):
             ev.error = f"Baseline GET exception: {e}"
             return CapabilityValidationResult(self.capability_name, False, ev, error=ev.error)
 
-        # 2. Pick safe temporary test value: visible change (e.g. brightness 100 or green color)
+        # 2. Pick safe temporary test value: visible change (e.g. brightness 20 / 100% or 5 / 25%)
         if op_id == "light.brightness":
-            base_num = int(val) if isinstance(val, (int, float)) else 50
-            temp_val = 10 if base_num > 50 else 100
+            base_num = int(val) if isinstance(val, (int, float)) else 10
+            temp_val = 5 if base_num > 10 else 20
         else:
             temp_val = {"r": 0, "g": 255, "b": 0}  # Pure green
         ev.temporary_value = temp_val
@@ -369,11 +369,20 @@ class HallEffectCapabilityValidator(BaseCapabilityValidator):
     capability_name = "he.actuation"
 
     def is_applicable(self, ctx: GuidedValidationContext) -> bool:
-        # STRICT RULE: only applicable if device has Hall Effect / Analog capability and is eligible!
+        # STRICT RULE: only applicable if device has Hall Effect / Analog capability AND guided plan marks it ELIGIBLE!
         family = ctx.device_identity.get("family", "").lower()
         name = ctx.device_identity.get("name", "").lower()
         is_he = ("he" in family or "analog" in family or "he" in name) and "mechanical" not in family and "unknown" not in family
         if not is_he:
+            return False
+        # Check machine-readable GuidedValidationPlan
+        try:
+            plan = load_guided_plan()
+            for grp in plan.get("validation_groups", []):
+                if grp.get("group_id") == "he.actuation":
+                    if grp.get("status") != "ELIGIBLE":
+                        return False
+        except Exception:
             return False
         from .feature_gates import blocker_for
         vid = ctx.device_identity.get("vid")

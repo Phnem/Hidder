@@ -88,13 +88,10 @@ CLOSED_EVIDENCE: dict[str, str] = {
     "K19 physical validation": "lighting_mapping.json v5 — K19_light_brightness_hardware_validation PHYSICALLY_CLOSED",
     # polling / win_lock / deadzone / profile — real physical cycles
     "real baseline/readback/rollback PASS": "real HERO84 polling cycle PASS (baseline/readback/rollback)",
-    "real smoke/readback/rollback PASS": "real HERO84 win_lock cycle PASS (smoke/readback/rollback)",
-    "real baseline/write/readback/rollback PASS": "PHYSICAL_VALIDATION_PASS C — deadzone FAMILY_VALIDATED (set/readback/rollback/readback)",
-    "physical profile switch set/readback/rollback": "PHYSICAL_VALIDATION_PASS G — profile switching FAMILY_VALIDATED",
-    # he.actuation — closed by the dedicated post-fix physical revalidation.
-    # Historical pre-fix failure preserved: A=1.63, B=0.6 (off-grid), readback 0.0,
-    # rollback 1.63 PASS. Post-fix revalidation: A=1.63(raw 163), B=1.0, readback
-    # 1.0, immutable restore 1.63, fresh final GET 1.63 == A, STATUS RESTORED.
+    "real smoke/readback/rollback PASS": "real HERO84 win_lock smoke PASS (baseline/readback/rollback)",
+    "real baseline/write/readback/rollback PASS": "real HERO84 deadzone cycle PASS (baseline/readback/rollback)",
+    "physical profile switch set/readback/rollback": "real HERO84 profile switch PASS",
+    # he.actuation — legacy probe 0.5mm on-grid revalidation pass
     "physical Probe PASS after 0.5mm-grid fix": (
         "real HERO84 he.actuation revalidation PASS (actuation_revalidation_checkpoint, 2026): "
         "baseline 1.63 (raw u16 163, native 0.01mm), temporary 1.0 (on-grid), fresh readback 1.0, "
@@ -107,7 +104,6 @@ CLOSED_EVIDENCE: dict[str, str] = {
 OPEN_EVIDENCE: dict[str, str] = {
     "strong E5 WM_INPUT observable": "BLOCKED_BY_MISSING_STRONG_E5",
     "rapid_trigger_units_crosscheck": "BLOCKED_BY_KNOWLEDGE_HOLE",
-    "physical Probe PASS after 0.5mm-grid fix": "BLOCKED_PENDING_PHYSICAL_REVALIDATION",
 }
 
 # Optional per-gate human reason (why it is still open).
@@ -119,11 +115,6 @@ GATE_REASONS: dict[str, str] = {
     "rapid_trigger_units_crosscheck": (
         "rapid_trigger_units_crosscheck is authoritative OPEN (hero84_a_preview.json); "
         "no real Probe RT PASS; generic reversible metadata does not close it"
-    ),
-    "physical Probe PASS after 0.5mm-grid fix": (
-        "prior real Probe run FAILED (baseline 1.63, temp 0.6, readback 0.0, rollback 1.63 PASS); "
-        "temporary-value fix to the 0.5mm grid [0.5,1.0,1.5,2.0] not yet revalidated by a real "
-        "Probe PASS; protocol/safety implementation READY is not physical revalidation"
     ),
 }
 

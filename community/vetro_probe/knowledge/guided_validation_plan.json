@@ -1,6 +1,6 @@
 {
   "schema": "vetro.guided-validation-plan.v1",
-  "version": 2,
+  "version": 3,
   "family": "aula_kb_v3_wired",
   "scope": {
     "vid": "0x372E",
@@ -16,7 +16,7 @@
         "light.brightness"
       ],
       "shared_invariants": "Register 0x01 lighting frame with canonical device echo validation",
-      "safe_test_strategy": "discrete brightness shift (10 vs 100)",
+      "safe_test_strategy": "discrete brightness shift (20 / 100% vs 5 / 25%)",
       "rollback_contract": "RESTORE_VALUE_AND_READBACK",
       "observable_contract": "HUMAN_PHYSICAL_OBSERVABLE",
       "residual_requirements": [
@@ -35,12 +35,11 @@
       "shared_invariants": "Native 0.01mm integer encoding with 0.5mm step quantization",
       "safe_test_strategy": "step to 1.0mm (raw 100) on-grid",
       "rollback_contract": "RESTORE_VALUE_AND_READBACK",
-      "observable_contract": "HE_KEY_PRESS_OBSERVABLE",
+      "observable_contract": "HE_COMPARATIVE_THRESHOLD_OBSERVABLE",
       "residual_requirements": [
-        "rapid_trigger_blocked",
-        "deadzone_standalone_observable_open"
+        "BLOCKED_PENDING_INDEPENDENT_THRESHOLD_OBSERVABLE"
       ],
-      "status": "ELIGIBLE"
+      "status": "BLOCKED"
     },
     {
       "group_id": "he.deadzone",

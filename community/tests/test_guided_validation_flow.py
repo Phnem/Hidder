@@ -168,12 +168,14 @@ class TestGuidedValidationFlow:
             bundle=bundle,
             transport=transport,
             observable_listener=fake_os,
-            device_identity={"vendor": "AULA", "name": "HERO 84 HE", "vid": "0x372E", "pid": "0x103E", "firmware": "0216", "family": "aula_he_v3"},
+            device_identity={"vendor": "AULA", "name": "HERO 84 HE", "vid": "0x372E", "pid": "0x103E", "firmware": "0216", "family": "aula_kb_v3_wired"},
         )
 
         validator = HallEffectCapabilityValidator()
-        assert validator.is_applicable(ctx) is True
+        # On AULA physical hardware, he.actuation is blocked pending independent threshold observable
+        assert validator.is_applicable(ctx) is False
 
+        # Directly testing validator execution on mock transport
         res = validator.validate(ctx)
         assert res.passed is True
         assert res.rollback_verified is True
@@ -237,8 +239,8 @@ class TestGuidedValidationFlow:
             result = engine.run_validation(ctx)
 
             assert result["state"] == STATE_VALIDATED
-            assert "lighting.brightness" in result["validated_groups"]
-            assert "he.actuation" in result["validated_groups"]
+            assert result["validated_groups"] == ["lighting.brightness"]
+            assert "he.actuation" not in result["validated_groups"]
             assert "inventory" not in result["validated_groups"]
             assert "keyboard.remap" not in result["validated_groups"]
 
