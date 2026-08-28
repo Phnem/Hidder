@@ -53,6 +53,7 @@ $RECYCLE.BIN/
 # Vetro Probe schemas + rank/knowledge artifacts are tracked (exception to *.json)
 !community/vetro_probe/schema/*.json
 !community/vetro_probe/knowledge/*.json
+!community/vetro_probe/fixtures/real_runs/*.json
 !probe-app/*.json
 !probe-app/src-tauri/*.json
 

@@ -1,0 +1,141 @@
+{
+  "schema": "vetro.hardware-validation-certificate.v2",
+  "certificate_id": "cert-efd256a44797",
+  "created_at": 1787958856.2481332,
+  "terminal_verdict": "COMPLETE_PASS",
+  "identity": {
+    "vendor": "AULA",
+    "model": "AULA HERO84 HE",
+    "variant": "",
+    "vid": "0x372E",
+    "pid": "0x103E",
+    "descriptor_hash": "62b16777e3455bb0",
+    "firmware_branch": "0216",
+    "connection_mode": "wired",
+    "protocol_family": "aula_kb_v3_wired",
+    "knowledge_revision": "ca1d15723479"
+  },
+  "build": {
+    "app_version": "0.3.1",
+    "engine_version": "0.3.1",
+    "build_commit": "fbf95cbdb34a"
+  },
+  "validation": {
+    "validated_capability_groups": [
+      "lighting.brightness"
+    ],
+    "individual_operations": [
+      {
+        "operation": "light.brightness",
+        "safe_command_id": "light.brightness",
+        "firmware_branch": "0216",
+        "connection_mode": "wired",
+        "baseline_value": 10,
+        "temporary_value": 20,
+        "transport_result": "ok",
+        "readback": 20,
+        "readback_matched": true,
+        "observable_result": {
+          "human_response": "y",
+          "prompt": "Did the keyboard lighting visibly change to the test mode?"
+        },
+        "observable_pass": true,
+        "observable_source": "human_physical_observable",
+        "rollback_result": "ok",
+        "rollback_readback": null,
+        "rollback_matched": true,
+        "timing_ms": {},
+        "bundle_hash": "d399873f5018267966b68aa11320ec153cbbf989ead2a0fe7771407130455e0c",
+        "evidence_strength": [],
+        "status": "PASS",
+        "error": "",
+        "sessions": {},
+        "recovery": {},
+        "ack_valid": false,
+        "echo_hex": "",
+        "validation_flags": {}
+      },
+      {
+        "operation": "inventory.descriptor",
+        "safe_command_id": "inventory.descriptor",
+        "firmware_branch": "0216",
+        "connection_mode": "wired",
+        "baseline_value": {
+          "read_only": true
+        },
+        "temporary_value": null,
+        "transport_result": "ok",
+        "readback": null,
+        "readback_matched": true,
+        "observable_result": null,
+        "observable_pass": null,
+        "observable_source": "",
+        "rollback_result": "",
+        "rollback_readback": null,
+        "rollback_matched": true,
+        "timing_ms": {},
+        "bundle_hash": "d399873f5018267966b68aa11320ec153cbbf989ead2a0fe7771407130455e0c",
+        "evidence_strength": [],
+        "status": "PASS",
+        "error": "",
+        "sessions": {},
+        "recovery": {},
+        "ack_valid": false,
+        "echo_hex": "",
+        "validation_flags": {}
+      }
+    ],
+    "inventory_evidence": {
+      "operation": "inventory.descriptor",
+      "safe_command_id": "inventory.descriptor",
+      "firmware_branch": "0216",
+      "connection_mode": "wired",
+      "baseline_value": {
+        "read_only": true
+      },
+      "temporary_value": null,
+      "transport_result": "ok",
+      "readback": null,
+      "readback_matched": true,
+      "observable_result": null,
+      "observable_pass": null,
+      "observable_source": "",
+      "rollback_result": "",
+      "rollback_readback": null,
+      "rollback_matched": true,
+      "timing_ms": {},
+      "bundle_hash": "d399873f5018267966b68aa11320ec153cbbf989ead2a0fe7771407130455e0c",
+      "evidence_strength": [],
+      "status": "PASS",
+      "error": "",
+      "sessions": {},
+      "recovery": {},
+      "ack_valid": false,
+      "echo_hex": "",
+      "validation_flags": {}
+    },
+    "baseline_hashes": {
+      "lighting.brightness": "53654959"
+    },
+    "observables": [
+      {
+        "capability": "lighting.brightness",
+        "ok": true,
+        "source": "human_physical_observable",
+        "latency_ms": 4790,
+        "observed": {
+          "human_response": "y",
+          "prompt": "Did the keyboard lighting visibly change to the test mode?"
+        }
+      }
+    ],
+    "rollback_results": {
+      "lighting.brightness": true
+    },
+    "final_state_verified": true,
+    "evidence_hashes": [],
+    "representative_coverage_explanation": {
+      "lighting.brightness": "Validating representative lighting operation (brightness) proves the device's lighting framing, checksum, register encoding, and physical LED controller response."
+    }
+  }
+}

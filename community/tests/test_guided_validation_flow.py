@@ -563,3 +563,40 @@ class TestGuidedValidationFlow:
             out_dir = Path(td) / "run_out"
             rc = run_guided_validation(run_dir=out_dir, use_real=True, auto_confirm=True)
             assert rc == 1
+
+    def test_real_hardware_validation_milestone_certificate_fixture(self):
+        fixture_path = Path(__file__).parent.parent / "vetro_probe" / "fixtures" / "real_runs" / "aula_hero84_fw0216_guided_cert.json"
+        assert fixture_path.is_file()
+
+        cert_data = json.loads(fixture_path.read_text(encoding="utf-8"))
+        cert = DeviceValidationCertificate.from_dict(cert_data)
+
+        # Exact physical provenance
+        assert cert.schema == SCHEMA_DEVICE_CERTIFICATE
+        assert cert.certificate_id == "cert-efd256a44797"
+        assert cert.terminal_verdict == "COMPLETE_PASS"
+        assert cert.vid == "0x372E"
+        assert cert.pid == "0x103E"
+        assert cert.firmware_branch == "0216"
+        assert cert.connection_mode == "wired"
+        assert cert.protocol_family == "aula_kb_v3_wired"
+        assert cert.final_state_verified is True
+
+        # Validated capability groups strictly limited to lighting.brightness
+        assert cert.validated_capability_groups == ["lighting.brightness"]
+        assert cert.authorizes_operation("light.brightness") is True
+
+        # Other capabilities strictly remain unauthorized
+        assert cert.authorizes_operation("light.global_color") is False
+        assert cert.authorizes_operation("light.effect") is False
+        assert cert.authorizes_operation("he.actuation") is False
+        assert cert.authorizes_operation("he.deadzone") is False
+        assert cert.authorizes_operation("he.rt") is False
+        assert cert.authorizes_operation("keyboard.remap") is False
+
+        # Human physical observable evidence is recorded
+        assert len(cert.observables) == 1
+        obs = cert.observables[0]
+        assert obs["capability"] == "lighting.brightness"
+        assert obs["source"] == "human_physical_observable"
+        assert obs["ok"] is True
