@@ -326,7 +326,9 @@ class ProbeRpcServer:
     # -- wire ----------------------------------------------------------------
     def _send(self, obj: dict[str, Any]) -> None:
         with self._lock:
-            self.output_stream.write(json.dumps(obj, ensure_ascii=False) + "\n")
+            # ensure_ascii=True ensures 100% valid 7-bit ASCII/UTF-8 over the wire
+            # regardless of Windows console/codepage settings.
+            self.output_stream.write(json.dumps(obj, ensure_ascii=True) + "\n")
             self.output_stream.flush()
 
     def emit(self, obj: dict[str, Any]) -> None:

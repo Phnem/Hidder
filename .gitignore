@@ -9,6 +9,7 @@ target/
 *.pdb
 *.exp
 *.lib
+*.log
 
 # PyInstaller / Diagnostic build folders
 build/

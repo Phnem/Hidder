@@ -10,13 +10,14 @@
 //! stdout lines (warnings, traces) are ignored rather than treated as protocol.
 
 use std::collections::HashMap;
+use std::fs::OpenOptions;
 use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 use std::process::{Child, ChildStdin, Command, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::{channel, Receiver, RecvTimeoutError, Sender};
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use serde::de::DeserializeOwned;
 use serde_json::{json, Value};
@@ -41,6 +42,28 @@ pub struct ProbeEngine {
     seq: AtomicU64,
     pending: Arc<Mutex<HashMap<u64, Sender<Result<Value, String>>>>>,
     last_run_result: Arc<Mutex<Option<Value>>>,
+}
+
+fn trace_diag(msg: &str) {
+    let now = chrono_or_now();
+    let line = format!("[{now}] [VETRO_PROBE_RPC] {msg}\n");
+    print!("{line}");
+    let _ = std::io::stdout().flush();
+    if let Ok(mut f) = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("vetro_probe_rpc_diag.log")
+    {
+        let _ = f.write_all(line.as_bytes());
+    }
+}
+
+fn chrono_or_now() -> String {
+    use std::time::SystemTime;
+    let dur = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap_or_default();
+    format!("{}.{:03}", dur.as_secs(), dur.subsec_millis())
 }
 
 /// Repository root (where `community/` lives), so the sidecar can resolve the
@@ -69,20 +92,19 @@ fn find_bundled_binary(root: &PathBuf) -> Option<PathBuf> {
     candidates.into_iter().find(|p| p.is_file())
 }
 
-fn sidecar_command(mode: &Mode, root: &PathBuf) -> Command {
+pub fn sidecar_command(mode: &Mode, root: &PathBuf) -> Command {
     let mut cmd = if let Some(bin) = find_bundled_binary(root) {
+        trace_diag(&format!("SPAWN_RESOLVE: using packaged sidecar binary {:?}", bin));
         let mut c = Command::new(bin);
         c.arg("--gui-rpc");
         c
     } else {
+        trace_diag("SPAWN_RESOLVE: falling back to system Python -m community.vetro_probe.cli");
         let mut c = Command::new("python");
         c.arg("-m")
             .arg("community.vetro_probe.cli")
             .arg("--gui-rpc")
-            .current_dir(root)
-            .env("PYTHONPATH", root.as_os_str())
-            .env("PYTHONUNBUFFERED", "1")
-            .env("PYTHONWARNINGS", "ignore");
+            .env("PYTHONPATH", root.as_os_str());
         c
     };
 
@@ -90,9 +112,14 @@ fn sidecar_command(mode: &Mode, root: &PathBuf) -> Command {
         cmd.arg("--gui-demo").arg("--scenario").arg(scenario);
     }
 
-    cmd.stdin(Stdio::piped())
+    cmd.current_dir(root)
+        .env("PYTHONIOENCODING", "utf-8")
+        .env("PYTHONUTF8", "1")
+        .env("PYTHONUNBUFFERED", "1")
+        .env("PYTHONWARNINGS", "ignore")
+        .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::null());
+        .stderr(Stdio::piped());
 
     #[cfg(windows)]
     {
@@ -105,21 +132,31 @@ fn sidecar_command(mode: &Mode, root: &PathBuf) -> Command {
 }
 
 impl ProbeEngine {
-    /// Spawn the sidecar and start its reader thread. `events` receives engine
-    /// events (data of `{"event": name, "data": ...}`) to forward to the window.
     pub fn start(mode: Mode, events: EventSink) -> Result<Self, String> {
         let root = repo_root();
+        trace_diag(&format!("SPAWN_BEGIN: mode={:?} root={:?}", mode, root));
         let mut child = sidecar_command(&mode, &root)
             .spawn()
-            .map_err(|e| format!("failed to spawn Probe engine: {e}"))?;
+            .map_err(|e| {
+                let err = format!("failed to spawn Probe engine: {e}");
+                trace_diag(&format!("SPAWN_ERROR: {err}"));
+                err
+            })?;
+        trace_diag(&format!("SPAWN_OK: child_pid={:?}", child.id()));
+
         let stdin = child
             .stdin
             .take()
             .ok_or_else(|| "engine stdin unavailable".to_string())?;
+        trace_diag("STDIN_ACQUIRED");
+
         let stdout = child
             .stdout
             .take()
             .ok_or_else(|| "engine stdout unavailable".to_string())?;
+        trace_diag("STDOUT_ACQUIRED");
+
+        let stderr = child.stderr.take();
 
         let engine = ProbeEngine {
             child,
@@ -129,64 +166,165 @@ impl ProbeEngine {
             last_run_result: Arc::new(Mutex::new(None)),
         };
 
-        // Reader thread: parse lines, resolve responses or forward events.
+        // 1. Drain stderr asynchronously to avoid full pipe deadlocks
+        if let Some(err_pipe) = stderr {
+            std::thread::spawn(move || {
+                let reader = BufReader::new(err_pipe);
+                for line in reader.lines() {
+                    let Ok(line) = line else { break };
+                    if !line.trim().is_empty() {
+                        trace_diag(&format!("STDERR_LINE: {}", line.trim()));
+                    }
+                }
+                trace_diag("STDERR_DRAIN_FINISHED");
+            });
+        }
+
+        // 2. Single-reader stdout dispatcher thread
         let pending = Arc::clone(&engine.pending);
         let last = Arc::clone(&engine.last_run_result);
         std::thread::spawn(move || {
-            let reader = BufReader::new(stdout);
-            for line in reader.lines() {
-                let Ok(line) = line else { break };
-                let line = line.trim();
-                if line.is_empty() {
-                    continue;
-                }
-                let Ok(v) = serde_json::from_str::<Value>(line) else {
-                    continue; // warning/trace, not protocol
-                };
-                if let Some(id) = v.get("id").and_then(|i| i.as_u64()) {
-                    let reply = if v.get("ok").and_then(|b| b.as_bool()).unwrap_or(false) {
-                        Ok(v.get("result").cloned().unwrap_or(Value::Null))
-                    } else {
-                        Err(v.get("error").and_then(|e| e.as_str()).unwrap_or("engine error").to_string())
-                    };
-                    let sender = pending.lock().map(|mut p| p.remove(&id)).ok().flatten();
-                    if let Some(sender) = sender {
-                        let _ = sender.send(reply);
+            trace_diag("STDOUT_READER_THREAD_STARTED");
+            let mut reader = BufReader::new(stdout);
+            let mut raw_buf = Vec::new();
+            loop {
+                raw_buf.clear();
+                match reader.read_until(b'\n', &mut raw_buf) {
+                    Ok(0) => {
+                        trace_diag("STDOUT_EOF: sidecar stdout closed");
+                        break;
                     }
-                } else if let Some(name) = v.get("event").and_then(|e| e.as_str()) {
-                    let data = v.get("data").cloned().unwrap_or(Value::Null);
-                    if name == "run_result" {
-                        *last.lock().unwrap() = Some(data.clone());
+                    Ok(n) => {
+                        let line_str = String::from_utf8_lossy(&raw_buf);
+                        let trimmed = line_str.trim();
+                        if trimmed.is_empty() {
+                            continue;
+                        }
+                        trace_diag(&format!("STDOUT_LINE_RECEIVED ({} bytes): {}", n, trimmed));
+                        match serde_json::from_str::<Value>(trimmed) {
+                            Ok(v) => {
+                                trace_diag("JSON_PARSE_OK");
+                                let maybe_id = v.get("id").and_then(|i| {
+                                    i.as_u64()
+                                        .or_else(|| i.as_i64().and_then(|n| if n >= 0 { Some(n as u64) } else { None }))
+                                        .or_else(|| i.as_str().and_then(|s| s.parse::<u64>().ok()))
+                                });
+
+                                if let Some(id) = maybe_id {
+                                    let ok = v.get("ok").and_then(|b| b.as_bool()).unwrap_or(false);
+                                    let reply = if ok {
+                                        Ok(v.get("result").cloned().unwrap_or(Value::Null))
+                                    } else {
+                                        Err(v.get("error")
+                                            .and_then(|e| e.as_str())
+                                            .unwrap_or("engine error")
+                                            .to_string())
+                                    };
+                                    let mut guard = pending.lock().unwrap();
+                                    if let Some(sender) = guard.remove(&id) {
+                                        trace_diag(&format!("RESPONSE_ID_MATCH: id={} (ok={})", id, ok));
+                                        let _ = sender.send(reply);
+                                    } else {
+                                        trace_diag(&format!("UNMATCHED_RESPONSE_ID: id={} pending_keys={:?}", id, guard.keys().collect::<Vec<_>>()));
+                                    }
+                                } else if let Some(name) = v.get("event").and_then(|e| e.as_str()) {
+                                    let data = v.get("data").cloned().unwrap_or(Value::Null);
+                                    trace_diag(&format!("EVENT_RECEIVED: name={}", name));
+                                    if name == "run_result" {
+                                        *last.lock().unwrap() = Some(data.clone());
+                                    }
+                                    events(name, data);
+                                } else {
+                                    trace_diag(&format!("UNRECOGNIZED_JSON_FRAME: {:?}", v));
+                                }
+                            }
+                            Err(err) => {
+                                trace_diag(&format!("JSON_PARSE_ERROR: {} on line: {}", err, trimmed));
+                            }
+                        }
                     }
-                    events(name, data);
+                    Err(err) => {
+                        trace_diag(&format!("STDOUT_READ_ERROR: {}", err));
+                        break;
+                    }
                 }
             }
+            // If reader breaks on EOF / error, drain pending callers with error
+            let mut guard = pending.lock().unwrap();
+            trace_diag(&format!("DRAINING_PENDING_ON_EXIT: count={}", guard.len()));
+            for (_, tx) in guard.drain() {
+                let _ = tx.send(Err("sidecar process terminated unexpectedly".to_string()));
+            }
+            trace_diag("STDOUT_READER_THREAD_EXITED");
         });
 
         Ok(engine)
     }
 
-    /// Send one request and wait for its response.
     pub fn call<T: DeserializeOwned>(&self, method: &str, params: Value) -> Result<T, String> {
+        let t0 = Instant::now();
         let id = self.seq.fetch_add(1, Ordering::SeqCst);
         let (tx, rx): (Sender<Result<Value, String>>, Receiver<Result<Value, String>>) = channel();
-        self.pending.lock().map_err(|_| "pending lock poisoned".to_string())?.insert(id, tx);
+
+        trace_diag(&format!("REQUEST_LOCK_BEGIN: id={} method={}", id, method));
+        {
+            let mut p = self.pending.lock().map_err(|_| "pending lock poisoned".to_string())?;
+            p.insert(id, tx);
+        }
+        trace_diag(&format!("REQUEST_REGISTERED: id={} method={}", id, method));
+
         let req = json!({"id": id, "method": method, "params": params});
         let mut line = serde_json::to_string(&req).map_err(|e| e.to_string())?;
         line.push('\n');
-        let mut stdin = self.stdin.lock().map_err(|_| "stdin lock poisoned".to_string())?;
-        stdin.write_all(line.as_bytes()).map_err(|e| format!("write to engine failed: {e}"))?;
-        stdin.flush().map_err(|e| format!("flush engine failed: {e}"))?;
-        drop(stdin);
-        match rx.recv_timeout(Duration::from_secs(60)) {
-            Ok(Ok(value)) => serde_json::from_value(value).map_err(|e| e.to_string()),
-            Ok(Err(err)) => Err(err),
-            Err(RecvTimeoutError::Timeout) => Err("engine did not answer in time".to_string()),
-            Err(RecvTimeoutError::Disconnected) => Err("engine stopped".to_string()),
+        trace_diag(&format!("REQUEST_SERIALIZED: id={} ({} bytes)", id, line.len()));
+
+        {
+            trace_diag(&format!("STDIN_WRITE_BEGIN: id={}", id));
+            let mut stdin = self.stdin.lock().map_err(|_| "stdin lock poisoned".to_string())?;
+            stdin.write_all(line.as_bytes()).map_err(|e| {
+                let err = format!("write to engine failed: {e}");
+                trace_diag(&format!("STDIN_WRITE_ERROR: id={} err={}", id, err));
+                err
+            })?;
+            stdin.flush().map_err(|e| {
+                let err = format!("flush engine failed: {e}");
+                trace_diag(&format!("STDIN_FLUSH_ERROR: id={} err={}", id, err));
+                err
+            })?;
+            trace_diag(&format!("STDIN_FLUSH_OK: id={}", id));
         }
+
+        trace_diag(&format!("AWAITING_RESPONSE: id={} method={}", id, method));
+        let response = match rx.recv_timeout(Duration::from_secs(10)) {
+            Ok(Ok(value)) => {
+                let elapsed = t0.elapsed().as_millis();
+                trace_diag(&format!("REQUEST_COMPLETE: id={} method={} ({} ms)", id, method, elapsed));
+                serde_json::from_value(value).map_err(|e| e.to_string())
+            }
+            Ok(Err(err)) => {
+                let elapsed = t0.elapsed().as_millis();
+                trace_diag(&format!("REQUEST_FAILED: id={} method={} err={} ({} ms)", id, method, err, elapsed));
+                Err(err)
+            }
+            Err(RecvTimeoutError::Timeout) => {
+                let elapsed = t0.elapsed().as_millis();
+                let _ = self.pending.lock().map(|mut p| p.remove(&id));
+                let err = format!("engine call '{method}' timed out after 10s");
+                trace_diag(&format!("REQUEST_TIMEOUT: id={} method={} ({} ms)", id, method, elapsed));
+                Err(err)
+            }
+            Err(RecvTimeoutError::Disconnected) => {
+                let elapsed = t0.elapsed().as_millis();
+                let _ = self.pending.lock().map(|mut p| p.remove(&id));
+                let err = format!("engine call '{method}' disconnected");
+                trace_diag(&format!("REQUEST_DISCONNECTED: id={} method={} ({} ms)", id, method, elapsed));
+                Err(err)
+            }
+        };
+
+        response
     }
 
-    /// The most recent `run_result` event the engine emitted, if any.
     pub fn last_run_result(&self) -> Option<Value> {
         self.last_run_result.lock().unwrap().clone()
     }
@@ -194,8 +332,10 @@ impl ProbeEngine {
 
 impl Drop for ProbeEngine {
     fn drop(&mut self) {
+        trace_diag("PROBE_ENGINE_DROP: terminating child");
         let _ = self.child.kill();
         let _ = self.child.wait();
+        trace_diag("PROBE_ENGINE_DROP_COMPLETE");
     }
 }
 
@@ -203,8 +343,6 @@ impl Drop for ProbeEngine {
 mod tests {
     use super::*;
 
-    /// The RPC reader must resolve responses by id and forward events by name,
-    /// ignoring non-JSON lines. This is the framing contract with the Python side.
     #[test]
     fn rpc_framing_contract_parses_responses_and_events() {
         let pending: Arc<Mutex<HashMap<u64, Sender<Result<Value, String>>>>> =
@@ -244,8 +382,10 @@ mod tests {
         assert_eq!(rx.recv_timeout(Duration::from_millis(100)).unwrap().unwrap()["state"], "IDENTIFIED");
         assert_eq!(events, vec!["progress", "run_result"]);
         assert_eq!(last.lock().unwrap().as_ref().unwrap()["status"], "SUCCESS_RESTORED");
-        // the engine must be spawnable only via a real Python; here we only assert
-        // the python command is shaped correctly (no hardware involved).
+    }
+
+    #[test]
+    fn sidecar_command_builds_valid_probe_invocation() {
         let root = repo_root();
         let cmd = sidecar_command(&Mode::Demo { scenario: "supported".into() }, &root);
         let args: Vec<_> = cmd.get_args().map(|a| a.to_string_lossy().to_string()).collect();
