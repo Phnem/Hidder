@@ -354,9 +354,183 @@ class DemoEngine:
             "output_path": None,
         }
 
+    def run_result(self) -> dict[str, Any]:
+        return self._result or {"status": "IDLE", "results": [], "checks_completed": 0}
+
 
 def label_for(op_id: str) -> str:
     return OP_LABELS.get(op_id, op_id)
+
+
+# ---------------------------------------------------------------------------
+# Real engine — authoritative physical execution (or deterministic mock transport)
+# ---------------------------------------------------------------------------
+
+class RealEngine:
+    """Authoritative real execution engine. Drives real AutoProbeRun / feature gates /
+    planner / feature evidence / recovery journal.
+
+    Supports dependency injection for transport_factory and run_dir to allow
+    deterministic headless testing without hardware."""
+
+    def __init__(
+        self,
+        run_dir: Path | str = "vetro_gui_run",
+        transport_factory: Any | None = None,
+        is_physical: bool = True,
+    ) -> None:
+        self.run_dir = Path(run_dir)
+        self.transport_factory = transport_factory or self._default_transport_factory
+        self.is_physical = is_physical
+        self._busy = threading.Lock()
+        self._thread: threading.Thread | None = None
+        self._result: dict[str, Any] | None = None
+        self._events: list[dict[str, Any]] = []
+
+    def _default_transport_factory(self, bundle):
+        from .identity import discover_real_instance_via_raw
+        from .aula_transport import AulaHidTransport
+
+        transport = AulaHidTransport.open_real(uuid=int(bundle.product.uuid))
+        instance = discover_real_instance_via_raw(transport.raw)
+
+        def enumerate_fn():
+            try:
+                import hid  # type: ignore
+                return instance if hid.enumerate(0x372E, 0x103E) else None
+            except Exception:
+                return None
+
+        def make_transport():
+            return AulaHidTransport.open_real(uuid=int(bundle.product.uuid))
+
+        return transport, instance, enumerate_fn, make_transport
+
+    def discover(self) -> dict[str, Any]:
+        from .bundle import production_bundle_for_hero84
+        bundle = production_bundle_for_hero84()
+        transport = None
+        try:
+            transport, instance, _, _ = self.transport_factory(bundle)
+            return discover_state(instance)
+        except Exception as exc:  # noqa: BLE001
+            return {"state": "NO_DEVICE", "device": None, "supported_count": 0, "reason": str(exc)}
+        finally:
+            if transport is not None and hasattr(transport, "close"):
+                try:
+                    transport.close()
+                except Exception:
+                    pass
+
+    def recovery_status(self) -> dict[str, Any]:
+        return recovery_status(self.run_dir)
+
+    def clear_recovery(self) -> None:
+        try:
+            from .runstate import RunStateStore
+            store = RunStateStore(self.run_dir)
+            cp = store.load()
+            if cp is not None:
+                cp.closed = True
+                cp.recovery_required = False
+                store.save(cp)
+        except Exception:
+            pass
+
+    def start_run(self, emit, async_run: bool = True) -> dict[str, Any]:
+        if self._busy.locked():
+            return {"started": False, "error": "a run is already in progress"}
+        pre = self.recovery_status()
+        if pre["pending"]:
+            return {
+                "started": False,
+                "error": "recovery preflight is pending — recovery-first must complete before research starts",
+            }
+        if async_run:
+            self._thread = threading.Thread(target=self._run_worker, args=(emit,), daemon=True)
+            self._thread.start()
+        else:
+            self._run_worker(emit)
+        return {"started": True}
+
+    def _emit(self, emit, event: str, data: dict[str, Any]) -> None:
+        self._events.append({"event": event, "data": data})
+        emit({"event": event, "data": data})
+
+    def _op_progress(self, emit, op_id: str, state: str, text: str) -> None:
+        self._emit(emit, "progress", {
+            "op": op_id,
+            "label": friendly_label(op_id, "AUTO_REVERSIBLE"),
+            "state": state,
+            "text": text,
+        })
+
+    def _run_worker(self, emit) -> None:
+        try:
+            with self._busy:
+                from .automation import AutoProbeRun
+                from .bundle import production_bundle_for_hero84
+
+                bundle = production_bundle_for_hero84()
+                plan = plan_preview()
+                for op in plan.get("safe", []):
+                    self._op_progress(emit, op["id"], "QUEUED", "Waiting...")
+
+                transport, instance, enumerate_fn, make_transport = self.transport_factory(bundle)
+
+                def on_op_progress(op_id: str, state: str, text: str) -> None:
+                    self._op_progress(emit, op_id, state, text)
+
+                run = AutoProbeRun(
+                    bundle=bundle,
+                    transport=transport,
+                    instance=instance,
+                    enumerate_fn=enumerate_fn,
+                    make_transport=make_transport,
+                    run_dir=self.run_dir,
+                    reconnect_timeout_ms=15000,
+                    on_op_progress=on_op_progress,
+                )
+                run.run()
+
+                results = [
+                    {
+                        "id": getattr(e, "operation", ""),
+                        "label": friendly_label(getattr(e, "operation", ""), "AUTO_REVERSIBLE"),
+                        "status": getattr(e, "status", ""),
+                        "restored": bool(getattr(e, "rollback_matched", False)),
+                    }
+                    for e in run.results
+                ]
+                self._result = {
+                    "status": run.verdict,
+                    "restored": bool(run.baseline_restored),
+                    "checks_completed": len(run.results),
+                    "checks_total": len(plan.get("safe", [])),
+                    "results": results,
+                    "evidence_source": "real" if self.is_physical else "mock",
+                    "physical_validation_evidence": self.is_physical,
+                    "output_path": str(run.package_dir) if run.package_dir else None,
+                }
+                self._emit(emit, "run_result", self._result)
+        except Exception as exc:
+            import traceback
+            traceback.print_exc()
+            self._result = {
+                "status": "ERROR",
+                "restored": False,
+                "checks_completed": 0,
+                "checks_total": 0,
+                "results": [],
+                "evidence_source": "real" if self.is_physical else "mock",
+                "physical_validation_evidence": False,
+                "output_path": None,
+                "error": str(exc),
+            }
+            self._emit(emit, "run_result", self._result)
+
+    def run_result(self) -> dict[str, Any]:
+        return self._result or {"status": "IDLE", "results": [], "checks_completed": 0}
 
 
 # ---------------------------------------------------------------------------
@@ -380,10 +554,10 @@ class ProbeRpcServer:
     `engine` is a DemoEngine for --demo, or a RealEngine (real hardware) otherwise.
     Injected streams make it deterministically testable."""
 
-    def __init__(self, engine=None, input_stream=None, output_stream=None) -> None:
+    def __init__(self, engine: DemoEngine | RealEngine | None = None, input_stream=None, output_stream=None) -> None:
         from .bundle import production_bundle_for_hero84
         self.bundle = production_bundle_for_hero84()
-        self.engine = engine
+        self.engine = engine if engine is not None else RealEngine()
         self.input_stream = input_stream if input_stream is not None else sys.stdin
         self.output_stream = output_stream if output_stream is not None else sys.stdout
         self._seq = 0
@@ -434,128 +608,28 @@ class ProbeRpcServer:
         else:
             norm = method
 
-        params = req.get("params", {}) or {}
         try:
             if norm == "health":
-                self._respond(ident, {"engine": "real" if self.engine is None else "demo",
+                self._respond(ident, {"engine": "demo" if isinstance(self.engine, DemoEngine) else "real",
                                       "method": "health"})
             elif norm == "discover":
-                self._respond(ident, self._discover())
+                self._respond(ident, self.engine.discover())
             elif norm == "plan":
                 self._respond(ident, plan_preview())
             elif norm == "recovery_status":
-                self._respond(ident, self._recovery_status())
+                self._respond(ident, self.engine.recovery_status())
             elif norm == "clear_recovery":
-                if isinstance(self.engine, DemoEngine):
-                    self.engine.clear_recovery()
-                self._respond(ident, self._recovery_status())
+                self.engine.clear_recovery()
+                self._respond(ident, self.engine.recovery_status())
             elif norm == "start_run":
-                self._respond(ident, self._start_run())
+                self._respond(ident, self.engine.start_run(self.emit))
             elif norm == "run_result":
-                self._respond(ident, self._run_result())
+                self._respond(ident, self.engine.run_result())
             else:
                 self._respond(ident, error=f"unknown method: {raw_method}")
         except Exception as exc:  # noqa: BLE001
             traceback.print_exc()
             self._respond(ident, error=f"{exc}")
-
-    def _discover(self) -> dict[str, Any]:
-        if isinstance(self.engine, DemoEngine):
-            return self.engine.discover()
-        return self._real_discover()
-
-    def _real_discover(self) -> dict[str, Any]:
-        try:
-            from .identity import discover_real_instance_via_raw
-            from .aula_transport import AulaHidTransport
-            transport = AulaHidTransport.open_real(uuid=int(self.bundle.product.uuid))
-            instance = discover_real_instance_via_raw(transport.raw)
-            return discover_state(instance)
-        except Exception as exc:  # noqa: BLE001
-            return {"state": "NO_DEVICE", "device": None, "supported_count": 0,
-                    "reason": str(exc)}
-
-    def _recovery_status(self) -> dict[str, Any]:
-        run_dir = Path("vetro_gui_run")
-        if isinstance(self.engine, DemoEngine):
-            return self.engine.recovery_status()
-        return recovery_status(run_dir)
-
-    def _start_run(self) -> dict[str, Any]:
-        if isinstance(self.engine, DemoEngine):
-            return self.engine.start_run(self.emit)
-        return self._real_start_run()
-
-    def _real_start_run(self) -> dict[str, Any]:
-        # Real hardware path: delegates to the EXISTING AutoProbeRun (thin, gated).
-        # Not exercised by automated tests; requires an explicit GUI hardware smoke.
-        run_dir = Path("vetro_gui_run")
-        pre = recovery_status(run_dir)
-        if pre["pending"]:
-            return {"started": False,
-                    "error": "recovery preflight is pending — recovery-first must complete before research starts"}
-        thread = threading.Thread(target=self._real_run_worker, args=(run_dir,), daemon=True)
-        thread.start()
-        return {"started": True}
-
-    def _real_run_worker(self, run_dir: Path) -> None:
-        try:
-            from .automation import AutoProbeRun
-            from .identity import discover_real_instance_via_raw
-            from .aula_transport import AulaHidTransport
-            from .bundle import production_bundle_for_hero84
-
-            bundle = production_bundle_for_hero84()
-            plan = plan_preview()
-            for op in plan.get("safe", []):
-                self.emit({"event": "progress", "data": {"op": op["id"], "label": op["label"], "state": "QUEUED", "text": "Waiting..."}})
-
-            transport = AulaHidTransport.open_real(uuid=int(bundle.product.uuid))
-            instance = discover_real_instance_via_raw(transport.raw)
-
-            def enumerate_fn():
-                try:
-                    import hid  # type: ignore
-                    return instance if hid.enumerate(0x372E, 0x103E) else None
-                except Exception:
-                    return None
-
-            def on_op_progress(op_id: str, state: str, text: str) -> None:
-                self.emit({"event": "progress", "data": {
-                    "op": op_id,
-                    "label": friendly_label(op_id, "AUTO_REVERSIBLE"),
-                    "state": state,
-                    "text": text,
-                }})
-
-            run = AutoProbeRun(bundle=bundle, transport=transport, instance=instance,
-                               enumerate_fn=enumerate_fn,
-                               make_transport=lambda: AulaHidTransport.open_real(uuid=int(bundle.product.uuid)),
-                               run_dir=run_dir, reconnect_timeout_ms=15000,
-                               on_op_progress=on_op_progress)
-            run.run()
-            result = {
-                "status": run.verdict,
-                "restored": run.baseline_restored,
-                "checks_completed": len(run.results),
-                "checks_total": len(run.results),
-                "results": [{"id": getattr(e, "operation", ""), "status": getattr(e, "status", ""),
-                             "restored": bool(getattr(e, "rollback_matched", False))} for e in run.results],
-                "evidence_source": "real",
-                "physical_validation_evidence": True,
-                "output_path": str(run.package_dir) if run.package_dir else None,
-            }
-        except Exception as exc:  # noqa: BLE001
-            result = {"status": "ERROR", "restored": False, "checks_completed": 0, "checks_total": 0,
-                      "results": [], "evidence_source": "real",
-                      "physical_validation_evidence": False, "output_path": None,
-                      "error": str(exc)}
-        self.emit({"event": "run_result", "data": result})
-
-    def _run_result(self) -> dict[str, Any]:
-        if isinstance(self.engine, DemoEngine):
-            return self.engine._result or {"status": "IDLE", "results": [], "checks_completed": 0}
-        return {"status": "UNKNOWN", "note": "real run result is delivered as a run_result event"}
 
     # -- loop ----------------------------------------------------------------
     def serve_forever(self) -> None:
@@ -577,7 +651,7 @@ class ProbeRpcServer:
         self.handle(req)
 
 
-def run_cli(engine: DemoEngine | None) -> int:
+def run_cli(engine: DemoEngine | RealEngine | None) -> int:
     """Entry for `python -m community.vetro_probe.gui_rpc [--demo]`."""
     server = ProbeRpcServer(engine=engine)
     try:
@@ -594,7 +668,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--scenario", type=str, default="supported",
                         help="Demo scenario: supported|fail_restored|manual|recovery_startup|unsupported_fw|no_device")
     args = parser.parse_args(argv)
-    engine = DemoEngine(scenario=args.scenario) if args.demo else None
+    engine = DemoEngine(scenario=args.scenario) if args.demo else RealEngine()
     return run_cli(engine)
 
 

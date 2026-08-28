@@ -559,6 +559,11 @@ class AutoProbeRun:
             op_id = entry["operation"]
             if entry["classification"] != CLS_AUTO_REVERSIBLE:
                 continue
+            if self.on_op_progress:
+                try:
+                    self.on_op_progress(op_id, "BASELINING", "Checking baseline...")
+                except Exception:
+                    pass
             snap = collector.collect([op_id])
             if op_id not in snap.values:
                 entry["classification"] = CLS_BLOCKED
@@ -620,6 +625,7 @@ class AutoProbeRun:
                 observable=None, firmware_branch=self.instance.firmware_version,
                 connection_mode=self.instance.connection_mode,
                 enforce_feature_gates=True,  # executor-level defense in depth
+                on_op_progress=self.on_op_progress,
             )
             self._transition(S_EXECUTING, f"executing {op_id} (baseline {baseline_val!r})")
             if self.on_op_progress:

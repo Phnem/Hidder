@@ -78,11 +78,15 @@ export function ResearchScreen() {
   const [result, setResult] = useState<ProbeRunResult | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [isStalled, setIsStalled] = useState<boolean>(false);
 
   const unlistenRef = useRef<(() => void) | undefined>(undefined);
   const timerRef = useRef<number | undefined>(undefined);
+  const lastEventTimeRef = useRef<number>(Date.now());
 
   const handleEngineEvent = useCallback((event: ProbeEngineEvent) => {
+    lastEventTimeRef.current = Date.now();
+    setIsStalled(false);
     if (event.kind === "progress") {
       const p = event.progress;
       console.log(`[PROBE EVENT] progress: op=${p.op} state=${p.state} text=${p.text}`);
@@ -103,6 +107,8 @@ export function ResearchScreen() {
 
   const init = useCallback(async () => {
     setScreen({ kind: "startup" });
+    setIsStalled(false);
+    lastEventTimeRef.current = Date.now();
     try {
       // Ensure listeners are attached BEFORE any RPC calls
       if (!unlistenRef.current) {
@@ -158,12 +164,17 @@ export function ResearchScreen() {
     };
   }, [init]);
 
-  // Manage elapsed run timer during running state
+  // Manage elapsed run timer and non-destructive stall watchdog during running state
   useEffect(() => {
     if (screen.kind === "running") {
       setElapsedSeconds(0);
+      lastEventTimeRef.current = Date.now();
+      setIsStalled(false);
       timerRef.current = window.setInterval(() => {
         setElapsedSeconds((s) => s + 1);
+        if (Date.now() - lastEventTimeRef.current > 20000) {
+          setIsStalled(true);
+        }
       }, 1000);
     } else {
       if (timerRef.current !== undefined) {
@@ -184,6 +195,8 @@ export function ResearchScreen() {
     if (screen.kind === "running") return; // prevent duplicate clicks
 
     console.log("[PROBE START] START_CLICK -> START_IPC_BEGIN");
+    lastEventTimeRef.current = Date.now();
+    setIsStalled(false);
     setScreen({ kind: "running", starting: true });
     setResult(null);
     setProgress({});
@@ -384,6 +397,41 @@ export function ResearchScreen() {
                   </span>
                 </div>
                 <p className="keep-connected-notice">Keep the device connected until research is complete.</p>
+                {isStalled && (
+                  <div className="stall-warning-box" role="alert">
+                    <div className="stall-warning-header">
+                      <span className="warn-icon">⚠</span>
+                      <strong>Research is taking longer than expected</strong>
+                    </div>
+                    <p className="stall-warning-text">
+                      Keep the device connected while research finishes. Do not disconnect the keyboard.
+                    </p>
+                    <button
+                      type="button"
+                      className="button-link"
+                      onClick={() => setShowDetails(!showDetails)}
+                    >
+                      {showDetails ? "Hide diagnostic details" : "View diagnostic details"}
+                    </button>
+                    {showDetails && (
+                      <div className="details">
+                        <pre>
+                          {JSON.stringify(
+                            {
+                              elapsedSeconds,
+                              completedCount,
+                              safeCount,
+                              currentActivity: activeOp?.label ?? "unknown",
+                              progress,
+                            },
+                            null,
+                            2,
+                          )}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </section>
           )}

@@ -34,6 +34,7 @@ class ExecutorContext:
     firmware_branch: str = ""
     connection_mode: str = ""
     enforce_feature_gates: bool = False  # executor-level defense in depth (auto flow)
+    on_op_progress: Any = None
 
 
 def _validation_flags(ev: TestEvidence, op_id: str) -> dict[str, bool]:
@@ -145,6 +146,11 @@ def execute_single(operation_id: str, ctx: ExecutorContext) -> TestEvidence:
     time.sleep(cadence / 1000)
 
     # ---- READBACK ----
+    if getattr(ctx, "on_op_progress", None):
+        try:
+            ctx.on_op_progress(operation_id, "VERIFYING", "Verifying setting...")
+        except Exception:
+            pass
     t_rb = time.time()
     rb_val, rb_res = ctx.transport.get(operation_id)
     ev.timing_ms["readback_ms"] = int((time.time() - t_rb) * 1000)
@@ -177,6 +183,11 @@ def execute_single(operation_id: str, ctx: ExecutorContext) -> TestEvidence:
 
     # ---- ROLLBACK ----
     if op.reversible:
+        if getattr(ctx, "on_op_progress", None):
+            try:
+                ctx.on_op_progress(operation_id, "RESTORING", "Restoring original setting...")
+            except Exception:
+                pass
         t_rb2 = time.time()
         rbk_res = ctx.transport.set(operation_id, baseline_val)
         ev.timing_ms["rollback_ms"] = int((time.time() - t_rb2) * 1000)

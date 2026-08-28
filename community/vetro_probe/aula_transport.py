@@ -96,6 +96,15 @@ class AulaHidTransport(DeviceTransport):
         # real hardware: fresh open + identity
         return AulaHidTransport.open_real(uuid=self.product.uuid)
 
+    def close(self) -> None:
+        """Close underlying raw handle to avoid resource lock on Windows."""
+        self.invalidate()
+        if hasattr(self.raw, "close"):
+            try:
+                self.raw.close()
+            except Exception:
+                pass
+
     @classmethod
     def open_real(cls, uuid: int | None = None) -> "AulaHidTransport":
         """Discover and open real hardware, resolve product via GET_IDENTITY."""

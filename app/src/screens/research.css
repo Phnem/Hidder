@@ -208,6 +208,48 @@
   overflow: auto;
 }
 
+/* --- Stall watchdog warning ---------------------------------------------- */
+
+.research .stall-warning-box {
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: color-mix(in srgb, #febe10 12%, transparent);
+  border: 1px solid color-mix(in srgb, #febe10 40%, transparent);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.research .stall-warning-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: #d9822b;
+}
+
+.research .stall-warning-header .warn-icon {
+  font-size: 1rem;
+}
+
+.research .stall-warning-text {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted, #666);
+}
+
+.research .button-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent, #febe10);
+  font-size: 0.85rem;
+  text-decoration: underline;
+  cursor: pointer;
+  align-self: flex-start;
+}
+
 /* --- Keyframe animations -------------------------------------------------- */
 
 @keyframes probe-pulse {
