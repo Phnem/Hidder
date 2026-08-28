@@ -12,6 +12,7 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "Vetro Probe",
         "width": 720,
         "height": 820,

@@ -5,56 +5,234 @@
   gap: 1rem;
   max-width: 44rem;
 }
+
 .research .panel {
   background: var(--surface, #f2f2f2);
   border: 1px solid color-mix(in srgb, currentColor 15%, transparent);
   border-radius: 8px;
   padding: 1.25rem 1.5rem;
 }
+
 .research .panel.warn {
   border-color: #c8442f;
 }
+
+.research .panel.running-panel {
+  border-color: var(--accent, #febe10);
+}
+
 .research h2 {
   margin: 0 0 0.25rem;
 }
+
 .research h3 {
   margin: 1rem 0 0.4rem;
   font-weight: 600;
 }
+
 .research .muted {
   color: var(--muted, #666);
 }
+
+/* --- Progress section ----------------------------------------------------- */
+
+.research .progress-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0.5rem 0 1rem;
+  padding: 1rem;
+  background: color-mix(in srgb, currentColor 4%, transparent);
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, currentColor 10%, transparent);
+}
+
+.research .progress-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+}
+
+.research .progress-count {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.research .progress-timer {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  color: var(--muted, #666);
+}
+
+.research .progress-track {
+  width: 100%;
+  height: 8px;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.research .progress-fill {
+  height: 100%;
+  background: var(--accent, #febe10);
+  border-radius: 4px;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.research .current-activity {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.research .current-activity .pulse-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent, #febe10);
+  animation: probe-pulse 1.5s infinite ease-in-out;
+}
+
+.research .keep-connected-notice {
+  font-size: 0.8rem;
+  color: var(--muted, #666);
+  margin: 0;
+}
+
+/* --- Plan & Operation list ------------------------------------------------ */
+
 .research .plan-list {
   list-style: none;
   margin: 0.4rem 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.45rem;
 }
+
 .research .plan-list li {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 1rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 4px;
+  transition: background 0.15s ease;
 }
+
+.research .plan-list li.op-active {
+  background: color-mix(in srgb, var(--accent, #febe10) 10%, transparent);
+}
+
+.research .plan-list li.op-restoring {
+  background: color-mix(in srgb, #58a6ff 12%, transparent);
+}
+
+.research .plan-list li.op-pass {
+  background: color-mix(in srgb, #3fb950 8%, transparent);
+}
+
 .research .op-state {
   font-variant-numeric: tabular-nums;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.research .op-state.badge-pass {
+  color: var(--success, #3fb950);
+  font-weight: 600;
+}
+
+.research .op-state.badge-active {
+  color: var(--text, inherit);
+  font-weight: 600;
+}
+
+.research .op-state.badge-restoring {
+  color: #58a6ff;
+  font-weight: 600;
+}
+
+.research .op-state.badge-queued {
   color: var(--muted, #666);
 }
+
+.research .op-state.badge-failed {
+  color: var(--warn, #f85149);
+  font-weight: 600;
+}
+
+.research .op-state .row-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.research .op-state .row-dot.pulse {
+  background: var(--accent, #febe10);
+  animation: probe-pulse 1.2s infinite ease-in-out;
+}
+
+.research .op-state .row-dot.restoring {
+  background: #58a6ff;
+  animation: probe-pulse 0.9s infinite ease-in-out;
+}
+
+/* --- Actions & Details ---------------------------------------------------- */
+
 .research .actions {
   display: flex;
   gap: 0.75rem;
   margin-top: 1rem;
 }
+
 .research .actions button:first-child {
   font-weight: 700;
 }
+
 .research .details {
   margin-top: 1rem;
 }
+
 .research .details pre {
   white-space: pre-wrap;
   font-size: 0.8rem;
   max-height: 18rem;
   overflow: auto;
+}
+
+/* --- Keyframe animations -------------------------------------------------- */
+
+@keyframes probe-pulse {
+  0% {
+    opacity: 0.35;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+  100% {
+    opacity: 0.35;
+    transform: scale(0.85);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .research .progress-fill {
+    transition: none;
+  }
+  .research .pulse-dot,
+  .research .op-state .row-dot.pulse,
+  .research .op-state .row-dot.restoring {
+    animation: none;
+    opacity: 1;
+  }
 }

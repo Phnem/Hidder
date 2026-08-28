@@ -427,4 +427,120 @@ mod tests {
         let res = rx.recv_timeout(Duration::from_millis(10));
         assert!(res.is_err());
     }
+
+    #[test]
+    fn test_production_packaged_sidecar_bridge_real_mode() {
+        let root = repo_root();
+        let bin = find_bundled_binary(&root);
+        assert!(bin.is_some(), "vetro-probe-sidecar.exe must be present");
+        let bin_path = bin.unwrap();
+        println!("[DIAG] Found bundled sidecar binary: {:?}", bin_path);
+
+        let sink: EventSink = Arc::new(|name, data| {
+            println!("[DIAG EVENT] {}: {:?}", name, data);
+        });
+
+        let start_time = Instant::now();
+        let engine = ProbeEngine::start(Mode::Real, sink).expect("ProbeEngine::start failed");
+        let spawn_ms = start_time.elapsed().as_millis();
+        println!("[DIAG] Engine spawned in {} ms", spawn_ms);
+
+        // 1. Health
+        let t0 = Instant::now();
+        let health: Value = engine.call("health", json!({})).expect("health call failed");
+        let health_ms = t0.elapsed().as_millis();
+        println!("[DIAG] health ({} ms): {:?}", health_ms, health);
+
+        // 2. Recovery Status
+        let t1 = Instant::now();
+        let rec: Value = engine.call("recovery_status", json!({})).expect("recovery_status call failed");
+        let rec_ms = t1.elapsed().as_millis();
+        println!("[DIAG] recovery_status ({} ms): {:?}", rec_ms, rec);
+
+        // 3. Discover
+        let t2 = Instant::now();
+        let disc: Value = engine.call("discover", json!({})).expect("discover call failed");
+        let disc_ms = t2.elapsed().as_millis();
+        println!("[DIAG] discover ({} ms): {:?}", disc_ms, disc);
+
+        // 4. Plan
+        let t3 = Instant::now();
+        let plan: Value = engine.call("plan", json!({})).expect("plan call failed");
+        let plan_ms = t3.elapsed().as_millis();
+        println!("[DIAG] plan ({} ms): {:?}", plan_ms, plan);
+
+        assert_eq!(health["method"], "health");
+        assert!(rec.get("preflight").is_some());
+        assert!(disc.get("state").is_some());
+        assert!(plan.get("safe").is_some());
+        assert_eq!(plan["safe_count"], 6);
+    }
+
+    #[test]
+    fn test_production_packaged_sidecar_demo_full_e2e() {
+        let root = repo_root();
+        let bin = find_bundled_binary(&root);
+        assert!(bin.is_some(), "vetro-probe-sidecar.exe must be present");
+
+        let (tx_events, rx_events) = channel::<(String, Value)>();
+        let sink: EventSink = Arc::new(move |name, data| {
+            let _ = tx_events.send((name.to_string(), data));
+        });
+
+        let engine = ProbeEngine::start(Mode::Demo { scenario: "supported".into() }, sink)
+            .expect("ProbeEngine::start demo failed");
+
+        // 1. Health check
+        let health: Value = engine.call("health", json!({})).expect("health call failed");
+        assert_eq!(health["engine"], "demo");
+
+        // 2. Discover & Plan
+        let disc: Value = engine.call("discover", json!({})).expect("discover call failed");
+        assert_eq!(disc["state"], "IDENTIFIED");
+
+        let plan: Value = engine.call("plan", json!({})).expect("plan call failed");
+        assert_eq!(plan["safe_count"], 6);
+
+        // 3. Start Run
+        let t0 = Instant::now();
+        let start_resp: Value = engine.call("start_run", json!({})).expect("start_run call failed");
+        let start_ms = t0.elapsed().as_millis();
+        println!("[DEMO E2E] start_run accepted in {} ms: {:?}", start_ms, start_resp);
+        assert_eq!(start_resp["started"], true);
+
+        // 4. Collect streaming progress events
+        let mut progress_events = Vec::new();
+        let mut run_result: Option<Value> = None;
+
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while Instant::now() < deadline {
+            if let Ok((name, data)) = rx_events.recv_timeout(Duration::from_millis(500)) {
+                if name == "run_result" {
+                    run_result = Some(data);
+                    break;
+                } else if name == "progress" {
+                    progress_events.push(data);
+                }
+            }
+        }
+
+        assert!(run_result.is_some(), "Expected run_result event within timeout");
+        let res = run_result.unwrap();
+        println!("[DEMO E2E] Final run_result: {:?}", res);
+        assert_eq!(res["status"], "SUCCESS_RESTORED");
+        assert_eq!(res["restored"], true);
+        assert_eq!(res["checks_completed"], 6);
+        assert_eq!(res["checks_total"], 6);
+
+        println!("[DEMO E2E] Total progress events received: {}", progress_events.len());
+        assert!(progress_events.len() >= 6, "Expected progress events for all operations");
+
+        let completed_ops: Vec<_> = progress_events
+            .iter()
+            .filter(|p| p.get("state").and_then(|s| s.as_str()) == Some("PASS"))
+            .filter_map(|p| p.get("op").and_then(|o| o.as_str()))
+            .collect();
+        println!("[DEMO E2E] Passed operations in order: {:?}", completed_ops);
+        assert_eq!(completed_ops.len(), 6);
+    }
 }

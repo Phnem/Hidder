@@ -8,7 +8,7 @@
  *   - refuses to start a run until recovery-first preflight is CLEAR,
  *   - renders recovery/restore outcomes honestly (FAIL_RESTORED vs MANUAL).
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   onProbeEvents,
   probeClearRecovery,
@@ -20,6 +20,7 @@ import {
   type ProbeDiscovery,
   type ProbeEngineEvent,
   type ProbePlan,
+  type ProbeProgressState,
   type ProbeRecoveryStatus,
   type ProbeRunResult,
 } from "../ipc";
@@ -28,35 +29,73 @@ import "./research.css";
 type Screen =
   | { kind: "startup" }
   | { kind: "ready" }
-  | { kind: "running" }
+  | { kind: "running"; starting: boolean }
   | { kind: "result" }
   | { kind: "error"; message: string };
 
-type OpState =
-  | "QUEUED"
-  | "BASELINING"
-  | "TESTING"
-  | "VERIFYING"
-  | "RESTORING"
-  | "PASS"
-  | "BLOCKED"
-  | "FAILED"
-  | "RECOVERING";
+interface OpProgressInfo {
+  state: ProbeProgressState;
+  text?: string;
+  label?: string;
+}
+
+function formatTimer(seconds: number): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+}
+
+function friendlyStageText(state?: ProbeProgressState, label?: string, text?: string): string {
+  if (text && text.trim().length > 0 && text !== "Waiting...") return text;
+  switch (state) {
+    case "BASELINING":
+      return `Reading ${label ?? "original"} setting…`;
+    case "TESTING":
+      return `Testing temporary setting…`;
+    case "VERIFYING":
+      return `Verifying result…`;
+    case "RESTORING":
+      return `Restoring original setting…`;
+    case "RECOVERING":
+      return `Recovering original device state…`;
+    case "PASS":
+      return "Completed";
+    case "QUEUED":
+      return "Waiting…";
+    case "FAILED":
+      return "Failed";
+    default:
+      return "Preparing…";
+  }
+}
 
 export function ResearchScreen() {
   const [screen, setScreen] = useState<Screen>({ kind: "startup" });
   const [recovery, setRecovery] = useState<ProbeRecoveryStatus | null>(null);
   const [discovery, setDiscovery] = useState<ProbeDiscovery | null>(null);
   const [plan, setPlan] = useState<ProbePlan | null>(null);
-  const [progress, setProgress] = useState<Record<string, OpState>>({});
+  const [progress, setProgress] = useState<Record<string, OpProgressInfo>>({});
   const [result, setResult] = useState<ProbeRunResult | null>(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
   const unlistenRef = useRef<(() => void) | undefined>(undefined);
+  const timerRef = useRef<number | undefined>(undefined);
 
   const handleEngineEvent = useCallback((event: ProbeEngineEvent) => {
     if (event.kind === "progress") {
-      setProgress((prev) => ({ ...prev, [event.progress.op]: event.progress.state }));
+      const p = event.progress;
+      console.log(`[PROBE EVENT] progress: op=${p.op} state=${p.state} text=${p.text}`);
+      setProgress((prev) => ({
+        ...prev,
+        [p.op]: {
+          state: p.state,
+          text: p.text,
+          label: p.label,
+        },
+      }));
     } else {
+      console.log(`[PROBE EVENT] run_result: status=${event.result.status} restored=${event.result.restored}`);
       setResult(event.result);
       setScreen({ kind: "result" });
     }
@@ -65,24 +104,26 @@ export function ResearchScreen() {
   const init = useCallback(async () => {
     setScreen({ kind: "startup" });
     try {
+      // Ensure listeners are attached BEFORE any RPC calls
+      if (!unlistenRef.current) {
+        try {
+          unlistenRef.current = await onProbeEvents(handleEngineEvent);
+          console.log("[PROBE INIT] Event listeners attached");
+        } catch (err) {
+          console.warn("Could not attach probe event listeners:", err);
+        }
+      }
+
       // Bounded 12s timeout for startup RPC calls
       const timeout = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error("Probe engine initialization timed out (12s). Is the sidecar running?")), 12000),
       );
 
       const startupTask = (async () => {
-        if (!unlistenRef.current) {
-          try {
-            unlistenRef.current = await onProbeEvents(handleEngineEvent);
-          } catch (err) {
-            console.warn("Could not attach probe event listeners:", err);
-          }
-        }
         const rec = await probeRecoveryStatus();
         let disc: ProbeDiscovery | null = null;
         let pl: ProbePlan | null = null;
 
-        // If recovery is clear, proceed to discover device and plan
         if (rec.preflight === "CLEAR") {
           [disc, pl] = await Promise.all([probeDiscover(), probePlan()]);
         } else {
@@ -110,23 +151,65 @@ export function ResearchScreen() {
     return () => {
       unlistenRef.current?.();
       unlistenRef.current = undefined;
+      if (timerRef.current !== undefined) {
+        clearInterval(timerRef.current);
+        timerRef.current = undefined;
+      }
     };
   }, [init]);
 
+  // Manage elapsed run timer during running state
+  useEffect(() => {
+    if (screen.kind === "running") {
+      setElapsedSeconds(0);
+      timerRef.current = window.setInterval(() => {
+        setElapsedSeconds((s) => s + 1);
+      }, 1000);
+    } else {
+      if (timerRef.current !== undefined) {
+        clearInterval(timerRef.current);
+        timerRef.current = undefined;
+      }
+    }
+    return () => {
+      if (timerRef.current !== undefined) {
+        clearInterval(timerRef.current);
+        timerRef.current = undefined;
+      }
+    };
+  }, [screen.kind]);
+
   const start = useCallback(async () => {
     if (discovery?.state !== "IDENTIFIED" || recovery?.preflight !== "CLEAR") return;
-    setScreen({ kind: "running" });
+    if (screen.kind === "running") return; // prevent duplicate clicks
+
+    console.log("[PROBE START] START_CLICK -> START_IPC_BEGIN");
+    setScreen({ kind: "running", starting: true });
     setResult(null);
     setProgress({});
+    setElapsedSeconds(0);
+
     try {
+      // Ensure listeners attached before sending start_run RPC
+      if (!unlistenRef.current) {
+        unlistenRef.current = await onProbeEvents(handleEngineEvent);
+      }
+      console.log("[PROBE START] START_RPC_REQUEST_SENT: method=start_run");
       const reply = await probeStartRun();
+      console.log("[PROBE START] START_RPC_RESPONSE_RECEIVED:", reply);
+
       if (!reply.started) {
+        console.warn("[PROBE START] RUN_REFUSED:", reply.error);
         setScreen({ kind: "error", message: reply.error ?? "run did not start" });
+      } else {
+        console.log("[PROBE START] RUN_ACCEPTED -> EXECUTOR_START");
+        setScreen({ kind: "running", starting: false });
       }
     } catch (cause) {
+      console.error("[PROBE START] START_ERROR:", cause);
       setScreen({ kind: "error", message: messageOf(cause) });
     }
-  }, [discovery, recovery]);
+  }, [discovery, recovery, screen.kind, handleEngineEvent]);
 
   const restoreConfirmed = useCallback(async () => {
     try {
@@ -142,6 +225,23 @@ export function ResearchScreen() {
       setScreen({ kind: "error", message: messageOf(cause) });
     }
   }, []);
+
+  // Compute honest progress numbers
+  const safeOps = useMemo(() => plan?.safe ?? [], [plan]);
+  const safeCount = useMemo(() => plan?.safeCount || safeOps.length || 6, [plan, safeOps]);
+  const completedCount = useMemo(() => {
+    return safeOps.filter((op) => progress[op.id]?.state === "PASS").length;
+  }, [safeOps, progress]);
+
+  // Find currently active operation
+  const activeOp = useMemo(() => {
+    return safeOps.find((op) => {
+      const st = progress[op.id]?.state;
+      return st === "BASELINING" || st === "TESTING" || st === "VERIFYING" || st === "RESTORING" || st === "RECOVERING";
+    });
+  }, [safeOps, progress]);
+
+  const activeOpInfo = activeOp ? progress[activeOp.id] : undefined;
 
   if (screen.kind === "startup") {
     return (
@@ -173,10 +273,12 @@ export function ResearchScreen() {
     );
   }
 
+  const isRunning = screen.kind === "running";
+  const isStarting = isRunning && screen.starting;
   const canStart =
     recovery?.preflight === "CLEAR" &&
     discovery?.state === "IDENTIFIED" &&
-    screen.kind !== "running";
+    !isRunning;
 
   const blocked = plan?.blocked ?? [];
 
@@ -243,26 +345,107 @@ export function ResearchScreen() {
 
       {discovery?.state === "IDENTIFIED" && (
         <>
-          <section className="panel">
+          <section className={`panel ${isRunning ? "running-panel" : ""}`}>
             <h2>{discovery.device?.name ?? "Device detected"}</h2>
             <p className="muted">
               Firmware {discovery.device?.firmware ?? "unknown"} ·{" "}
               {discovery.supportedCount} safe checks available
             </p>
-            {!canStart && recovery?.preflight !== "RECOVERING" && (
-              <p className="muted">Start is disabled until recovery preflight clears.</p>
-            )}
           </section>
+
+          {/* Overall Research Progress Section (shown while active) */}
+          {isRunning && (
+            <section className="panel running-panel">
+              <div className="progress-box">
+                <div className="progress-header-row">
+                  <span className="progress-count">
+                    {isStarting ? "Preparing research…" : `${completedCount} / ${safeCount} completed`}
+                  </span>
+                  <span className="progress-timer">Elapsed: {formatTimer(elapsedSeconds)}</span>
+                </div>
+                <div className="progress-track">
+                  <div
+                    className="progress-fill"
+                    style={{
+                      width: `${safeCount > 0 ? Math.round((completedCount / safeCount) * 100) : 0}%`,
+                    }}
+                  />
+                </div>
+                <div className="current-activity">
+                  <span className="pulse-dot" />
+                  <span>
+                    {isStarting
+                      ? "Starting research…"
+                      : activeOp
+                        ? `${activeOp.label}: ${friendlyStageText(activeOpInfo?.state, activeOp.label, activeOpInfo?.text)}`
+                        : completedCount === safeCount
+                          ? "Finalizing and restoring device baseline…"
+                          : "Researching device…"}
+                  </span>
+                </div>
+                <p className="keep-connected-notice">Keep the device connected until research is complete.</p>
+              </div>
+            </section>
+          )}
 
           <section className="panel">
             <h3>Safe automatic checks</h3>
             <ul className="plan-list">
-              {(plan?.safe ?? []).map((op) => (
-                <li key={op.id}>
-                  <span>{op.label}</span>
-                  {screen.kind === "running" && <span className="op-state">{progress[op.id] ?? "QUEUED"}</span>}
-                </li>
-              ))}
+              {safeOps.map((op) => {
+                const info = progress[op.id];
+                const state = info?.state;
+                const isOpActive =
+                  state === "BASELINING" ||
+                  state === "TESTING" ||
+                  state === "VERIFYING";
+                const isOpRestoring = state === "RESTORING";
+                const isOpPass = state === "PASS";
+                const isOpFailed = state === "FAILED";
+
+                let rowClass = "";
+                if (isOpRestoring) rowClass = "op-restoring";
+                else if (isOpActive) rowClass = "op-active";
+                else if (isOpPass) rowClass = "op-pass";
+
+                return (
+                  <li key={op.id} className={rowClass}>
+                    <span>{op.label}</span>
+                    {isRunning && (
+                      <span
+                        className={`op-state ${
+                          isOpPass
+                            ? "badge-pass"
+                            : isOpRestoring
+                              ? "badge-restoring"
+                              : isOpActive
+                                ? "badge-active"
+                                : isOpFailed
+                                  ? "badge-failed"
+                                  : "badge-queued"
+                        }`}
+                      >
+                        {isOpPass && "✓ Completed"}
+                        {isOpRestoring && (
+                          <>
+                            <span className="row-dot restoring" />
+                            Restoring original setting…
+                          </>
+                        )}
+                        {isOpActive && (
+                          <>
+                            <span className="row-dot pulse" />
+                            {friendlyStageText(state, op.label, info?.text)}
+                          </>
+                        )}
+                        {!isOpPass && !isOpRestoring && !isOpActive && isOpFailed && "✕ Failed"}
+                        {!isOpPass && !isOpRestoring && !isOpActive && !isOpFailed && (
+                          isStarting ? "○ Preparing…" : "○ Waiting…"
+                        )}
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
 
             {blocked.length > 0 && (
@@ -280,8 +463,12 @@ export function ResearchScreen() {
             )}
 
             <div className="actions">
-              <button type="button" disabled={!canStart} onClick={() => void start()}>
-                Start research
+              <button
+                type="button"
+                disabled={!canStart || isRunning}
+                onClick={() => void start()}
+              >
+                {isStarting ? "Starting…" : isRunning ? "Research in progress…" : "Start research"}
               </button>
               <button type="button" onClick={() => setShowDetails((v) => !v)}>
                 {showDetails ? "Hide details" : "Technical details"}
@@ -298,6 +485,9 @@ export function ResearchScreen() {
                       plan,
                       recovery,
                       progress,
+                      completedCount,
+                      safeCount,
+                      elapsedSeconds,
                     },
                     null,
                     2,
@@ -310,7 +500,12 @@ export function ResearchScreen() {
       )}
 
       {screen.kind === "result" && result && (
-        <ResultView result={result} onShowDetails={setShowDetails} showDetails={showDetails} />
+        <ResultView
+          result={result}
+          onShowDetails={setShowDetails}
+          showDetails={showDetails}
+          onRestart={() => void init()}
+        />
       )}
     </div>
   );
@@ -320,22 +515,29 @@ function ResultView({
   result,
   showDetails,
   onShowDetails,
+  onRestart,
 }: {
   result: ProbeRunResult;
   showDetails: boolean;
   onShowDetails: (v: boolean) => void;
+  onRestart: () => void;
 }) {
   if (result.status === "FAILED_REQUIRES_MANUAL_RESTORE") {
     return (
       <section className="panel warn" role="alert">
-        <h2>Research stopped</h2>
+        <h2>Research stopped — Manual restore required</h2>
         <p className="muted">
           Your original device settings could not be verified as restored. Please
-          restore them using the vendor software, then come back.
+          restore them using the vendor software, then restart.
         </p>
-        <button type="button" onClick={() => onShowDetails(!showDetails)}>
-          Technical details
-        </button>
+        <div className="actions">
+          <button type="button" onClick={onRestart}>
+            Start new session
+          </button>
+          <button type="button" onClick={() => onShowDetails(!showDetails)}>
+            {showDetails ? "Hide details" : "Technical details"}
+          </button>
+        </div>
         {showDetails && <Details result={result} />}
       </section>
     );
@@ -351,9 +553,14 @@ function ResultView({
         <p className="muted">
           {result.checksCompleted} of {result.checksTotal} checks completed.
         </p>
-        <button type="button" onClick={() => onShowDetails(!showDetails)}>
-          Technical details
-        </button>
+        <div className="actions">
+          <button type="button" onClick={onRestart}>
+            Start new session
+          </button>
+          <button type="button" onClick={() => onShowDetails(!showDetails)}>
+            {showDetails ? "Hide details" : "Technical details"}
+          </button>
+        </div>
         {showDetails && <Details result={result} />}
       </section>
     );
@@ -362,15 +569,21 @@ function ResultView({
   return (
     <section className="panel">
       <h2>Research complete</h2>
-      <p className="muted">Device restored successfully.</p>
-      <p className="muted">{result.checksCompleted} checks completed.</p>
-      <p className="muted">Results ready.</p>
+      <p className="muted">
+        Original device settings verified and restored.
+      </p>
+      <p className="muted">
+        {result.checksCompleted} of {result.checksTotal} checks completed successfully.
+      </p>
       <div className="actions">
-        <button type="button" onClick={() => onShowDetails(!showDetails)}>
-          {showDetails ? "Hide details" : "View details"}
+        <button type="button" onClick={onRestart}>
+          Start new session
         </button>
         <button type="button" onClick={() => void probeOpenResults()}>
           Open results folder
+        </button>
+        <button type="button" onClick={() => onShowDetails(!showDetails)}>
+          {showDetails ? "Hide details" : "Technical details"}
         </button>
       </div>
       {showDetails && <Details result={result} />}
@@ -382,28 +595,13 @@ function Details({ result }: { result: ProbeRunResult }) {
   return (
     <details open className="details">
       <summary>Technical details</summary>
-      <pre className="mono">
-        {JSON.stringify(
-          {
-            status: result.status,
-            restored: result.restored,
-            checksCompleted: result.checksCompleted,
-            checksTotal: result.checksTotal,
-            evidenceSource: result.evidenceSource,
-            physicalValidationEvidence: result.physicalValidationEvidence,
-            outputPath: result.outputPath,
-            results: result.results,
-          },
-          null,
-          2,
-        )}
-      </pre>
+      <pre className="mono">{JSON.stringify(result, null, 2)}</pre>
     </details>
   );
 }
 
 function messageOf(cause: unknown): string {
-  if (typeof cause === "string") return cause;
   if (cause instanceof Error) return cause.message;
-  return String(cause);
+  if (typeof cause === "string") return cause;
+  return "Unknown error";
 }

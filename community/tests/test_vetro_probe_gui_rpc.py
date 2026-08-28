@@ -33,7 +33,7 @@ def _request(s, method, params=None):
 
 def _run_script(s, scenario):
     """Run a demo scenario synchronously, returning (responses, events)."""
-    s.engine = DemoEngine(scenario=scenario)
+    s.engine = DemoEngine(scenario=scenario, stage_delay=0.0)
     out = []
     events = []
     orig = s.emit
@@ -42,6 +42,8 @@ def _run_script(s, scenario):
         orig(obj)
     s.emit = emit
     resp = _request(s, "start_run")
+    if getattr(s.engine, "_thread", None) is not None:
+        s.engine._thread.join(timeout=5.0)
     return resp, events
 
 

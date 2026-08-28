@@ -102,8 +102,15 @@ def discover_state(instance=None) -> dict[str, Any]:
     }
 
 
+_CACHED_PLAN: dict[str, Any] | None = None
+
+
 def plan_preview() -> dict[str, Any]:
     """Plan preview from the EXISTING planner + feature gates (never hardcoded)."""
+    global _CACHED_PLAN
+    if _CACHED_PLAN is not None:
+        return _CACHED_PLAN
+    import tempfile
     from .bundle import production_bundle_for_hero84
     from .automation import AutoProbeRun, CLS_AUTO_REVERSIBLE, CLS_BLOCKED
     from .transport import FakeTransport
@@ -112,27 +119,29 @@ def plan_preview() -> dict[str, Any]:
     bundle = production_bundle_for_hero84()
     inst = mock_hero84_instance()
     trans = FakeTransport(initial_state={})
-    run = AutoProbeRun(bundle=bundle, transport=trans, instance=inst,
-                       enumerate_fn=lambda: inst, make_transport=lambda: trans.fresh_session(),
-                       run_dir=Path(".") / "_gui_plan", reconnect_timeout_ms=200)
-    run._plan()
-    safe: list[dict[str, Any]] = []
-    blocked: list[dict[str, Any]] = []
-    for entry in run.plan:
-        if entry.get("informational"):
-            continue
-        op = entry["operation"]
-        cls = entry["classification"]
-        if cls == CLS_AUTO_REVERSIBLE:
-            safe.append({"id": op, "label": friendly_label(op, cls), "classification": cls})
-        elif cls == CLS_BLOCKED:
-            blocked.append({"id": op, "label": friendly_label(op, cls),
-                            "classification": cls, "why_safe": entry.get("why_safe", "")})
-    # order safe ops by the canonical validated set first
-    order = ["keyboard.profile", "keyboard.polling", "device.win_lock",
-             "he.deadzone", "he.actuation", "light.brightness"]
-    safe = sorted(safe, key=lambda o: order.index(o["id"]) if o["id"] in order else len(order))
-    return {"safe": safe, "blocked": blocked, "safe_count": len(safe)}
+    with tempfile.TemporaryDirectory() as td:
+        run = AutoProbeRun(bundle=bundle, transport=trans, instance=inst,
+                           enumerate_fn=lambda: inst, make_transport=lambda: trans.fresh_session(),
+                           run_dir=Path(td), reconnect_timeout_ms=200)
+        run._plan()
+        safe: list[dict[str, Any]] = []
+        blocked: list[dict[str, Any]] = []
+        for entry in run.plan:
+            if entry.get("informational"):
+                continue
+            op = entry["operation"]
+            cls = entry["classification"]
+            if cls == CLS_AUTO_REVERSIBLE:
+                safe.append({"id": op, "label": friendly_label(op, cls), "classification": cls})
+            elif cls == CLS_BLOCKED:
+                blocked.append({"id": op, "label": friendly_label(op, cls),
+                                "classification": cls, "why_safe": entry.get("why_safe", "")})
+        # order safe ops by the canonical validated set first
+        order = ["keyboard.profile", "keyboard.polling", "device.win_lock",
+                 "he.deadzone", "he.actuation", "light.brightness"]
+        safe = sorted(safe, key=lambda o: order.index(o["id"]) if o["id"] in order else len(order))
+        _CACHED_PLAN = {"safe": safe, "blocked": blocked, "safe_count": len(safe)}
+    return _CACHED_PLAN
 
 
 # ---------------------------------------------------------------------------
@@ -169,13 +178,14 @@ class DemoEngine:
     """Deterministic GUI-development mode. Never touches hardware; its results
     are explicitly marked source=mock and MUST NOT be treated as physical
     validation evidence."""
-
-    def __init__(self, scenario: str = "supported") -> None:
+    def __init__(self, scenario: str = "supported", stage_delay: float = 0.15) -> None:
         self.scenario = scenario
-        self._busy = threading.Lock()
+        self.stage_delay = stage_delay
         self._result: dict[str, Any] | None = None
         self._events: list[dict[str, Any]] = []
+        self._busy = threading.Lock()
         self._pending_recovery = scenario == "recovery_startup"
+        self._thread: threading.Thread | None = None
 
     # -- discovery -----------------------------------------------------------
     def discover(self) -> dict[str, Any]:
@@ -205,23 +215,50 @@ class DemoEngine:
         self._pending_recovery = False
 
     # -- run -----------------------------------------------------------------
-    def start_run(self, emit) -> dict[str, Any]:
+    def start_run(self, emit, async_run: bool = True) -> dict[str, Any]:
         if self._busy.locked():
             return {"started": False, "error": "a run is already in progress"}
-        with self._busy:
-            self._run_script(emit)
-            self._emit(emit, "run_result", self._result or {})
-            return {"started": True}
+        if async_run:
+            self._thread = threading.Thread(target=self._run_worker, args=(emit,), daemon=True)
+            self._thread.start()
+        else:
+            self._run_worker(emit)
+        return {"started": True}
+
+    def _run_worker(self, emit) -> None:
+        print(f"[SIDECAR DIAG] _run_worker entered thread", file=sys.stderr, flush=True)
+        try:
+            with self._busy:
+                print(f"[SIDECAR DIAG] _run_worker acquired _busy lock", file=sys.stderr, flush=True)
+                self._run_script(emit)
+                self._emit(emit, "run_result", self._result or {})
+        except Exception as exc:
+            import traceback
+            traceback.print_exc()
+            self._emit(emit, "run_result", {
+                "status": "ERROR",
+                "error": str(exc),
+                "restored": False,
+                "checks_completed": 0,
+                "checks_total": 0,
+                "results": [],
+            })
 
     def _emit(self, emit, event: str, data: dict[str, Any]) -> None:
         self._events.append({"event": event, "data": data})
         emit({"event": event, "data": data})
 
     def _op_progress(self, emit, op_id: str, state: str, text: str) -> None:
+        print(f"[SIDECAR DIAG] _op_progress: {op_id} {state}", file=sys.stderr, flush=True)
         self._emit(emit, "progress", {"op": op_id, "label": friendly_label(op_id, "AUTO_REVERSIBLE"),
                                       "state": state, "text": text})
 
+    def _delay(self) -> None:
+        if self.stage_delay > 0:
+            time.sleep(self.stage_delay)
+
     def _run_script(self, emit) -> None:
+        print(f"[SIDECAR DIAG] _run_script started, stage_delay={self.stage_delay}", file=sys.stderr, flush=True)
         plan = plan_preview()
         ops = plan["safe"]
         results = []
@@ -229,15 +266,20 @@ class DemoEngine:
         restored = True
         for op in ops:
             oid, label = op["id"], op["label"]
-            self._op_progress(emit, oid, "QUEUED", "")
+            self._op_progress(emit, oid, "QUEUED", "Waiting...")
+        self._delay()
+
         if self.scenario == "manual":
             # an op fails and its restore cannot be verified
             for i, op in enumerate(ops):
                 oid = op["id"]
                 if i == len(ops) - 1:
                     self._op_progress(emit, oid, "BASELINING", f"Checking {label_for(oid)}...")
+                    self._delay()
                     self._op_progress(emit, oid, "TESTING", f"Testing {label_for(oid)}...")
-                    self._op_progress(emit, oid, "RESTORING", f"Restoring original setting...")
+                    self._delay()
+                    self._op_progress(emit, oid, "RESTORING", "Restoring original setting...")
+                    self._delay()
                     self._op_progress(emit, oid, "FAILED", "Could not verify the original setting was restored.")
                     results.append({"id": oid, "label": label_for(oid), "status": "FAILED",
                                     "restored": False})
@@ -245,8 +287,16 @@ class DemoEngine:
                     restored = False
                     self._pending_recovery = True
                 else:
+                    self._op_progress(emit, oid, "BASELINING", f"Checking {label_for(oid)}...")
+                    self._delay()
+                    self._op_progress(emit, oid, "TESTING", f"Testing {label_for(oid)}...")
+                    self._delay()
+                    self._op_progress(emit, oid, "VERIFYING", f"Verifying {label_for(oid)}...")
+                    self._delay()
+                    self._op_progress(emit, oid, "RESTORING", "Restoring original setting...")
+                    self._delay()
+                    self._op_progress(emit, oid, "PASS", "Completed")
                     results.append({"id": oid, "label": label_for(oid), "status": "PASS", "restored": True})
-                    self._op_progress(emit, oid, "PASS", "Done")
             self._result = self._result_for("FAILED_REQUIRES_MANUAL_RESTORE", results, restored)
             return
         if self.scenario == "fail_restored":
@@ -254,25 +304,41 @@ class DemoEngine:
                 oid = op["id"]
                 if i == len(ops) - 1:
                     self._op_progress(emit, oid, "BASELINING", f"Checking {label_for(oid)}...")
+                    self._delay()
                     self._op_progress(emit, oid, "TESTING", f"Testing {label_for(oid)}...")
-                    self._op_progress(emit, oid, "RESTORING", f"Restoring original setting...")
+                    self._delay()
+                    self._op_progress(emit, oid, "RESTORING", "Restoring original setting...")
+                    self._delay()
                     self._op_progress(emit, oid, "FAILED", "The check could not complete.")
                     results.append({"id": oid, "label": label_for(oid), "status": "FAILED",
                                     "restored": True})
                     failed = oid
                 else:
+                    self._op_progress(emit, oid, "BASELINING", f"Checking {label_for(oid)}...")
+                    self._delay()
+                    self._op_progress(emit, oid, "TESTING", f"Testing {label_for(oid)}...")
+                    self._delay()
+                    self._op_progress(emit, oid, "VERIFYING", f"Verifying {label_for(oid)}...")
+                    self._delay()
+                    self._op_progress(emit, oid, "RESTORING", "Restoring original setting...")
+                    self._delay()
+                    self._op_progress(emit, oid, "PASS", "Completed")
                     results.append({"id": oid, "label": label_for(oid), "status": "PASS", "restored": True})
-                    self._op_progress(emit, oid, "PASS", "Done")
             self._result = self._result_for("FAIL_RESTORED", results, True)
             return
         # supported: six-op success
         for op in ops:
             oid = op["id"]
             self._op_progress(emit, oid, "BASELINING", f"Checking {label_for(oid)}...")
+            self._delay()
             self._op_progress(emit, oid, "TESTING", f"Testing {label_for(oid)}...")
+            self._delay()
             self._op_progress(emit, oid, "VERIFYING", f"Verifying {label_for(oid)}...")
-            self._op_progress(emit, oid, "RESTORING", f"Restoring original setting...")
-            self._op_progress(emit, oid, "PASS", "Done")
+            self._delay()
+            self._op_progress(emit, oid, "RESTORING", "Restoring original setting...")
+            self._delay()
+            self._op_progress(emit, oid, "PASS", "Completed")
+            self._delay()
             results.append({"id": oid, "label": label_for(oid), "status": "PASS", "restored": True})
         self._result = self._result_for("SUCCESS_RESTORED", results, True)
 
@@ -328,7 +394,9 @@ class ProbeRpcServer:
         with self._lock:
             # ensure_ascii=True ensures 100% valid 7-bit ASCII/UTF-8 over the wire
             # regardless of Windows console/codepage settings.
-            self.output_stream.write(json.dumps(obj, ensure_ascii=True) + "\n")
+            line = json.dumps(obj, ensure_ascii=True)
+            print(f"[SIDECAR DIAG _SEND] {line[:80]}", file=sys.stderr, flush=True)
+            self.output_stream.write(line + "\n")
             self.output_stream.flush()
 
     def emit(self, obj: dict[str, Any]) -> None:
@@ -438,6 +506,10 @@ class ProbeRpcServer:
             from .bundle import production_bundle_for_hero84
 
             bundle = production_bundle_for_hero84()
+            plan = plan_preview()
+            for op in plan.get("safe", []):
+                self.emit({"event": "progress", "data": {"op": op["id"], "label": op["label"], "state": "QUEUED", "text": "Waiting..."}})
+
             transport = AulaHidTransport.open_real(uuid=int(bundle.product.uuid))
             instance = discover_real_instance_via_raw(transport.raw)
 
@@ -448,10 +520,19 @@ class ProbeRpcServer:
                 except Exception:
                     return None
 
+            def on_op_progress(op_id: str, state: str, text: str) -> None:
+                self.emit({"event": "progress", "data": {
+                    "op": op_id,
+                    "label": friendly_label(op_id, "AUTO_REVERSIBLE"),
+                    "state": state,
+                    "text": text,
+                }})
+
             run = AutoProbeRun(bundle=bundle, transport=transport, instance=instance,
                                enumerate_fn=enumerate_fn,
                                make_transport=lambda: AulaHidTransport.open_real(uuid=int(bundle.product.uuid)),
-                               run_dir=run_dir, reconnect_timeout_ms=15000)
+                               run_dir=run_dir, reconnect_timeout_ms=15000,
+                               on_op_progress=on_op_progress)
             run.run()
             result = {
                 "status": run.verdict,
@@ -478,7 +559,10 @@ class ProbeRpcServer:
 
     # -- loop ----------------------------------------------------------------
     def serve_forever(self) -> None:
-        for line in self.input_stream:
+        while True:
+            line = self.input_stream.readline()
+            if not line:
+                break
             line = line.strip()
             if not line:
                 continue

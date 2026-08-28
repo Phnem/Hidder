@@ -117,6 +117,7 @@ class AutoProbeRun:
         label: str = "auto",
         block_knowledge_holes: bool = False,
         block_missing_strong_e5: bool = False,
+        on_op_progress: Callable[[str, str, str], None] | None = None,
     ) -> None:
         self.bundle = bundle
         self.transport = transport
@@ -130,6 +131,7 @@ class AutoProbeRun:
         self.label = label
         self.block_knowledge_holes = block_knowledge_holes
         self.block_missing_strong_e5 = block_missing_strong_e5
+        self.on_op_progress = on_op_progress
         self._block_reasons: dict[str, str] = {}
         self.run_dir = Path(run_dir or Path.cwd() / f"vetro_auto_{int(time.time())}")
         self.store = RunStateStore(self.run_dir)
@@ -620,6 +622,11 @@ class AutoProbeRun:
                 enforce_feature_gates=True,  # executor-level defense in depth
             )
             self._transition(S_EXECUTING, f"executing {op_id} (baseline {baseline_val!r})")
+            if self.on_op_progress:
+                try:
+                    self.on_op_progress(op_id, "TESTING", f"Testing temporary value...")
+                except Exception:
+                    pass
             ev = execute_single(op_id, ctx)
             current = ctx.transport
             self.results.append(ev)
@@ -627,6 +634,11 @@ class AutoProbeRun:
             self._checkpoint_op(op_id, baseline_val, ev.temporary_value, write_applied)
             rec = ev.recovery or {}
             if rec.get("recovery_blocked") and write_applied:
+                if self.on_op_progress:
+                    try:
+                        self.on_op_progress(op_id, "FAILED", "Recovery blocked — manual restore required")
+                    except Exception:
+                        pass
                 self.verdict = S_MANUAL
                 self._transition(S_MANUAL, f"{op_id}: recovery blocked ({rec.get('recovery_block_reason','')}) — manual restore required")
                 self.cp.recovery_required = True
@@ -639,12 +651,22 @@ class AutoProbeRun:
                 restored = bool(ev.rollback_matched) or bool(rec.get("baseline_restored"))
                 self.baseline_restored = restored
                 if restored:
+                    if self.on_op_progress:
+                        try:
+                            self.on_op_progress(op_id, "FAILED", "Failed — restored to baseline")
+                        except Exception:
+                            pass
                     self.cp.closed = True
                     self.cp.final_verified = True
                     self.store.save(self.cp)
                     self.verdict = S_FAIL_RESTORED
                     self._transition(S_FAIL_RESTORED, f"{op_id}: operation FAILED, device restored to baseline (rollback verified) — no further ops scheduled")
                 else:
+                    if self.on_op_progress:
+                        try:
+                            self.on_op_progress(op_id, "FAILED", "Failed — restore NOT verified")
+                        except Exception:
+                            pass
                     self.cp.recovery_required = True
                     self.cp.closed = False
                     self.store.save(self.cp)
@@ -652,6 +674,11 @@ class AutoProbeRun:
                     self._transition(S_MANUAL, f"{op_id}: operation FAILED and restore NOT verified — manual restore required")
                 return
             if ev.status == "PASS":
+                if self.on_op_progress:
+                    try:
+                        self.on_op_progress(op_id, "PASS", "Completed")
+                    except Exception:
+                        pass
                 self._transition(S_VALIDATING, f"{op_id} readback/rollback validated")
             # checkpoint closed after successful full lifecycle for this op
             self.cp.closed = True
