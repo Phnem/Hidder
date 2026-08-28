@@ -26,6 +26,141 @@ import {
 } from "../ipc";
 import "./research.css";
 
+export type Lang = "en" | "ru";
+
+export const translations = {
+  en: {
+    app_title: "Vetro Probe",
+    checking_session: "Checking previous session…",
+    checking_desc: "Verifying recovery preflight and device connection.",
+    init_failed: "Probe engine failed to initialize",
+    retry: "Retry",
+    retry_preflight: "Retry preflight",
+    open_results_folder: "Open results folder",
+    restoring_state: "Restoring previous device state…",
+    cannot_start_until_restored: "Research cannot start until the previous session is restored and verified.",
+    confirm_restored: "I have restored the device (clear checkpoint)",
+    manual_restore_required: "Manual device restore required",
+    manual_restore_desc: "Please restore your original device settings using the vendor software, then click below.",
+    preflight_failed: "Recovery preflight check failed",
+    connect_keyboard: "Connect your keyboard to begin",
+    connect_desc: "Vetro Probe will automatically detect when a supported device is connected.",
+    scan_devices: "Scan for devices",
+    fw_unsupported: "This firmware is not yet supported",
+    device_unsupported: "This device is not supported yet",
+    device_detected: "Device detected",
+    safe_checks_available: "safe checks available",
+    preparing_research: "Preparing research…",
+    research_in_progress: "Research in progress…",
+    completed_count: "completed",
+    elapsed: "Elapsed",
+    keep_connected: "Keep the device connected until research is complete.",
+    stall_warning_title: "Research is taking longer than expected",
+    stall_warning_text: "Keep the device connected while research finishes. Do not disconnect the keyboard.",
+    show_diagnostics: "View diagnostic details",
+    hide_diagnostics: "Hide diagnostic details",
+    safe_checks_title: "Safe automatic checks",
+    not_available_yet: "Not available yet",
+    tester_instructions: "Tester instructions",
+    step1: "Connect the device directly by USB if possible.",
+    step2: "Close the official vendor configuration software.",
+    step3: "Do not disconnect the keyboard while research is running.",
+    step4: "Click Start research below.",
+    step5: "When complete, click Open results folder and send the generated ZIP.",
+    start_research: "Start research",
+    starting: "Starting…",
+    run_again: "Run again",
+    tech_details: "Technical details",
+    hide_details: "Hide details",
+    research_complete_badge: "✓ Research complete",
+    verified_successfully: "verified successfully",
+    checks_completed_stat: "checks completed",
+    original_restored_stat: "original settings verified",
+    failures_stat: "failures",
+    of_checks_completed: "checks completed successfully.",
+    safely_skipped: "additional checks were safely skipped",
+    copy_results_summary: "Copy results summary",
+    summary_copied: "Summary copied ✓",
+    copy_diagnostics: "Copy diagnostics",
+    diag_copied: "Diagnostics copied ✓",
+    completed_badge: "✓ Completed",
+    failed_badge: "✕ Failed",
+    queued_badge: "○ Waiting…",
+    preparing_badge: "○ Preparing…",
+    restoring_badge: "Restoring original setting…",
+    stopped_manual_title: "Research stopped — Manual restore required",
+    stopped_manual_text: "Your original device settings could not be verified as restored. Please restore them using your vendor software, then restart.",
+    stopped_title: "Research stopped",
+    stopped_restored_text: "Your original device settings were restored successfully.",
+    stopped_error_text: "Research run stopped with an error.",
+  },
+  ru: {
+    app_title: "Vetro Probe",
+    checking_session: "Проверка предыдущей сессии…",
+    checking_desc: "Проверка готовности к восстановлению и подключения устройства.",
+    init_failed: "Не удалось инициализировать движок Probe",
+    retry: "Повторить",
+    retry_preflight: "Повторить проверку",
+    open_results_folder: "Открыть папку с результатами",
+    restoring_state: "Восстановление состояния устройства…",
+    cannot_start_until_restored: "Исследование не может начаться, пока не проверен возврат исходного состояния.",
+    confirm_restored: "Я восстановил устройство (сбросить контрольную точку)",
+    manual_restore_required: "Требуется ручное восстановление устройства",
+    manual_restore_desc: "Пожалуйста, восстановите исходные параметры через фирменное ПО производителя, затем нажмите кнопку ниже.",
+    preflight_failed: "Ошибка предварительной проверки",
+    connect_keyboard: "Подключите клавиатуру для начала",
+    connect_desc: "Vetro Probe автоматически обнаружит поддерживаемое устройство при подключении.",
+    scan_devices: "Поиск устройств",
+    fw_unsupported: "Данная версия прошивки пока не поддерживается",
+    device_unsupported: "Данное устройство пока не поддерживается",
+    device_detected: "Устройство обнаружено",
+    safe_checks_available: "безопасных проверок доступно",
+    preparing_research: "Подготовка к исследованию…",
+    research_in_progress: "Идёт исследование…",
+    completed_count: "выполнено",
+    elapsed: "Прошло времени",
+    keep_connected: "Не отключайте устройство до полного завершения исследования.",
+    stall_warning_title: "Исследование выполняется дольше обычного",
+    stall_warning_text: "Не отключайте клавиатуру. Исследование продолжает безопасно выполняться в фоне.",
+    show_diagnostics: "Показать диагностические данные",
+    hide_diagnostics: "Скрыть диагностику",
+    safe_checks_title: "Безопасные автоматические проверки",
+    not_available_yet: "Пока недоступно",
+    tester_instructions: "Инструкция для тестировщика",
+    step1: "Подключите устройство напрямую по USB (по проводу), если возможно.",
+    step2: "Закройте официальное ПО производителя (AULA / др. софт).",
+    step3: "Не отключайте клавиатуру во время выполнения исследования.",
+    step4: "Нажмите кнопку «Начать исследование» ниже.",
+    step5: "По завершении нажмите «Открыть папку с результатами» и отправьте созданный ZIP-архив.",
+    start_research: "Начать исследование",
+    starting: "Запуск…",
+    run_again: "Запустить снова",
+    tech_details: "Технические детали",
+    hide_details: "Скрыть детали",
+    research_complete_badge: "✓ Исследование завершено",
+    verified_successfully: "успешно проверено",
+    checks_completed_stat: "проверок выполнено",
+    original_restored_stat: "исходные настройки подтверждены",
+    failures_stat: "ошибок",
+    of_checks_completed: "проверок успешно завершено.",
+    safely_skipped: "дополнительных проверок безопасно пропущено",
+    copy_results_summary: "Скопировать краткий отчёт",
+    summary_copied: "Отчёт скопирован ✓",
+    copy_diagnostics: "Скопировать диагностику",
+    diag_copied: "Диагностика скопирована ✓",
+    completed_badge: "✓ Завершено",
+    failed_badge: "✕ Ошибка",
+    queued_badge: "○ Ожидание…",
+    preparing_badge: "○ Подготовка…",
+    restoring_badge: "Восстановление исходных настроек…",
+    stopped_manual_title: "Исследование остановлено — требуется ручное восстановление",
+    stopped_manual_text: "Не удалось автоматически подтвердить возврат исходных настроек. Восстановите их через ПО производителя и перезапустите Probe.",
+    stopped_title: "Исследование остановлено",
+    stopped_restored_text: "Исходные настройки устройства были успешно восстановлены.",
+    stopped_error_text: "Исследование завершилось с ошибкой.",
+  },
+};
+
 type Screen =
   | { kind: "startup" }
   | { kind: "ready" }
@@ -45,31 +180,50 @@ function formatTimer(seconds: number): string {
   return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
 }
 
-function friendlyStageText(state?: ProbeProgressState, label?: string, text?: string): string {
+function friendlyStageText(state?: ProbeProgressState, label?: string, text?: string, lang: Lang = "en"): string {
   if (text && text.trim().length > 0 && text !== "Waiting...") return text;
+  const t = translations[lang];
   switch (state) {
     case "BASELINING":
-      return `Reading ${label ?? "original"} setting…`;
+      return lang === "ru" ? `Считывание исходных настроек…` : `Reading ${label ?? "original"} setting…`;
     case "TESTING":
-      return `Testing temporary setting…`;
+      return lang === "ru" ? `Проверка временных значений…` : `Testing temporary setting…`;
     case "VERIFYING":
-      return `Verifying result…`;
+      return lang === "ru" ? `Проверка результата…` : `Verifying result…`;
     case "RESTORING":
-      return `Restoring original setting…`;
+      return t.restoring_badge;
     case "RECOVERING":
-      return `Recovering original device state…`;
+      return lang === "ru" ? `Восстановление состояния…` : `Recovering original device state…`;
     case "PASS":
-      return "Completed";
+      return t.completed_badge;
     case "QUEUED":
-      return "Waiting…";
+      return t.queued_badge;
     case "FAILED":
-      return "Failed";
+      return t.failed_badge;
     default:
-      return "Preparing…";
+      return t.preparing_badge;
   }
 }
 
 export function ResearchScreen() {
+  const [lang, setLangState] = useState<Lang>(() => {
+    try {
+      const saved = localStorage.getItem("vetro_probe_lang");
+      if (saved === "ru" || saved === "en") return saved;
+      if (typeof navigator !== "undefined" && navigator.language.startsWith("ru")) return "ru";
+    } catch {}
+    return "en";
+  });
+
+  const setLang = (newLang: Lang) => {
+    setLangState(newLang);
+    try {
+      localStorage.setItem("vetro_probe_lang", newLang);
+    } catch {}
+  };
+
+  const t = translations[lang];
+
   const [screen, setScreen] = useState<Screen>({ kind: "startup" });
   const [recovery, setRecovery] = useState<ProbeRecoveryStatus | null>(null);
   const [discovery, setDiscovery] = useState<ProbeDiscovery | null>(null);
@@ -110,7 +264,6 @@ export function ResearchScreen() {
     setIsStalled(false);
     lastEventTimeRef.current = Date.now();
     try {
-      // Ensure listeners are attached BEFORE any RPC calls
       if (!unlistenRef.current) {
         try {
           unlistenRef.current = await onProbeEvents(handleEngineEvent);
@@ -120,7 +273,6 @@ export function ResearchScreen() {
         }
       }
 
-      // Bounded 12s timeout for startup RPC calls
       const timeout = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error("Probe engine initialization timed out (12s). Is the sidecar running?")), 12000),
       );
@@ -143,6 +295,7 @@ export function ResearchScreen() {
       })();
 
       const { rec, disc, pl } = await Promise.race([startupTask, timeout]);
+      console.log("[PROBE INIT] Startup complete:", { rec, disc, pl });
       setRecovery(rec);
       setDiscovery(disc);
       setPlan(pl);
@@ -164,7 +317,6 @@ export function ResearchScreen() {
     };
   }, [init]);
 
-  // Manage elapsed run timer and non-destructive stall watchdog during running state
   useEffect(() => {
     if (screen.kind === "running") {
       setElapsedSeconds(0);
@@ -192,7 +344,7 @@ export function ResearchScreen() {
 
   const start = useCallback(async () => {
     if (discovery?.state !== "IDENTIFIED" || recovery?.preflight !== "CLEAR") return;
-    if (screen.kind === "running") return; // prevent duplicate clicks
+    if (screen.kind === "running") return;
 
     console.log("[PROBE START] START_CLICK -> START_IPC_BEGIN");
     lastEventTimeRef.current = Date.now();
@@ -203,7 +355,6 @@ export function ResearchScreen() {
     setElapsedSeconds(0);
 
     try {
-      // Ensure listeners attached before sending start_run RPC
       if (!unlistenRef.current) {
         unlistenRef.current = await onProbeEvents(handleEngineEvent);
       }
@@ -239,14 +390,12 @@ export function ResearchScreen() {
     }
   }, []);
 
-  // Compute honest progress numbers
   const safeOps = useMemo(() => plan?.safe ?? [], [plan]);
   const safeCount = useMemo(() => plan?.safeCount || safeOps.length || 6, [plan, safeOps]);
   const completedCount = useMemo(() => {
     return safeOps.filter((op) => progress[op.id]?.state === "PASS").length;
   }, [safeOps, progress]);
 
-  // Find currently active operation
   const activeOp = useMemo(() => {
     return safeOps.find((op) => {
       const st = progress[op.id]?.state;
@@ -256,12 +405,38 @@ export function ResearchScreen() {
 
   const activeOpInfo = activeOp ? progress[activeOp.id] : undefined;
 
+  const renderTopBar = () => (
+    <div className="probe-top-bar">
+      <div className="probe-app-title">
+        {t.app_title}
+        <span className="version-tag">v0.3.0</span>
+      </div>
+      <div className="lang-switcher">
+        <button
+          type="button"
+          className={lang === "en" ? "active" : ""}
+          onClick={() => setLang("en")}
+        >
+          EN
+        </button>
+        <button
+          type="button"
+          className={lang === "ru" ? "active" : ""}
+          onClick={() => setLang("ru")}
+        >
+          RU
+        </button>
+      </div>
+    </div>
+  );
+
   if (screen.kind === "startup") {
     return (
       <div className="research">
+        {renderTopBar()}
         <section className="panel">
-          <h2>Checking previous session…</h2>
-          <p className="muted">Verifying recovery preflight and device connection.</p>
+          <h2>{t.checking_session}</h2>
+          <p className="muted">{t.checking_desc}</p>
         </section>
       </div>
     );
@@ -270,15 +445,16 @@ export function ResearchScreen() {
   if (screen.kind === "error") {
     return (
       <div className="research" role="alert">
+        {renderTopBar()}
         <section className="panel warn">
-          <h2>Probe engine failed to initialize</h2>
+          <h2>{t.init_failed}</h2>
           <p className="muted">{screen.message}</p>
           <div className="actions">
             <button type="button" onClick={() => void init()}>
-              Retry
+              {t.retry}
             </button>
             <button type="button" onClick={() => void probeOpenResults()}>
-              Open results folder
+              {t.open_results_folder}
             </button>
           </div>
         </section>
@@ -296,79 +472,75 @@ export function ResearchScreen() {
   const blocked = plan?.blocked ?? [];
 
   const systemStageInfo = progress["system"];
-  let currentActivityText = "Researching device…";
+  let currentActivityText = lang === "ru" ? "Исследование устройства…" : "Researching device…";
   if (isStarting) {
-    currentActivityText = "Starting research…";
+    currentActivityText = lang === "ru" ? "Запуск исследования…" : "Starting research…";
   } else if (activeOp) {
-    currentActivityText = `${activeOp.label}: ${friendlyStageText(activeOpInfo?.state, activeOp.label, activeOpInfo?.text)}`;
+    currentActivityText = `${activeOp.label}: ${friendlyStageText(activeOpInfo?.state, activeOp.label, activeOpInfo?.text, lang)}`;
   } else if (systemStageInfo?.text) {
     currentActivityText = systemStageInfo.text;
   } else if (completedCount === safeCount && safeCount > 0) {
-    currentActivityText = "Finalizing and restoring device baseline…";
+    currentActivityText = lang === "ru" ? "Финализация и восстановление параметров…" : "Finalizing and restoring device baseline…";
   }
 
   return (
     <div className="research">
+      {renderTopBar()}
+
       {(recovery?.preflight === "RECOVERY_REQUIRED" ||
         recovery?.preflight === "RECOVERING" ||
         recovery?.preflight === "RECOVERY_IN_PROGRESS") && (
         <section className="panel warn" role="alert">
-          <h2>Restoring previous device state…</h2>
+          <h2>{t.restoring_state}</h2>
           <p className="muted">{recovery.reason}</p>
-          <p>
-            Research cannot start until the previous session is restored and verified.
-          </p>
+          <p>{t.cannot_start_until_restored}</p>
           <button type="button" onClick={() => void restoreConfirmed()}>
-            I have restored the device (clear checkpoint)
+            {t.confirm_restored}
           </button>
         </section>
       )}
 
       {recovery?.preflight === "MANUAL_RESTORE_REQUIRED" && (
         <section className="panel warn" role="alert">
-          <h2>Manual device restore required</h2>
+          <h2>{t.manual_restore_required}</h2>
           <p className="muted">{recovery.reason}</p>
-          <p>
-            Please restore your original device settings using the vendor software, then click below.
-          </p>
+          <p>{t.manual_restore_desc}</p>
           <button type="button" onClick={() => void restoreConfirmed()}>
-            I have restored the device
+            {t.confirm_restored}
           </button>
         </section>
       )}
 
       {recovery?.preflight === "ERROR" && (
         <section className="panel warn" role="alert">
-          <h2>Recovery preflight check failed</h2>
+          <h2>{t.preflight_failed}</h2>
           <p className="muted">{recovery.reason}</p>
           <button type="button" onClick={() => void init()}>
-            Retry preflight
+            {t.retry_preflight}
           </button>
         </section>
       )}
 
       {discovery?.state === "NO_DEVICE" && (
         <section className="panel">
-          <h2>Connect your keyboard to begin</h2>
-          <p className="muted">
-            Vetro Probe will automatically detect when a supported device is connected.
-          </p>
+          <h2>{t.connect_keyboard}</h2>
+          <p className="muted">{t.connect_desc}</p>
           <button type="button" onClick={() => void init()}>
-            Scan for devices
+            {t.scan_devices}
           </button>
         </section>
       )}
 
       {discovery?.state === "FW_UNSUPPORTED" && (
         <section className="panel">
-          <h2>This firmware is not yet supported</h2>
+          <h2>{t.fw_unsupported}</h2>
           <p className="muted">{discovery.reason}</p>
         </section>
       )}
 
       {(discovery?.state === "IDENTITY_MISMATCH" || discovery?.state === "UNSUPPORTED") && (
         <section className="panel">
-          <h2>This device is not supported yet</h2>
+          <h2>{t.device_unsupported}</h2>
           <p className="muted">{discovery.reason}</p>
         </section>
       )}
@@ -376,22 +548,25 @@ export function ResearchScreen() {
       {discovery?.state === "IDENTIFIED" && (
         <>
           <section className={`panel ${isRunning ? "running-panel" : ""}`}>
-            <h2>{discovery.device?.name ?? "Device detected"}</h2>
+            <h2>{discovery.device?.name ?? t.device_detected}</h2>
             <p className="muted">
               Firmware {discovery.device?.firmware ?? "unknown"} ·{" "}
-              {discovery.supportedCount} safe checks available
+              {discovery.supportedCount} {t.safe_checks_available}
             </p>
           </section>
 
-          {/* Overall Research Progress Section (shown while active) */}
           {isRunning && (
             <section className="panel running-panel">
               <div className="progress-box">
                 <div className="progress-header-row">
                   <span className="progress-count">
-                    {isStarting ? "Preparing research…" : `${completedCount} / ${safeCount} completed`}
+                    {isStarting
+                      ? t.preparing_research
+                      : `${completedCount} / ${safeCount} ${t.completed_count}`}
                   </span>
-                  <span className="progress-timer">Elapsed: {formatTimer(elapsedSeconds)}</span>
+                  <span className="progress-timer">
+                    {t.elapsed}: {formatTimer(elapsedSeconds)}
+                  </span>
                 </div>
                 <div className="progress-track">
                   <div
@@ -405,22 +580,20 @@ export function ResearchScreen() {
                   <span className="pulse-dot" />
                   <span>{currentActivityText}</span>
                 </div>
-                <p className="keep-connected-notice">Keep the device connected until research is complete.</p>
+                <p className="keep-connected-notice">{t.keep_connected}</p>
                 {isStalled && (
                   <div className="stall-warning-box" role="alert">
                     <div className="stall-warning-header">
                       <span className="warn-icon">⚠</span>
-                      <strong>Research is taking longer than expected</strong>
+                      <strong>{t.stall_warning_title}</strong>
                     </div>
-                    <p className="stall-warning-text">
-                      Keep the device connected while research finishes. Do not disconnect the keyboard.
-                    </p>
+                    <p className="stall-warning-text">{t.stall_warning_text}</p>
                     <button
                       type="button"
                       className="button-link"
                       onClick={() => setShowDetails(!showDetails)}
                     >
-                      {showDetails ? "Hide diagnostic details" : "View diagnostic details"}
+                      {showDetails ? t.hide_diagnostics : t.show_diagnostics}
                     </button>
                     {showDetails && (
                       <div className="details">
@@ -448,7 +621,7 @@ export function ResearchScreen() {
           )}
 
           <section className="panel">
-            <h3>Safe automatic checks</h3>
+            <h3>{t.safe_checks_title}</h3>
             <ul className="plan-list">
               {safeOps.map((op) => {
                 const info = progress[op.id];
@@ -483,22 +656,22 @@ export function ResearchScreen() {
                                   : "badge-queued"
                         }`}
                       >
-                        {isOpPass && "✓ Completed"}
+                        {isOpPass && t.completed_badge}
                         {isOpRestoring && (
                           <>
                             <span className="row-dot restoring" />
-                            Restoring original setting…
+                            {t.restoring_badge}
                           </>
                         )}
                         {isOpActive && (
                           <>
                             <span className="row-dot pulse" />
-                            {friendlyStageText(state, op.label, info?.text)}
+                            {friendlyStageText(state, op.label, info?.text, lang)}
                           </>
                         )}
-                        {!isOpPass && !isOpRestoring && !isOpActive && isOpFailed && "✕ Failed"}
+                        {!isOpPass && !isOpRestoring && !isOpActive && isOpFailed && t.failed_badge}
                         {!isOpPass && !isOpRestoring && !isOpActive && !isOpFailed && (
-                          isStarting ? "○ Preparing…" : "○ Waiting…"
+                          isStarting ? t.preparing_badge : t.queued_badge
                         )}
                       </span>
                     )}
@@ -509,7 +682,7 @@ export function ResearchScreen() {
 
             {blocked.length > 0 && (
               <>
-                <h3>Not available yet</h3>
+                <h3>{t.not_available_yet}</h3>
                 <ul className="plan-list muted">
                   {blocked.map((op) => (
                     <li key={op.id}>
@@ -523,13 +696,13 @@ export function ResearchScreen() {
 
             {!isRunning && (
               <div className="tester-instructions">
-                <h4>Tester instructions</h4>
+                <h4>{t.tester_instructions}</h4>
                 <ol>
-                  <li>Connect the device directly by USB if possible.</li>
-                  <li>Close the official vendor configuration software.</li>
-                  <li>Do not disconnect the keyboard while research is running.</li>
-                  <li>Click <strong>Start research</strong> below.</li>
-                  <li>When complete, click <strong>Open results folder</strong> and send the generated ZIP.</li>
+                  <li>{t.step1}</li>
+                  <li>{t.step2}</li>
+                  <li>{t.step3}</li>
+                  <li>{t.step4}</li>
+                  <li>{t.step5}</li>
                 </ol>
               </div>
             )}
@@ -540,16 +713,16 @@ export function ResearchScreen() {
                 disabled={!canStart || isRunning}
                 onClick={() => void start()}
               >
-                {isStarting ? "Starting…" : isRunning ? "Research in progress…" : "Start research"}
+                {isStarting ? t.starting : isRunning ? t.research_in_progress : t.start_research}
               </button>
               <button type="button" onClick={() => setShowDetails((v) => !v)}>
-                {showDetails ? "Hide details" : "Technical details"}
+                {showDetails ? t.hide_details : t.tech_details}
               </button>
             </div>
 
             {showDetails && (
               <details open className="details">
-                <summary>Technical details</summary>
+                <summary>{t.tech_details}</summary>
                 <pre className="mono">
                   {JSON.stringify(
                     {
@@ -576,6 +749,7 @@ export function ResearchScreen() {
           result={result}
           discovery={discovery}
           plan={plan}
+          lang={lang}
           showDetails={showDetails}
           onShowDetails={setShowDetails}
           onRestart={() => void init()}
@@ -589,6 +763,7 @@ function ResultView({
   result,
   discovery,
   plan,
+  lang,
   showDetails,
   onShowDetails,
   onRestart,
@@ -596,10 +771,12 @@ function ResultView({
   result: ProbeRunResult;
   discovery: ProbeDiscovery | null;
   plan: ProbePlan | null;
+  lang: Lang;
   showDetails: boolean;
   onShowDetails: (v: boolean) => void;
   onRestart: () => void;
 }) {
+  const t = translations[lang];
   const [copied, setCopied] = useState(false);
 
   const completed =
@@ -637,23 +814,20 @@ function ResultView({
   if (result.status === "FAILED_REQUIRES_MANUAL_RESTORE") {
     return (
       <section className="panel warn" role="alert">
-        <h2>Research stopped — Manual restore required</h2>
-        <p className="muted">
-          Your original device settings could not be verified as restored. Please
-          restore them using your vendor software, then restart.
-        </p>
+        <h2>{t.stopped_manual_title}</h2>
+        <p className="muted">{t.stopped_manual_text}</p>
         <div className="actions">
           <button type="button" onClick={onRestart}>
-            Run again
+            {t.run_again}
           </button>
           <button type="button" onClick={() => void probeOpenResults()}>
-            Open results folder
+            {t.open_results_folder}
           </button>
           <button type="button" onClick={() => void handleCopy("Diagnostics")}>
-            {copied ? "Copied ✓" : "Copy diagnostics"}
+            {copied ? t.diag_copied : t.copy_diagnostics}
           </button>
           <button type="button" onClick={() => onShowDetails(!showDetails)}>
-            {showDetails ? "Hide details" : "Technical details"}
+            {showDetails ? t.hide_details : t.tech_details}
           </button>
         </div>
         {showDetails && <Details result={result} />}
@@ -664,28 +838,26 @@ function ResultView({
   if (result.status === "FAIL_RESTORED" || result.status === "ERROR") {
     return (
       <section className="panel warn" role="alert">
-        <h2>Research stopped</h2>
+        <h2>{t.stopped_title}</h2>
         <p className="muted">
-          {result.restored
-            ? "Your original device settings were restored successfully."
-            : "Research run stopped with an error."}
+          {result.restored ? t.stopped_restored_text : t.stopped_error_text}
         </p>
         <p className="muted">
-          {completed} of {total} checks completed.
+          {completed} / {total} {t.checks_completed_stat}.
         </p>
         {result.error && <p className="error-text">{result.error}</p>}
         <div className="actions">
           <button type="button" onClick={onRestart}>
-            Run again
+            {t.run_again}
           </button>
           <button type="button" onClick={() => void probeOpenResults()}>
-            Open results folder
+            {t.open_results_folder}
           </button>
           <button type="button" onClick={() => void handleCopy("Diagnostics")}>
-            {copied ? "Copied ✓" : "Copy diagnostics"}
+            {copied ? t.diag_copied : t.copy_diagnostics}
           </button>
           <button type="button" onClick={() => onShowDetails(!showDetails)}>
-            {showDetails ? "Hide details" : "Technical details"}
+            {showDetails ? t.hide_details : t.tech_details}
           </button>
         </div>
         {showDetails && <Details result={result} />}
@@ -696,45 +868,45 @@ function ResultView({
   return (
     <>
       <section className="panel result-success-panel">
-        <div className="result-header-badge">✓ Research complete</div>
-        <h2>{discovery?.device?.name ?? "Device"} verified successfully</h2>
+        <div className="result-header-badge">{t.research_complete_badge}</div>
+        <h2>{discovery?.device?.name ?? "Device"} {t.verified_successfully}</h2>
         <div className="result-stats-row">
           <div className="result-stat-item">
             <span className="stat-value">{completed} / {total}</span>
-            <span className="stat-label">checks completed</span>
+            <span className="stat-label">{t.checks_completed_stat}</span>
           </div>
           <div className="result-stat-item">
             <span className="stat-value">✓ Restored</span>
-            <span className="stat-label">original settings verified</span>
+            <span className="stat-label">{t.original_restored_stat}</span>
           </div>
           <div className="result-stat-item">
             <span className="stat-value">0</span>
-            <span className="stat-label">failures</span>
+            <span className="stat-label">{t.failures_stat}</span>
           </div>
         </div>
         <p className="muted">
-          {completed} of {total} checks completed successfully.
-          {blockedCount > 0 && ` (${blockedCount} additional checks were safely skipped)`}
+          {completed} / {total} {t.of_checks_completed}
+          {blockedCount > 0 && ` (${blockedCount} ${t.safely_skipped})`}
         </p>
         <div className="actions result-actions">
           <button type="button" className="button-primary" onClick={() => void probeOpenResults()}>
-            Open results folder
+            {t.open_results_folder}
           </button>
           <button type="button" onClick={() => void handleCopy("Result Summary")}>
-            {copied ? "Summary copied ✓" : "Copy results summary"}
+            {copied ? t.summary_copied : t.copy_results_summary}
           </button>
           <button type="button" onClick={onRestart}>
-            Run again
+            {t.run_again}
           </button>
           <button type="button" onClick={() => onShowDetails(!showDetails)}>
-            {showDetails ? "Hide details" : "Technical details"}
+            {showDetails ? t.hide_details : t.tech_details}
           </button>
         </div>
       </section>
 
       {/* Completed checks row display */}
       <section className="panel">
-        <h3>Completed checks</h3>
+        <h3>{lang === "ru" ? "Завершённые проверки" : "Completed checks"}</h3>
         <ul className="plan-list">
           {(result.results && result.results.length > 0
             ? result.results
@@ -742,7 +914,7 @@ function ResultView({
           ).map((op) => (
             <li key={op.id} className="op-pass">
               <span>{op.label ?? op.id}</span>
-              <span className="op-state badge-pass">✓ Completed</span>
+              <span className="op-state badge-pass">{t.completed_badge}</span>
             </li>
           ))}
         </ul>

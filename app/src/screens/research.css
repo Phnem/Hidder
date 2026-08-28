@@ -6,6 +6,64 @@
   max-width: 44rem;
 }
 
+/* --- Header & Language Switcher ------------------------------------------ */
+
+.research .probe-top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 0.25rem;
+}
+
+.research .probe-app-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text, inherit);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.research .probe-app-title .version-tag {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.15rem 0.4rem;
+  background: color-mix(in srgb, var(--accent, #febe10) 20%, transparent);
+  color: var(--accent, #febe10);
+  border-radius: 4px;
+}
+
+.research .lang-switcher {
+  display: inline-flex;
+  background: color-mix(in srgb, var(--surface, #222) 80%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border, #444) 60%, transparent);
+  border-radius: 6px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.research .lang-switcher button {
+  background: transparent;
+  border: none;
+  color: var(--muted, #888);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.research .lang-switcher button.active {
+  background: var(--accent, #febe10);
+  color: #111;
+}
+
+.research .lang-switcher button:hover:not(.active) {
+  color: var(--text, #eee);
+}
+
 .research .panel {
   background: var(--surface, #f2f2f2);
   border: 1px solid color-mix(in srgb, currentColor 15%, transparent);
