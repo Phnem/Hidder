@@ -199,9 +199,34 @@ pub fn probe_open_results() -> Result<(), String> {
     let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
     #[cfg(windows)]
     {
-        let zip_path = cwd.join("vetro_probe_results.zip");
+        let mut latest_zip: Option<std::path::PathBuf> = None;
+        let mut latest_time = std::time::SystemTime::UNIX_EPOCH;
+
+        let search_dirs = vec![cwd.clone(), cwd.join("vetro_gui_run")];
+        for dir in search_dirs {
+            if let Ok(entries) = std::fs::read_dir(dir) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if path.is_file() {
+                        if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                            if (name.starts_with("VetroProbe_") || name == "vetro_probe_results.zip") && name.ends_with(".zip") {
+                                if let Ok(meta) = entry.metadata() {
+                                    if let Ok(modified) = meta.modified() {
+                                        if modified > latest_time {
+                                            latest_time = modified;
+                                            latest_zip = Some(path);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         let run_dir = cwd.join("vetro_gui_run");
-        if zip_path.exists() {
+        if let Some(zip_path) = latest_zip {
             let _ = std::process::Command::new("explorer")
                 .arg(format!("/select,{}", zip_path.display()))
                 .spawn();

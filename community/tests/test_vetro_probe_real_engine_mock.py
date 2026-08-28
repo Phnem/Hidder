@@ -326,4 +326,181 @@ def test_miner_package_generates_zip_archive():
             names = zf.namelist()
             assert "run_manifest.json" in names
             assert "device_identity.json" in names
+            assert "summary.txt" in names
+
+
+def test_unique_package_zip_naming_and_overwrite_protection():
+    from community.vetro_probe.miner_package import build_package, generate_package_zip_name
+    from community.vetro_probe.identity import mock_hero84_instance
+
+    inst = mock_hero84_instance()
+    disc = {"product_string": "AULA HERO84 HE", "firmware": "0216", "vid": "0x372E", "pid": "0x103E"}
+    zip_name1 = generate_package_zip_name(disc, "run-abc123456789", "COMPLETE_PASS")
+    assert "VetroProbe_AULA-HERO84-HE_0216_run-abc123456789.zip" == zip_name1
+
+    with tempfile.TemporaryDirectory() as td:
+        pkg_dir = Path(td) / "run1"
+        build_package(
+            base_dir=pkg_dir,
+            run_id="run-abc123456789",
+            label="test",
+            discovery=disc,
+            plan=[],
+            evidence=[],
+            baselines={},
+            final_state={"restored": True},
+            certificates=[],
+            recovery={},
+            terminal="COMPLETE_PASS",
+        )
+        first_zip = Path(td) / zip_name1
+        assert first_zip.is_file()
+
+        # Second build with same name must NOT overwrite; must append counter
+        pkg_dir2 = Path(td) / "run2"
+        build_package(
+            base_dir=pkg_dir2,
+            run_id="run-abc123456789",
+            label="test",
+            discovery=disc,
+            plan=[],
+            evidence=[],
+            baselines={},
+            final_state={"restored": True},
+            certificates=[],
+            recovery={},
+            terminal="COMPLETE_PASS",
+        )
+        second_zip = Path(td) / "VetroProbe_AULA-HERO84-HE_0216_run-abc123456789_1.zip"
+        assert second_zip.is_file(), "Overwrite protection failed: second run should have _1 suffix"
+
+
+def test_package_privacy_scrub_and_relative_paths():
+    import zipfile
+    from community.vetro_probe.miner_package import build_package, scan_package_for_privacy_violations
+
+    with tempfile.TemporaryDirectory() as td:
+        pkg_dir = Path(td) / "run_privacy"
+        leaky_disc = {
+            "product_string": "AULA HERO84 HE",
+            "firmware": "0216",
+            "vid": "0x372E",
+            "pid": "0x103E",
+            "local_path": r"C:\Users\JohnDoe\AppData\Local\Temp\_MEI12345\file.txt",
+            "repo_path": r"D:\AndroidStudioProjects\Vetro hud\secret.txt",
+        }
+        build_package(
+            base_dir=pkg_dir,
+            run_id="run-priv1",
+            label="test",
+            discovery=leaky_disc,
+            plan=[],
+            evidence=[],
+            baselines={},
+            final_state={"restored": True},
+            certificates=[],
+            recovery={"raw_path": r"C:\Users\SecretAdmin\Documents"},
+            terminal="COMPLETE_PASS",
+        )
+        violations = scan_package_for_privacy_violations(pkg_dir)
+        assert len(violations) == 0, f"Forbidden personal paths found in package: {violations}"
+
+        # Inspect raw content of run_manifest.json
+        manifest_text = (pkg_dir / "run_manifest.json").read_text(encoding="utf-8")
+        assert "JohnDoe" not in manifest_text
+        assert "SecretAdmin" not in manifest_text
+        assert "_MEI" not in manifest_text
+        assert "AndroidStudioProjects" not in manifest_text
+
+
+def test_package_manifest_versions_and_sha256():
+    import json
+    import zipfile
+    import hashlib
+    from community.vetro_probe.miner_package import build_package
+
+    with tempfile.TemporaryDirectory() as td:
+        pkg_dir = Path(td) / "run_meta"
+        build_package(
+            base_dir=pkg_dir,
+            run_id="run-meta99",
+            label="test",
+            discovery={"product_string": "AULA HERO84 HE", "firmware": "0216"},
+            plan=[],
+            evidence=[],
+            baselines={},
+            final_state={"restored": True},
+            certificates=[],
+            recovery={},
+            terminal="COMPLETE_PASS",
+        )
+        manifest = json.loads((pkg_dir / "run_manifest.json").read_text(encoding="utf-8"))
+        assert manifest["probe_app_version"] == "0.3.0"
+        assert manifest["probe_engine_version"] == "0.3.0"
+        assert manifest["package_schema_version"] == "vetro.run-manifest.v1"
+        assert manifest["run_id"] == "run-meta99"
+
+        # Check sha256 file
+        sha256_files = list(Path(td).glob("*.sha256"))
+        assert len(sha256_files) >= 1
+        sha_text = sha256_files[0].read_text(encoding="utf-8").strip()
+        expected_hash = sha_text.split()[0]
+
+        zip_files = [p for p in Path(td).glob("VetroProbe_*.zip") if not p.name.endswith(".sha256")]
+        assert len(zip_files) >= 1
+        actual_hash = hashlib.sha256(zip_files[0].read_bytes()).hexdigest()
+        assert expected_hash == actual_hash
+
+
+def test_failed_run_diagnostic_package_export():
+    from community.vetro_probe.miner_package import build_package
+
+    with tempfile.TemporaryDirectory() as td:
+        pkg_dir = Path(td) / "run_fail"
+        build_package(
+            base_dir=pkg_dir,
+            run_id="run-fail88",
+            label="error_diag",
+            discovery={"product_string": "AULA HERO84 HE", "firmware": "0216"},
+            plan=[],
+            evidence=[],
+            baselines={},
+            final_state={"restored": True, "error": "device timeout"},
+            certificates=[],
+            recovery={"error": "device timeout"},
+            terminal="ERROR",
+        )
+        diag_zips = list(Path(td).glob("VetroProbe_DIAGNOSTIC_*.zip"))
+        assert len(diag_zips) >= 1
+        assert "VetroProbe_DIAGNOSTIC_" in diag_zips[0].name
+
+
+def test_human_summary_content_and_uncounted_blocked_ops():
+    from community.vetro_probe.miner_package import build_package
+
+    with tempfile.TemporaryDirectory() as td:
+        pkg_dir = Path(td) / "run_summary"
+        build_package(
+            base_dir=pkg_dir,
+            run_id="run-sum77",
+            label="test",
+            discovery={"product_string": "AULA HERO84 HE", "firmware": "0216", "vid": "0x372E", "pid": "0x103E", "family": "aula_kb_v3_wired"},
+            plan=[
+                {"operation": "keyboard.profile", "classification": "AUTO_REVERSIBLE"},
+                {"operation": "keyboard.remap", "classification": "BLOCKED"},
+            ],
+            evidence=[],
+            baselines={},
+            final_state={"restored": True},
+            certificates=[],
+            recovery={},
+            terminal="COMPLETE_PASS",
+        )
+        summary_txt = (pkg_dir / "summary.txt").read_text(encoding="utf-8")
+        assert "Device: AULA HERO84 HE" in summary_txt
+        assert "Firmware: 0216" in summary_txt
+        assert "Result: COMPLETE_PASS" in summary_txt
+        assert "Failed Checks: 0" in summary_txt
+        assert "Safely Skipped Checks: 1" in summary_txt
+        assert "Original Settings Restored: Yes (Verified ✓)" in summary_txt
 

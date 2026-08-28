@@ -247,6 +247,37 @@
   filter: brightness(1.08);
 }
 
+/* --- Tester instructions -------------------------------------------------- */
+
+.research .tester-instructions {
+  margin-top: 1rem;
+  padding: 0.8rem 1rem;
+  background: color-mix(in srgb, var(--surface, #1e1e1e) 60%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border, #333) 60%, transparent);
+  border-radius: 6px;
+}
+
+.research .tester-instructions h4 {
+  margin: 0 0 0.4rem 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text, inherit);
+}
+
+.research .tester-instructions ol {
+  margin: 0;
+  padding-left: 1.2rem;
+  font-size: 0.825rem;
+  color: var(--muted, #888);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.research .tester-instructions strong {
+  color: var(--text, #eee);
+}
+
 /* --- Actions & Details ---------------------------------------------------- */
 
 .research .actions {

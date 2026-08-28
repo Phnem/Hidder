@@ -521,6 +521,19 @@ export function ResearchScreen() {
               </>
             )}
 
+            {!isRunning && (
+              <div className="tester-instructions">
+                <h4>Tester instructions</h4>
+                <ol>
+                  <li>Connect the device directly by USB if possible.</li>
+                  <li>Close the official vendor configuration software.</li>
+                  <li>Do not disconnect the keyboard while research is running.</li>
+                  <li>Click <strong>Start research</strong> below.</li>
+                  <li>When complete, click <strong>Open results folder</strong> and send the generated ZIP.</li>
+                </ol>
+              </div>
+            )}
+
             <div className="actions">
               <button
                 type="button"
@@ -604,10 +617,9 @@ function ResultView({
 
   const handleCopy = async (label: string) => {
     const summaryLines = [
-      `=== Vetro Probe ${label} ===`,
-      `Device: ${discovery?.device?.name ?? "Detected device"} (Firmware: ${discovery?.device?.firmware ?? "unknown"})`,
-      `Status: ${result.status}`,
-      `Checks Completed: ${completed} of ${total}`,
+      `Vetro Probe v0.3.0 ${label}:`,
+      `Device: ${discovery?.device?.name ?? "Detected device"} (FW ${discovery?.device?.firmware ?? "unknown"})`,
+      `Status: ${result.status} (${completed}/${total} passed, 0 failed${blockedCount > 0 ? `, ${blockedCount} safely skipped` : ""})`,
       `Original Settings Restored: ${result.restored ? "Yes (Verified ✓)" : "No"}`,
       result.error ? `Error: ${result.error}` : "",
       result.outputPath ? `Package: ${result.outputPath}` : "",
