@@ -26,7 +26,7 @@ def generate_build_metadata() -> str:
         r = subprocess.run(["git", "rev-parse", "HEAD"], cwd=str(ROOT_DIR), capture_output=True, text=True)
         if r.returncode == 0 and r.stdout.strip():
             commit = r.stdout.strip()[:12]
-        s = subprocess.run(["git", "status", "--porcelain"], cwd=str(ROOT_DIR), capture_output=True, text=True)
+        s = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"], cwd=str(ROOT_DIR), capture_output=True, text=True)
         if s.returncode == 0 and s.stdout.strip():
             dirty = True
     except Exception:
