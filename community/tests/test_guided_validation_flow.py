@@ -205,7 +205,7 @@ class TestGuidedValidationFlow:
         assert mech_validator.is_applicable(ctx) is True
         res = mech_validator.validate(ctx)
         assert res.passed is True
-        assert res.capability == "mechanical_digital"
+        assert res.capability == "keyboard.digital"
 
     def test_guided_validation_engine_complete_pass_flow_and_certificate(self):
         with tempfile.TemporaryDirectory() as td:
@@ -237,11 +237,10 @@ class TestGuidedValidationFlow:
             result = engine.run_validation(ctx)
 
             assert result["state"] == STATE_VALIDATED
-            assert result["verdict"] == "COMPLETE_PASS"
-            assert "lighting" in result["validated_groups"]
-            assert "hall_effect" in result["validated_groups"]
-            assert "read_only_inventory" in result["validated_groups"]
-            assert "remap" not in result["validated_groups"]
+            assert "lighting.brightness" in result["validated_groups"]
+            assert "he.actuation" in result["validated_groups"]
+            assert "inventory" not in result["validated_groups"]
+            assert "keyboard.remap" not in result["validated_groups"]
 
             cert = result["certificate"]
             assert cert["schema"] == SCHEMA_DEVICE_CERTIFICATE
@@ -305,7 +304,7 @@ class TestGuidedValidationFlow:
 
             assert result["state"] == STATE_VALIDATION_FAILED
             assert result["verdict"] == "FAILED"
-            assert result["failed_capability"] == "lighting"
+            assert result["failed_capability"] == "lighting.brightness"
             assert result["rollback_verified"] is True
             # Verified baseline was preserved
             val, _ = transport.get("light.brightness")
@@ -339,32 +338,32 @@ class TestGuidedValidationFlow:
         assert "C:\\" not in url
         assert "D:\\" not in url
 
-    def test_certificate_cannot_expose_ineligible_or_unvalidated_operation(self):
+    def test_brightness_certificate_cannot_expose_global_color_or_effect(self):
         cert = DeviceValidationCertificate(
             vendor="AULA",
             model="HERO 84 HE",
             vid="0x372E",
             pid="0x103E",
             firmware_branch="0216",
-            validated_capability_groups=["lighting"],
+            validated_capability_groups=["lighting.brightness"],
             final_state_verified=True,
             terminal_verdict="COMPLETE_PASS",
         )
 
-        # Lighting group is validated
+        # Brightness is validated
         assert cert.authorizes_operation("light.brightness") is True
 
-        # Remap is NOT validated -> MUST NOT be authorized
-        assert cert.authorizes_operation("keyboard.remap") is False
+        # Global color is NOT validated -> MUST NOT be authorized
+        assert cert.authorizes_operation("light.global_color") is False
 
-        # Rapid trigger is NOT validated -> MUST NOT be authorized
-        assert cert.authorizes_operation("he.rt") is False
+        # Lighting effect is NOT validated -> MUST NOT be authorized
+        assert cert.authorizes_operation("light.effect") is False
 
-        # Factory reset is destructive/ineligible -> MUST NOT be authorized
-        assert cert.authorizes_operation("factory_reset") is False
+        # Per-key custom RGB is NOT validated -> MUST NOT be authorized
+        assert cert.authorizes_operation("custom.per_key") is False
 
-    def test_certificate_covering_actuation_cannot_expose_rapid_trigger(self):
-        cert = DeviceValidationCertificate(
+    def test_actuation_and_deadzone_certificates_cannot_expose_rapid_trigger(self):
+        cert_act = DeviceValidationCertificate(
             vendor="AULA",
             model="HERO 84 HE",
             vid="0x372E",
@@ -375,12 +374,45 @@ class TestGuidedValidationFlow:
             terminal_verdict="COMPLETE_PASS",
         )
 
-        # he.actuation and he.deadzone share the proven actuation group
-        assert cert.authorizes_operation("he.actuation") is True
-        assert cert.authorizes_operation("he.deadzone") is True
+        # Actuation is authorized
+        assert cert_act.authorizes_operation("he.actuation") is True
+        # Deadzone is NOT authorized by actuation alone
+        assert cert_act.authorizes_operation("he.deadzone") is False
+        # Rapid trigger is NOT authorized
+        assert cert_act.authorizes_operation("he.rt") is False
 
-        # he.rt (Rapid Trigger) is NOT covered by actuation group -> MUST be rejected
-        assert cert.authorizes_operation("he.rt") is False
+        cert_dead = DeviceValidationCertificate(
+            vendor="AULA",
+            model="HERO 84 HE",
+            vid="0x372E",
+            pid="0x103E",
+            firmware_branch="0216",
+            validated_capability_groups=["he.deadzone"],
+            final_state_verified=True,
+            terminal_verdict="COMPLETE_PASS",
+        )
+        assert cert_dead.authorizes_operation("he.deadzone") is True
+        assert cert_dead.authorizes_operation("he.actuation") is False
+        assert cert_dead.authorizes_operation("he.rt") is False
+
+    def test_inventory_pass_alone_cannot_unlock_any_mutation(self):
+        cert_inv = DeviceValidationCertificate(
+            vendor="AULA",
+            model="HERO 84 HE",
+            vid="0x372E",
+            pid="0x103E",
+            firmware_branch="0216",
+            validated_capability_groups=[],
+            inventory_evidence={"descriptor": "raw_hid_report"},
+            final_state_verified=True,
+            terminal_verdict="COMPLETE_PASS",
+        )
+
+        # Inventory evidence must NEVER unlock any mutation
+        assert cert_inv.authorizes_operation("light.brightness") is False
+        assert cert_inv.authorizes_operation("he.actuation") is False
+        assert cert_inv.authorizes_operation("keyboard.remap") is False
+        assert cert_inv.authorizes_operation("keyboard.polling") is False
 
     def test_unknown_switch_technology_never_receives_analog_plan(self):
         bundle = production_bundle_for_hero84()

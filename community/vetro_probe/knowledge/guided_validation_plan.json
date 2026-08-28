@@ -1,6 +1,6 @@
 {
   "schema": "vetro.guided-validation-plan.v1",
-  "version": 1,
+  "version": 2,
   "family": "aula_kb_v3_wired",
   "scope": {
     "vid": "0x372E",
@@ -10,54 +10,55 @@
   },
   "validation_groups": [
     {
-      "group_id": "lighting",
+      "group_id": "lighting.brightness",
       "representative_operation": "light.brightness",
       "covered_members": [
         "light.brightness"
       ],
       "shared_invariants": "Register 0x01 lighting frame with canonical device echo validation",
-      "safe_test_strategy": "distinct brightness shift (10 vs 100)",
+      "safe_test_strategy": "discrete brightness shift (10 vs 100)",
       "rollback_contract": "RESTORE_VALUE_AND_READBACK",
       "observable_contract": "HUMAN_PHYSICAL_OBSERVABLE",
       "residual_requirements": [
+        "global_color_blocked",
         "per_key_rgb_blocked",
         "effect_selector_blocked"
       ],
       "status": "ELIGIBLE"
     },
     {
-      "group_id": "he_actuation",
+      "group_id": "he.actuation",
       "representative_operation": "he.actuation",
       "covered_members": [
-        "he.actuation",
-        "he.deadzone"
+        "he.actuation"
       ],
       "shared_invariants": "Native 0.01mm integer encoding with 0.5mm step quantization",
       "safe_test_strategy": "step to 1.0mm (raw 100) on-grid",
       "rollback_contract": "RESTORE_VALUE_AND_READBACK",
-      "observable_contract": "HE_TRAVEL_OBSERVABLE",
+      "observable_contract": "HE_KEY_PRESS_OBSERVABLE",
       "residual_requirements": [
-        "rapid_trigger_blocked"
+        "rapid_trigger_blocked",
+        "deadzone_standalone_observable_open"
       ],
       "status": "ELIGIBLE"
     },
     {
-      "group_id": "keyboard_digital",
-      "representative_operation": "keyboard.polling",
+      "group_id": "he.deadzone",
+      "representative_operation": "he.deadzone",
       "covered_members": [
-        "keyboard.polling",
-        "device.win_lock",
-        "keyboard.profile"
+        "he.deadzone"
       ],
-      "shared_invariants": "Atomic enum command / feature bitmask",
-      "safe_test_strategy": "discrete enum cycle",
+      "shared_invariants": "Deadzone threshold filter",
+      "safe_test_strategy": "discrete deadzone step",
       "rollback_contract": "RESTORE_VALUE_AND_READBACK",
-      "observable_contract": "NONE",
-      "residual_requirements": [],
-      "status": "ELIGIBLE"
+      "observable_contract": "ANALOG_TELEMETRY_STREAM",
+      "residual_requirements": [
+        "independent_telemetry_observable_open"
+      ],
+      "status": "BLOCKED"
     },
     {
-      "group_id": "keyboard_remap",
+      "group_id": "keyboard.remap",
       "representative_operation": "keyboard.remap",
       "covered_members": [
         "keyboard.remap"

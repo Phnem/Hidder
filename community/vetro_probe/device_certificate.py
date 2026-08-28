@@ -50,6 +50,7 @@ class DeviceValidationCertificate:
     # Validation Execution Details
     validated_capability_groups: list[str] = field(default_factory=list)
     individual_operations: list[dict[str, Any]] = field(default_factory=list)
+    inventory_evidence: dict[str, Any] = field(default_factory=dict)
     baseline_hashes: dict[str, str] = field(default_factory=dict)
     observables: list[dict[str, Any]] = field(default_factory=list)
     rollback_results: dict[str, bool] = field(default_factory=dict)
@@ -83,6 +84,7 @@ class DeviceValidationCertificate:
             "validation": {
                 "validated_capability_groups": self.validated_capability_groups,
                 "individual_operations": self.individual_operations,
+                "inventory_evidence": self.inventory_evidence,
                 "baseline_hashes": self.baseline_hashes,
                 "observables": self.observables,
                 "rollback_results": self.rollback_results,
@@ -117,6 +119,7 @@ class DeviceValidationCertificate:
             build_commit=bld.get("build_commit", ""),
             validated_capability_groups=val.get("validated_capability_groups", []),
             individual_operations=val.get("individual_operations", []),
+            inventory_evidence=val.get("inventory_evidence", {}),
             baseline_hashes=val.get("baseline_hashes", {}),
             observables=val.get("observables", []),
             rollback_results=val.get("rollback_results", {}),
@@ -170,7 +173,7 @@ class DeviceValidationCertificate:
         Certificate MUST NOT be a blanket permission token.
         An operation is authorized by this certificate IFF:
           1. The certificate is valid for the exact physical device scope.
-          2. The certificate explicitly records the validated capability group covering this operation.
+          2. The certificate explicitly records the specific narrow capability group covering this operation.
           3. The operation is not blocked by feature gates or safety invariants.
         """
         if not self.is_valid_for(
@@ -182,13 +185,16 @@ class DeviceValidationCertificate:
         ):
             return False
 
-        # Map operations to capability groups
+        # Map operations to strictly required capability groups
         op_to_group = {
-            "light.brightness": "lighting",
-            "light.global_color": "lighting",
+            "light.brightness": "lighting.brightness",
+            "light.global_color": "lighting.global_color",
+            "light.effect": "lighting.effect",
+            "custom.per_key": "custom.per_key",
             "keyboard.remap": "keyboard.remap",
             "he.actuation": "he.actuation",
-            "he.deadzone": "he.actuation",
+            "he.deadzone": "he.deadzone",
+            "he.rt": "he.rt",
             "keyboard.polling": "keyboard.polling",
             "device.win_lock": "device.win_lock",
             "keyboard.profile": "keyboard.profile",
@@ -199,7 +205,7 @@ class DeviceValidationCertificate:
             return False
 
         # Must be explicitly recorded in validated_capability_groups
-        if group not in self.validated_capability_groups and operation_id not in self.validated_capability_groups:
+        if group not in self.validated_capability_groups:
             return False
 
         # Verify operation is not globally blocked by feature policy

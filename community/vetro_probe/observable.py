@@ -90,11 +90,25 @@ class HumanConfirmationListener(ObservableListener):
                     latency_ms=latency,
                     source="human_physical_observable",
                 )
-        return ObservableResult(
-            False,
-            error="No interactive confirmation handler configured",
-            source="human_physical_observable",
-        )
+        # Interactive console fallback if running in CLI without GUI callback
+        prompt_text = req.prompt_en or req.prompt_ru
+        try:
+            ans = input(f"\n[USER CONFIRMATION REQUIRED]\n{prompt_text}\n(y/n): ").strip().lower()
+            ok = ans in ("y", "yes", "true", "1", "да")
+            latency = int((time.time() - start) * 1000)
+            return ObservableResult(
+                ok=ok,
+                observed={"human_response": ans, "prompt": prompt_text},
+                error="" if ok else "User answered No to confirmation check",
+                latency_ms=latency,
+                source="human_physical_observable",
+            )
+        except Exception as e:
+            return ObservableResult(
+                False,
+                error=f"Interactive confirmation input error: {e}",
+                source="human_physical_observable",
+            )
 
 
 class FakeObservableListener(ObservableListener):

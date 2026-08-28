@@ -90,7 +90,7 @@ class BaseCapabilityValidator(ABC):
 
 
 class LightingCapabilityValidator(BaseCapabilityValidator):
-    capability_name = "lighting"
+    capability_name = "lighting.brightness"
 
     def is_applicable(self, ctx: GuidedValidationContext) -> bool:
         from .feature_gates import blocker_for
@@ -104,7 +104,7 @@ class LightingCapabilityValidator(BaseCapabilityValidator):
 
     def representative_explanation(self) -> str:
         return (
-            "Validating representative lighting operation (pure green / brightness) proves the device's "
+            "Validating representative lighting operation (brightness) proves the device's "
             "lighting framing, checksum, register encoding, and physical LED controller response."
         )
 
@@ -116,6 +116,7 @@ class LightingCapabilityValidator(BaseCapabilityValidator):
         fw = ctx.device_identity.get("firmware")
         has_brightness = ctx.bundle.has_operation("light.brightness") and blocker_for("light.brightness", vid=vid, pid=pid, family=family, fw=fw) is None
         op_id = "light.brightness" if has_brightness else "light.global_color"
+        self.capability_name = "lighting.brightness" if op_id == "light.brightness" else "lighting.global_color"
         ev = TestEvidence(
             operation=op_id,
             safe_command_id=op_id,
@@ -228,7 +229,7 @@ class LightingCapabilityValidator(BaseCapabilityValidator):
 
 
 class RemapCapabilityValidator(BaseCapabilityValidator):
-    capability_name = "remap"
+    capability_name = "keyboard.remap"
 
     def is_applicable(self, ctx: GuidedValidationContext) -> bool:
         from .feature_gates import blocker_for
@@ -266,14 +267,14 @@ class RemapCapabilityValidator(BaseCapabilityValidator):
         )
 
         if ctx.on_step_progress:
-            ctx.on_step_progress("remap_start", {"candidate": safe_candidate_key, "target": temporary_target})
+            ctx.on_step_progress("remap_start", {"op": op_id, "key": safe_candidate_key})
 
         # 1. Baseline GET
         try:
             val, res = ctx.transport.get(op_id)
             if not res.ok:
                 ev.status = "FAIL"
-                ev.error = f"Baseline GET remap failed: {res.error}"
+                ev.error = f"Baseline GET failed: {res.error}"
                 return CapabilityValidationResult(self.capability_name, False, ev, error=ev.error)
             ev.baseline_value = val
         except Exception as e:
@@ -281,11 +282,11 @@ class RemapCapabilityValidator(BaseCapabilityValidator):
             ev.error = f"Baseline GET exception: {e}"
             return CapabilityValidationResult(self.capability_name, False, ev, error=ev.error)
 
-        # 2. SET temporary remap: safe key -> temporary target
-        temp_val = {"source": safe_candidate_key, "target": temporary_target}
-        ev.temporary_value = temp_val
+        # 2. Step 1: SET safe key -> temporary target ('Insert' -> 'A')
+        temp_payload = {"source": safe_candidate_key, "target": temporary_target}
+        ev.temporary_value = temp_payload
         try:
-            set_res = ctx.transport.set(op_id, temp_val)
+            set_res = ctx.transport.set(op_id, temp_payload)
             if not set_res.ok:
                 ev.status = "FAIL"
                 ev.error = f"SET remap failed: {set_res.error}"
@@ -294,32 +295,19 @@ class RemapCapabilityValidator(BaseCapabilityValidator):
             ev.transport_result = "ok"
         except Exception as e:
             ev.status = "FAIL"
-            ev.error = f"SET exception: {e}"
+            ev.error = f"SET remap exception: {e}"
             self._rollback(ctx, op_id, ev.baseline_value)
             return CapabilityValidationResult(self.capability_name, False, ev, error=ev.error)
 
-        # 3. Protocol Readback GET
-        try:
-            read_val, read_res = ctx.transport.get(op_id)
-            if read_res.ok and read_val is not None:
-                ev.readback = read_val
-                ev.readback_matched = True
-        except Exception:
-            pass
-
-        # 4. OS Input Observable Check: Ask user to press candidate key, expect 'A'
-        prompt1 = ObservableRequest(
+        # 3. Step 1 Observable Check: Prompt user to press 'Insert', expect OS input 'A'
+        prompt_req1 = ObservableRequest(
             kind="press_key",
             target=temporary_target,
-            prompt_ru=f"Нажмите клавишу {safe_candidate_key} один раз (проверяем вывод '{temporary_target}').",
-            prompt_en=f"Press the {safe_candidate_key} key once (expecting '{temporary_target}').",
+            prompt_ru=f"Нажмите один раз клавишу {safe_candidate_key} (ожидается ввод '{temporary_target}')",
+            prompt_en=f"Press the {safe_candidate_key} key once (expected '{temporary_target}')",
             timeout_ms=15000,
         )
-        obs_res1 = ctx.observable_listener.wait_for(prompt1)
-        ev.observable_result = obs_res1.observed
-        ev.observable_pass = obs_res1.ok
-        ev.observable_source = obs_res1.source
-
+        obs_res1 = ctx.observable_listener.wait_for(prompt_req1)
         if not obs_res1.ok:
             ev.status = "FAIL"
             ev.error = f"Remap input observable failed: {obs_res1.error}"
@@ -328,32 +316,34 @@ class RemapCapabilityValidator(BaseCapabilityValidator):
                 self.capability_name, False, ev, observable_result=obs_res1, rollback_verified=rollback_ok, error=ev.error
             )
 
-        # 5. Rollback SET: restore baseline
+        # 4. Step 2: Rollback safe key -> original baseline ('Insert' -> 'Insert')
         rollback_ok = self._rollback(ctx, op_id, ev.baseline_value)
         ev.rollback_matched = rollback_ok
-        ev.rollback_result = "ok" if rollback_ok else "failed"
-
         if not rollback_ok:
             ev.status = "FAIL"
-            ev.error = "Rollback failed: original remap table was not restored"
+            ev.error = "Rollback failed: original key mapping was not restored"
             return CapabilityValidationResult(
                 self.capability_name, False, ev, observable_result=obs_res1, rollback_verified=False, error=ev.error
             )
 
-        # 6. Post-rollback Input Observable Check: Ask user to press candidate key again, expect original key
-        prompt2 = ObservableRequest(
+        # 5. Step 2 Observable Check: Prompt user to press 'Insert', expect OS input 'Insert'
+        prompt_req2 = ObservableRequest(
             kind="press_key",
             target=safe_candidate_key,
-            prompt_ru=f"Нажмите клавишу {safe_candidate_key} ещё раз (проверяем возврат к '{safe_candidate_key}').",
-            prompt_en=f"Press the {safe_candidate_key} key once again (expecting restored '{safe_candidate_key}').",
+            prompt_ru=f"Снова нажмите клавишу {safe_candidate_key} для подтверждения возврата",
+            prompt_en=f"Press {safe_candidate_key} again to confirm restoration",
             timeout_ms=15000,
         )
-        obs_res2 = ctx.observable_listener.wait_for(prompt2)
+        obs_res2 = ctx.observable_listener.wait_for(prompt_req2)
+        ev.observable_result = obs_res2.observed
+        ev.observable_pass = obs_res2.ok
+        ev.observable_source = obs_res2.source
+
         if not obs_res2.ok:
             ev.status = "FAIL"
-            ev.error = f"Post-rollback input check failed: {obs_res2.error}"
+            ev.error = f"Post-rollback input observable failed: {obs_res2.error}"
             return CapabilityValidationResult(
-                self.capability_name, False, ev, observable_result=obs_res2, rollback_verified=True, error=ev.error
+                self.capability_name, False, ev, observable_result=obs_res2, rollback_verified=False, error=ev.error
             )
 
         ev.status = "PASS"
@@ -364,7 +354,7 @@ class RemapCapabilityValidator(BaseCapabilityValidator):
 
     def _rollback(self, ctx: GuidedValidationContext, op_id: str, baseline_value: Any) -> bool:
         if baseline_value is None:
-            return False
+            baseline_value = {"source": "Insert", "target": "Insert"}
         try:
             r_set = ctx.transport.set(op_id, baseline_value)
             if not r_set.ok:
@@ -376,7 +366,7 @@ class RemapCapabilityValidator(BaseCapabilityValidator):
 
 
 class HallEffectCapabilityValidator(BaseCapabilityValidator):
-    capability_name = "hall_effect"
+    capability_name = "he.actuation"
 
     def is_applicable(self, ctx: GuidedValidationContext) -> bool:
         # STRICT RULE: only applicable if device has Hall Effect / Analog capability and is eligible!
@@ -417,7 +407,7 @@ class HallEffectCapabilityValidator(BaseCapabilityValidator):
             val, res = ctx.transport.get(op_id)
             if not res.ok:
                 ev.status = "FAIL"
-                ev.error = f"Baseline GET actuation failed: {res.error}"
+                ev.error = f"Baseline GET failed: {res.error}"
                 return CapabilityValidationResult(self.capability_name, False, ev, error=ev.error)
             ev.baseline_value = val
         except Exception as e:
@@ -425,17 +415,18 @@ class HallEffectCapabilityValidator(BaseCapabilityValidator):
             ev.error = f"Baseline GET exception: {e}"
             return CapabilityValidationResult(self.capability_name, False, ev, error=ev.error)
 
-        # 2. Pick safe separated actuation points (e.g. 3.0mm, then 1.0mm)
-        base_num = int(val) if isinstance(val, (int, float)) else 20
-        temp_val = 30 if base_num <= 20 else 10
+        # 2. Pick safe separated temporary test actuation point (on-grid 0.5mm step)
+        # e.g. if baseline is >= 2.0mm, test 1.0mm; otherwise test 3.0mm
+        base_num = float(val) if isinstance(val, (int, float)) else 1.63
+        temp_val = 10 if base_num >= 20 else 30  # 1.0mm vs 3.0mm in 0.1mm units or native grid
         ev.temporary_value = temp_val
 
-        # 3. SET temporary actuation point
+        # 3. SET test actuation depth
         try:
             set_res = ctx.transport.set(op_id, temp_val)
             if not set_res.ok:
                 ev.status = "FAIL"
-                ev.error = f"SET actuation failed: {set_res.error}"
+                ev.error = f"SET actuation point failed: {set_res.error}"
                 self._rollback(ctx, op_id, ev.baseline_value)
                 return CapabilityValidationResult(self.capability_name, False, ev, error=ev.error)
             ev.transport_result = "ok"
@@ -454,36 +445,37 @@ class HallEffectCapabilityValidator(BaseCapabilityValidator):
         except Exception:
             pass
 
-        # 5. Observable check (HE key press / travel response)
-        prompt = ObservableRequest(
+        # 5. Observable Check (HE key trigger observable)
+        prompt_req = ObservableRequest(
             kind="he_press",
             target="W",
-            prompt_ru="Плавно нажмите и отпустите клавишу W (проверяем срабатывание аналогового датчика).",
-            prompt_en="Slowly press and release the W key (verifying magnetic switch threshold).",
+            prompt_ru="Нажмите клавишу W для проверки срабатывания на заданной глубине.",
+            prompt_en="Press the W key to verify actuation triggers at the configured depth.",
             timeout_ms=15000,
         )
-        obs_res = ctx.observable_listener.wait_for(prompt)
+        obs_res = ctx.observable_listener.wait_for(prompt_req)
         ev.observable_result = obs_res.observed
         ev.observable_pass = obs_res.ok
         ev.observable_source = obs_res.source
 
-        # 6. Rollback to baseline actuation
+        if not obs_res.ok:
+            ev.status = "FAIL"
+            ev.error = f"Hall Effect actuation observable failed: {obs_res.error}"
+            rollback_ok = self._rollback(ctx, op_id, ev.baseline_value)
+            return CapabilityValidationResult(
+                self.capability_name, False, ev, observable_result=obs_res, rollback_verified=rollback_ok, error=ev.error
+            )
+
+        # 6. Rollback to original baseline
         rollback_ok = self._rollback(ctx, op_id, ev.baseline_value)
         ev.rollback_matched = rollback_ok
         ev.rollback_result = "ok" if rollback_ok else "failed"
 
         if not rollback_ok:
             ev.status = "FAIL"
-            ev.error = "Rollback failed: original actuation threshold was not restored"
+            ev.error = "Rollback verification failed: original actuation threshold not restored"
             return CapabilityValidationResult(
                 self.capability_name, False, ev, observable_result=obs_res, rollback_verified=False, error=ev.error
-            )
-
-        if not obs_res.ok:
-            ev.status = "FAIL"
-            ev.error = f"HE observable failed: {obs_res.error}"
-            return CapabilityValidationResult(
-                self.capability_name, False, ev, observable_result=obs_res, rollback_verified=True, error=ev.error
             )
 
         ev.status = "PASS"
@@ -511,7 +503,7 @@ class MechanicalKeyboardValidator(BaseCapabilityValidator):
     ABSOLUTE RULE: Standard mechanical switches are binary digital inputs (pressed / not pressed).
     NEVER perform partial-depth or actuation threshold validation on standard mechanical keyboards.
     """
-    capability_name = "mechanical_digital"
+    capability_name = "keyboard.digital"
 
     def is_applicable(self, ctx: GuidedValidationContext) -> bool:
         family = ctx.device_identity.get("family", "").lower()
@@ -556,7 +548,7 @@ class MechanicalKeyboardValidator(BaseCapabilityValidator):
 
 class ReadOnlyInventoryValidator(BaseCapabilityValidator):
     """Zero-write descriptor & inventory collector for new / unvalidated devices (Level 0)."""
-    capability_name = "read_only_inventory"
+    capability_name = "inventory"
 
     def is_applicable(self, ctx: GuidedValidationContext) -> bool:
         return True
@@ -608,6 +600,7 @@ class GuidedValidationEngine:
         
         results: list[CapabilityValidationResult] = []
         validated_groups: list[str] = []
+        inventory_evidence: dict[str, Any] = {}
         explanations: dict[str, str] = {}
         baseline_hashes: dict[str, str] = {}
         rollback_results: dict[str, bool] = {}
@@ -623,11 +616,14 @@ class GuidedValidationEngine:
             res = validator.validate(ctx)
             results.append(res)
 
-            if res.evidence.baseline_value is not None:
+            if res.capability == "inventory":
+                inventory_evidence = res.evidence.to_dict() if hasattr(res.evidence, "to_dict") else {}
+            elif res.evidence.baseline_value is not None:
                 b_hash = hashlib.sha256(json.dumps(str(res.evidence.baseline_value)).encode()).hexdigest()[:8]
                 baseline_hashes[res.capability] = b_hash
             
-            rollback_results[res.capability] = res.rollback_verified
+            if res.capability != "inventory":
+                rollback_results[res.capability] = res.rollback_verified
             if res.observable_result:
                 observables.append({
                     "capability": res.capability,
@@ -638,8 +634,9 @@ class GuidedValidationEngine:
                 })
 
             if res.passed:
-                validated_groups.append(validator.capability_name)
-                explanations[validator.capability_name] = validator.representative_explanation()
+                if res.capability != "inventory":
+                    validated_groups.append(validator.capability_name)
+                    explanations[validator.capability_name] = validator.representative_explanation()
             else:
                 all_passed = False
                 failed_capability = validator.capability_name
@@ -668,6 +665,7 @@ class GuidedValidationEngine:
                 terminal_verdict="COMPLETE_PASS",
                 validated_capability_groups=validated_groups,
                 individual_operations=[r.evidence.to_dict() for r in results if hasattr(r.evidence, "to_dict")],
+                inventory_evidence=inventory_evidence,
                 baseline_hashes=baseline_hashes,
                 observables=observables,
                 rollback_results=rollback_results,
