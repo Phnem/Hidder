@@ -525,9 +525,65 @@ export function ResearchScreen() {
         <section className="panel">
           <h2>{t.connect_keyboard}</h2>
           <p className="muted">{t.connect_desc}</p>
-          <button type="button" onClick={() => void init()}>
-            {t.scan_devices}
-          </button>
+
+          <div className="tester-instructions" style={{ marginTop: "1rem" }}>
+            <h4>{lang === "ru" ? "Чек-лист для подключения:" : "Connection checklist:"}</h4>
+            <ol>
+              <li>
+                {lang === "ru"
+                  ? "Подключите клавиатуру по кабелю USB напрямую к ПК (не через 2.4G адаптер и не по Bluetooth)."
+                  : "Connect the keyboard directly via USB cable (not 2.4G wireless dongle or Bluetooth)."}
+              </li>
+              <li>
+                {lang === "ru"
+                  ? "Переведите физический переключатель режимов на корпусе клавиатуры в положение Cable (USB)."
+                  : "Set the physical mode switch on the keyboard to Cable / USB mode."}
+              </li>
+              <li>
+                {lang === "ru"
+                  ? "Полностью закройте официальное приложение AULA / производителя (включая иконку в трее Windows)."
+                  : "Close the official vendor configuration software (AULA app) completely (including Windows tray)."}
+              </li>
+              <li>
+                {lang === "ru"
+                  ? "Поддерживаемая модель в данном пилоте: AULA HERO 84 HE (0x372E:0x103E)."
+                  : "Target device for this pilot: AULA HERO 84 HE (0x372E:0x103E)."}
+              </li>
+            </ol>
+          </div>
+
+          {discovery.reason && (
+            <p className="muted" style={{ marginTop: "0.75rem", fontSize: "0.85rem" }}>
+              <strong>{lang === "ru" ? "Статус сканирования:" : "Scan status:"}</strong> {discovery.reason}
+            </p>
+          )}
+
+          {((discovery.detected_devices && discovery.detected_devices.length > 0) ||
+            (discovery.detectedDevices && discovery.detectedDevices.length > 0)) && (
+            <details className="details" style={{ marginTop: "0.75rem" }}>
+              <summary>
+                {lang === "ru"
+                  ? `Обнаруженные USB HID-устройства (${(discovery.detected_devices || discovery.detectedDevices)!.length} шт.)`
+                  : `Detected USB HID devices (${(discovery.detected_devices || discovery.detectedDevices)!.length})`}
+              </summary>
+              <ul className="plan-list" style={{ marginTop: "0.5rem" }}>
+                {(discovery.detected_devices || discovery.detectedDevices)!.map((d, i) => (
+                  <li key={i}>
+                    <span>{d.name || "USB Device"} {d.manufacturer ? `(${d.manufacturer})` : ""}</span>
+                    <span className="mono" style={{ fontSize: "0.8rem", color: "var(--accent, #febe10)" }}>
+                      {d.vid}:{d.pid}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+
+          <div className="actions" style={{ marginTop: "1rem" }}>
+            <button type="button" onClick={() => void init()}>
+              {t.scan_devices}
+            </button>
+          </div>
         </section>
       )}
 

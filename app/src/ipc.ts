@@ -218,11 +218,20 @@ export interface ProbeDeviceView {
   family: string;
 }
 
+export interface DetectedDevice {
+  vid: string;
+  pid: string;
+  name?: string;
+  manufacturer?: string;
+}
+
 export interface ProbeDiscovery {
   state: ProbeDiscoveryState;
   device: ProbeDeviceView | null;
   supportedCount: number;
   reason: string;
+  detected_devices?: DetectedDevice[];
+  detectedDevices?: DetectedDevice[];
 }
 
 export interface ProbeOperation {

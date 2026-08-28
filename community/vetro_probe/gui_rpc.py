@@ -464,7 +464,52 @@ class RealEngine:
             transport, instance, _, _ = self.transport_factory(bundle)
             return discover_state(instance)
         except Exception as exc:  # noqa: BLE001
-            return {"state": "NO_DEVICE", "device": None, "supported_count": 0, "reason": str(exc)}
+            detected: list[dict[str, Any]] = []
+            reason = str(exc)
+            try:
+                import hid  # type: ignore
+                all_devs = hid.enumerate()
+                seen = set()
+                aula_match = None
+                for d in all_devs:
+                    v = d.get("vendor_id", 0)
+                    p = d.get("product_id", 0)
+                    if v == 0:
+                        continue
+                    key = (v, p)
+                    if key not in seen:
+                        seen.add(key)
+                        p_name = d.get("product_string") or "Unknown"
+                        mfg = d.get("manufacturer_string") or ""
+                        v_hex = f"0x{v:04X}"
+                        p_hex = f"0x{p:04X}"
+                        dev_entry = {"vid": v_hex, "pid": p_hex, "name": p_name, "manufacturer": mfg}
+                        detected.append(dev_entry)
+                        if v == 0x372E:
+                            aula_match = dev_entry
+
+                if aula_match:
+                    reason = (
+                        f"Found AULA device '{aula_match['name']}' ({aula_match['vid']}:{aula_match['pid']}). "
+                        f"Target device for this test is HERO 84 HE wired USB (0x372E:0x103E). "
+                        f"Please ensure keyboard mode switch is set to Cable/USB."
+                    )
+                elif detected:
+                    reason = (
+                        f"Target device (0x372E:0x103E) not detected. "
+                        f"{len(detected)} other USB HID devices found. "
+                        f"Ensure keyboard is connected directly via USB cable and official vendor apps are closed."
+                    )
+            except Exception:
+                pass
+
+            return {
+                "state": "NO_DEVICE",
+                "device": None,
+                "supported_count": 0,
+                "reason": reason,
+                "detected_devices": detected,
+            }
         finally:
             if transport is not None and hasattr(transport, "close"):
                 self._step("DISCOVERY_HANDLE_CLOSE_BEGIN")
